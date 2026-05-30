@@ -1,0 +1,5 @@
+/* Lumar Lounge — Italian (primary language) */
+
+/* User-visible application name (home screen, settings) */
+"CFBundleDisplayName" = "Lumar Lounge";
+"CFBundleName" = "Lumar Lounge";
