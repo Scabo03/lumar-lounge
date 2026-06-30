@@ -1,0 +1,12 @@
+# Configurazione di default per `fastlane match`.
+# Permette di invocare `fastlane match appstore` anche senza passare dal Fastfile.
+# Il repo certificati è privato e (alla prima inizializzazione) vuoto.
+
+# git_url FISSO: non da env, per non puntare al repo certificati di un altro
+# progetto quando si sourca un file di credenziali condiviso.
+git_url("https://github.com/Scabo03/lumar-lounge-certs.git")
+storage_mode("git")
+
+type("appstore")
+app_identifier(["com.scabo.lumarlounge"])
+team_id(ENV["APPLE_TEAM_ID"] || "D2KQYQ8YU8")
