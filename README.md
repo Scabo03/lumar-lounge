@@ -2,9 +2,42 @@
 
 App iOS / iPadOS di giochi di carte e da casinò, scritta in Swift e SwiftUI.
 
-> Stato attuale: **impalcatura** (scaffolding). Nessuna logica di gioco è
-> ancora implementata. Questo documento raccoglie i parametri operativi del
-> progetto e va aggiornato man mano che il lavoro procede.
+> **Nuova sessione di Claude Code?** Parti da [`CLAUDE.md`](CLAUDE.md): è il
+> punto d'ingresso che dice cosa è fatto, dove sta la documentazione, quali
+> sono le convenzioni e qual è il prossimo passo. La sequenza dei mattoni è in
+> [`ROADMAP.md`](ROADMAP.md), le regole del progetto in
+> [`CONVENTIONS.md`](CONVENTIONS.md).
+
+## Stato di sviluppo
+
+Il progetto è passato dalla pura impalcatura ai primi contenuti reali, ma il
+grosso del gioco è ancora davanti. Esiste una **scatola architetturale vuota ma
+solida**: quattro moduli Swift (`GameEngine`, `GameWorld`, `Audio`, `UI`) con la
+direzione delle dipendenze verificata dal compilatore, una shell d'app che
+presenta una `RootView` minimale, e l'impianto di localizzazione bilingue
+italiano/inglese già in piedi. Su questa scatola è montata tutta
+l'**infrastruttura di rilascio**: signing con Fastlane Match su repo certificati
+privato e pipeline di build → archive → upload verso TestFlight, collaudata e
+guidata da due sole lane.
+
+Dentro `GameEngine` è stato posato il **primo mattone del motore poker**: la
+rappresentazione di una carta (`Card`, `Rank`, `Suit`), un mazzo di 52 carte con
+mescolata deterministica e seedabile (`Deck`), e soprattutto la **valutazione
+delle mani** — dato un insieme di cinque o più carte, il sistema trova la miglior
+mano di cinque, la classifica in una delle dieci categorie standard e la mette a
+confronto con altre mani, kicker e split pot inclusi (`HandCategory`, `HandRank`,
+`HandEvaluator`). Il tutto è codice puro, dipendente solo da Foundation, coperto
+da 32 unit test che passano.
+
+Il prossimo passo è il **motore della partita di Texas Hold'em** dentro
+`GameEngine`: turni, azioni (fold/call/raise), gestione del pot e dei blind.
+`GameWorld`, `Audio` e `UI` restano per ora scheletri con la sola dichiarazione
+d'intenti. La rotta completa fino al primo gioco giocabile su TestFlight è
+tracciata in [`ROADMAP.md`](ROADMAP.md).
+
+> Questa sezione va aggiornata quando si completa un **mattone significativo**
+> (non a ogni commit). I parametri operativi e la pipeline di rilascio, invece,
+> sono descritti qui sotto e cambiano di rado.
 
 ## Parametri operativi
 

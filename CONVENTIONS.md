@@ -1,0 +1,82 @@
+# Convenzioni — Lumar Lounge
+
+Convenzioni **stabili e permanenti** del progetto, emerse nel lavoro con
+l'utente. Ogni sessione futura le trova qui già formalizzate e non deve
+riscoprirle dalla conversazione. Il riassunto operativo per Claude Code sta in
+[`CLAUDE.md`](CLAUDE.md); questo file è il riferimento completo.
+
+---
+
+## 1. Architettura e dipendenze
+
+- Quattro moduli Swift nel package `LumarKit`: `GameEngine`, `GameWorld`,
+  `Audio`, `UI`.
+- **Direzione delle dipendenze rigida:** `UI → GameWorld → GameEngine`, con
+  `Audio` **trasversale** (non dipende da nessuno degli altri e nessuno dei
+  moduli di gioco dipende da lui). La regola è **verificata dal compilatore**:
+  importare un modulo non dichiarato come dipendenza non compila.
+- **`GameEngine` importa SOLO `Foundation`.** Mai SwiftUI, UIKit, AVFoundation,
+  CoreHaptics, Combine o altri framework di piattaforma. È puro e portabile.
+- `GameWorld` può importare `GameEngine`, mai `UI` né `Audio`.
+- `Audio` è agnostico rispetto al gioco: guida tutto tramite identificatori
+  opachi, non conosce poker/blackjack.
+- `UI` può importare tutto ciò che sta sotto; solo la thin shell dell'app
+  importa `UI`.
+
+## 2. Lingua del codice e del dominio
+
+- **Codice in inglese:** nomi di tipi, funzioni, variabili e **commenti** sono
+  in inglese (`Card`, `Rank`, `Suit`, `Deck`, `HandEvaluator`, …).
+- **Terminologia di dominio mista italiano-inglese**, secondo l'uso reale dei
+  giocatori italiani:
+  - **Inglese** per le **azioni** e i **ruoli** del poker: *fold, call, raise,
+    check, bet, blind, button, dealer, all-in, pot, side pot*.
+  - **Italiano** per le **entità comuni**: *carte, mazzo, tavolo, mano, seme,
+    scala, colore, coppia, tris, full*.
+- **Fiches vs gettoni:** al **tavolo** si gioca con le **fiches**; nel **casinò
+  esterno** (progressione, economia del meta-gioco) si usano i **gettoni**. Sono
+  due concetti distinti e non vanno confusi.
+
+## 3. Localizzazione e bilinguismo
+
+- **Italiano lingua principale** (`CFBundleDevelopmentRegion = it`), **inglese
+  seconda**. Architettura **bilingue fin dall'inizio**, non un ripensamento.
+- **Nessuna stringa visibile all'utente scritta inline nel codice.** Tutti i
+  testi passano dai file di localizzazione in `Resources/` (`it.lproj`,
+  `en.lproj`).
+- `GameEngine` non ha stringhe utente per definizione (non parla al giocatore).
+
+## 4. Accessibilità (priorità architetturale)
+
+- L'accessibilità **non è una feature finale ma un vincolo di progetto**, presente
+  fin dalla prima vista.
+- Principio guida: **"nessuno perde niente"** — l'esperienza per chi vede e per
+  chi non vede deve essere piena per entrambi, senza che l'una penalizzi l'altra.
+- **VoiceOver di prima classe:** ogni vista imposta accessibility identifier e
+  label. La **pronuncia italiana** per VoiceOver è curata tramite le
+  accessibility label.
+- Approccio **audio-first:** il suono veicola informazione di gioco (non è
+  decoro), a beneficio di tutti e in particolare di chi usa VoiceOver.
+
+## 5. Testabilità
+
+- La logica pura (`GameEngine`, e in prospettiva `GameWorld`) deve essere
+  testabile in isolamento, senza UI.
+- I test del package stanno in `Tests/…` ed eseguono con `swift test`.
+- Le sorgenti di casualità (es. mescolata del mazzo) devono essere
+  **deterministiche e seedabili** per rendere i test riproducibili.
+
+## 6. Domini di gioco (ordine previsto)
+
+Il primo gioco è **Texas Hold'em No Limit**. A seguire: **Omaha**, **Five-Card
+Draw**, **Seven-Card Stud**, poi **Blackjack** e **Roulette**. Temi trasversali
+e continui: avversari con **caratteri**, **progressione tra casinò**,
+accessibilità e localizzazione. Vedi [`ROADMAP.md`](ROADMAP.md).
+
+## 7. Git e rilascio
+
+- Si lavora su `main`. Commit/push solo quando richiesto dall'utente.
+- Messaggi di commit chiusi con la riga di co-autore Claude come da prassi della
+  sessione.
+- Il signing e l'upload TestFlight passano da Fastlane Match e dalle lane
+  `setup_signing` / `testflight_upload` (dettagli in [`README.md`](README.md)).
