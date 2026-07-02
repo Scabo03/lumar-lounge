@@ -17,10 +17,14 @@ nei file collegati.
   con dipendenze verificate dal compilatore; shell d'app; localizzazione it/en.
 - Infrastruttura di rilascio: Fastlane Match + pipeline TestFlight (collaudata).
 - **`GameEngine` M1.1:** carte, mazzo (shuffle seedabile), valutazione mani
-  (10 categorie, kicker, split pot). 32 unit test verdi.
+  (10 categorie, kicker, split pot).
+- **`GameEngine` M1.2:** motore di una mano di Texas Hold'em No Limit
+  (`HoldemHand`): button/blind, street, sei azioni con min-raise No Limit, pot e
+  side pot esatti, showdown/split, deterministico via seed. 60 unit test verdi.
 
-**Prossimo passo.** Mattone **M1.2 — motore partita Texas Hold'em** dentro
-`GameEngine` (street, turni, azioni fold/call/raise, pot, blind, side pot).
+**Prossimo passo.** Mattone **M1.3 — intelligenza dei bot** dentro `GameEngine`
+(policy che scelgono una mossa fra `HoldemHand.legalActions()`); in parallelo
+`GameWorld` M2.1 inizia a orchestrare una partita contro bot su `HoldemHand`.
 Dettaglio e sequenza completa in [`ROADMAP.md`](ROADMAP.md).
 
 **Stato completo, sempre aggiornato:** sezione *Stato di sviluppo* in
@@ -104,3 +108,53 @@ confrontare** le mani.
 **Piano futuro:** quando arriverà il motore della partita (M1.2) si introdurrà un
 tipo `Hand` **giocatore-centrico** (le due hole card di un giocatore), distinto
 da `HandRank` che è **valutazione-centrico**. I due concetti non vanno fusi.
+**Risolto in M1.2:** `Hand` ora esiste (le due hole card di un seat), distinto da
+`HandRank`. Vedi `GameEngine/Hand.swift`.
+
+### D-003 — Struttura dei tipi del motore Hold'em (sessione M1.2)
+Scelte di forma per M1.2, per renderlo puro e testabile:
+- **`HoldemHand` è uno `struct` stateful con `mutating apply(_:)`** (value type,
+  non una classe). Motivazione: snapshot a costo zero, nessun aliasing, e
+  determinismo per costruzione — cruciale per riprodurre situazioni complesse.
+- **`Seat` (config: id + stack) è distinto da `SeatState`** (stato dinamico
+  della mano: hole, streetBet, totalBet, folded, all-in). Gli id sono stabili
+  tra le mani così `GameWorld` può mappare seat→giocatore.
+- **`Action` con sei casi** (`fold/check/call/bet/raise/allIn`) e amount con
+  **semantica "to"** (`bet(n)`/`raise(n)` = totale a cui portare la puntata di
+  street, non il delta). `apply` valida e lancia `ActionError`; `legalActions()`
+  espone le mosse legali per il seat di turno (utile per bot e UI futuri).
+- **Aritmetica dei pot in `PotMath` (funzioni statiche pure)**, separata dal
+  motore, così side-pot e split (con chip di resto) sono testabili con input
+  costruiti a mano — l'engine guidato dall'RNG non produce a comando pareggi o
+  side-pot di forma esatta.
+
+### D-004 — Chip di resto nello split pot al seat alla sinistra del button (M1.2)
+In un pareggio con divisione non intera, la/e fiche indivisibile/i vanno al
+vincitore più vicino alla **sinistra del button in senso orario** (il primo di
+posizione, cioè lato small blind), una fiche per volta in ordine di posizione.
+È la convenzione standard delle case da gioco. Implementato in
+`winnersOrderedFromButton` + `PotMath.distribute`.
+
+### D-005 — Determinismo via seed (sessione M1.2)
+L'unica sorgente di casualità è la mescolata seedabile del mazzo. A parità di
+`seed` e di sequenza di azioni, `HoldemHand` produce esattamente lo stesso
+risultato (board, hole, pot, payout). Nessun uso di `Date`/`Random` non seedato.
+
+### D-006 — Rotazione del button minimale; ingresso/uscita al `GameWorld` (M1.2)
+`HoldemHand.nextButtonIndex(after:seatCount:)` avanza semplicemente al seat
+successivo. **Saltare i seat bustati (stack 0) e gestire i giocatori che
+entrano/escono dal tavolo è responsabilità di `GameWorld`**, non di una singola
+mano pura: una mano riceve già l'insieme di seat che partecipano. Annotato come
+lavoro futuro di M2.1, non come mattone `GameEngine`.
+
+### D-007 — Niente burn card (sessione M1.2)
+Il motore **non** brucia una carta prima di flop/turn/river: è puramente
+cosmetico e in un motore a RNG puro non incide su equità o correttezza. Il
+determinismo è garantito comunque dal seed. Se in futuro servisse fedeltà visiva
+(es. animazione del burn in UI), la si aggiunge senza toccare la logica.
+
+### D-008 — Big blind short: la puntata corrente resta il big blind nominale (M1.2)
+Se il big blind non può coprire la posta, la posta all-in per meno, ma la
+**puntata da eguagliare (`currentBet`) resta il big blind nominale** e il
+min-raise iniziale resta il big blind. La contribuzione ridotta del seat short è
+gestita correttamente dai side pot in base al `totalBet` effettivo.

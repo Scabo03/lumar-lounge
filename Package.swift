@@ -29,27 +29,32 @@ let package = Package(
     ],
     targets: [
         // Pure rules engine. Foundation only, no Apple UI/Audio frameworks.
+        // (Each module keeps a README.md, excluded so SwiftPM ignores it.)
         .target(
             name: "GameEngine",
-            path: "GameEngine"
+            path: "GameEngine",
+            exclude: ["README.md"]
         ),
         // The world around the tables: player, chips, NPCs, progression.
         // May use GameEngine, never UI nor Audio.
         .target(
             name: "GameWorld",
             dependencies: ["GameEngine"],
-            path: "GameWorld"
+            path: "GameWorld",
+            exclude: ["README.md"]
         ),
         // Cross-cutting sound & haptics. Generic, game-agnostic.
         .target(
             name: "Audio",
-            path: "Audio"
+            path: "Audio",
+            exclude: ["README.md"]
         ),
         // All SwiftUI views. May use everything below it in the graph.
         .target(
             name: "UI",
             dependencies: ["GameWorld", "GameEngine", "Audio"],
-            path: "UI"
+            path: "UI",
+            exclude: ["README.md"]
         ),
         // Unit tests for the pure rules engine.
         .testTarget(

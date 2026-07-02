@@ -36,6 +36,12 @@ riscoprirle dalla conversazione. Il riassunto operativo per Claude Code sta in
 - **Fiches vs gettoni:** al **tavolo** si gioca con le **fiches**; nel **casinò
   esterno** (progressione, economia del meta-gioco) si usano i **gettoni**. Sono
   due concetti distinti e non vanno confusi.
+- **Precisazione (emersa in M1.2):** la regola mista italiano-inglese governa il
+  **vocabolario di dominio rivolto all'utente** (label, VoiceOver, testi, docs),
+  **non gli identificatori Swift**. Nel codice puro tutto è in inglese, incluse
+  le entità comuni (`Card`, `Deck`, `Hand`, `Seat`, `board`, `pot`): lì vale la
+  regola "codice in inglese". L'italiano per *carte/mazzo/tavolo/mano* riguarda
+  ciò che il giocatore legge o sente, che in `GameEngine` non esiste.
 
 ## 3. Localizzazione e bilinguismo
 

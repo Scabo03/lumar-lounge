@@ -20,20 +20,25 @@ l'**infrastruttura di rilascio**: signing con Fastlane Match su repo certificati
 privato e pipeline di build → archive → upload verso TestFlight, collaudata e
 guidata da due sole lane.
 
-Dentro `GameEngine` è stato posato il **primo mattone del motore poker**: la
-rappresentazione di una carta (`Card`, `Rank`, `Suit`), un mazzo di 52 carte con
-mescolata deterministica e seedabile (`Deck`), e soprattutto la **valutazione
+Dentro `GameEngine` sono stati posati i **primi due mattoni del motore poker**.
+Il primo: la rappresentazione di una carta (`Card`, `Rank`, `Suit`), un mazzo di
+52 carte con mescolata deterministica e seedabile (`Deck`), e la **valutazione
 delle mani** — dato un insieme di cinque o più carte, il sistema trova la miglior
 mano di cinque, la classifica in una delle dieci categorie standard e la mette a
 confronto con altre mani, kicker e split pot inclusi (`HandCategory`, `HandRank`,
-`HandEvaluator`). Il tutto è codice puro, dipendente solo da Foundation, coperto
-da 32 unit test che passano.
+`HandEvaluator`). Il secondo: il **motore di una mano di Texas Hold'em No Limit**
+(`HoldemHand`) — una macchina a stati a turni che va dalla posta dei blind fino
+all'assegnazione del pot, gestendo rotazione del button, distribuzione delle
+carte, le quattro street, le sei azioni (fold/check/call/bet/raise/all-in) con le
+regole di min-raise del No Limit, pot e side pot esatti anche con stack diversi,
+showdown con split e chip di resto. È interamente deterministico via seed. Tutto
+codice puro su Foundation, coperto da 60 unit test che passano.
 
-Il prossimo passo è il **motore della partita di Texas Hold'em** dentro
-`GameEngine`: turni, azioni (fold/call/raise), gestione del pot e dei blind.
-`GameWorld`, `Audio` e `UI` restano per ora scheletri con la sola dichiarazione
-d'intenti. La rotta completa fino al primo gioco giocabile su TestFlight è
-tracciata in [`ROADMAP.md`](ROADMAP.md).
+Il prossimo passo è l'**intelligenza dei bot** dentro `GameEngine` (policy di
+decisione sulle mosse legali), mentre `GameWorld` inizierà a orchestrare una
+partita contro bot appoggiandosi a `HoldemHand`. `Audio` e `UI` restano per ora
+scheletri con la sola dichiarazione d'intenti. La rotta completa fino al primo
+gioco giocabile su TestFlight è tracciata in [`ROADMAP.md`](ROADMAP.md).
 
 > Questa sezione va aggiornata quando si completa un **mattone significativo**
 > (non a ogni commit). I parametri operativi e la pipeline di rilascio, invece,

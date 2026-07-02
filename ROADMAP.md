@@ -38,20 +38,29 @@ build → archive → upload TestFlight nelle lane `setup_signing` e
 categorie, confronto con kicker e split pot). 32 unit test.
 **Dipendenze:** nessuna (solo Foundation).
 
-### ⏭️ M1.2 — Motore partita Texas Hold'em
-La macchina a stati di una mano di Hold'em: giro delle puntate, street
-(preflop/flop/turn/river), azioni **fold/call/raise/check/bet**, gestione del
-**pot** e dei **blind/button**, all-in e **side pot**, determinazione del
-vincitore usando `HandEvaluator`. Introduce un tipo `Hand` giocatore-centrico
-(le due hole card) distinto da `HandRank` (la valutazione) — vedi decisione in
-`CLAUDE.md`. Tutto puro e testabile senza UI né giocatori "reali".
-**Dipendenze:** M1.1.
+### ✅ M1.2 — Motore partita Texas Hold'em
+La macchina a stati di una mano di Hold'em No Limit (`HoldemHand`): rotazione
+del **button** e **blind** (con post short/all-in), distribuzione delle hole
+card, quattro street, azioni **fold/check/call/bet/raise/all-in** con le regole
+di min-raise del No Limit (compreso l'all-in incompleto che non riapre
+l'azione), **pot** e **side pot** esatti, showdown con `HandEvaluator`, split e
+chip di resto. Introduce il tipo `Hand` giocatore-centrico (D-002) e i tipi
+`Seat`/`SeatState`/`Street`/`Action`/`Pot`/`HandResult`/`LegalActions`, più
+`PotMath`. Deterministico via seed. 28 unit test (60 totali nel modulo).
+**Dipendenze:** M1.1. **Note di design:** D-003…D-008 in `CLAUDE.md`.
 
-### 🔭 M1.3 — Intelligenza dei bot (base)
+### ⏭️ M1.3 — Intelligenza dei bot (base)
 Policy di decisione per avversari controllati dal motore: da un bot "onesto"
 basato su forza della mano e pot odds, verso comportamenti parametrizzabili
-(aggressività, bluff) che diventeranno i **caratteri** in `GameWorld`.
+(aggressività, bluff) che diventeranno i **caratteri** in `GameWorld`. Consuma
+`HoldemHand.legalActions()` per scegliere una mossa valida.
 **Dipendenze:** M1.2.
+
+> **Rifiniture scoperte in corso d'opera** (rimandate, non nuovi mattoni): il
+> salto dei seat bustati nella rotazione del button e la gestione dei giocatori
+> che entrano/escono appartengono a `GameWorld` (D-006); il burn delle carte è
+> stato omesso perché cosmetico (D-007). Se dovessero servire davvero al tavolo,
+> diventeranno lavoro in M2.1.
 
 ---
 
