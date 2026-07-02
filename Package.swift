@@ -15,7 +15,11 @@ import PackageDescription
 let package = Package(
     name: "LumarKit",
     platforms: [
-        .iOS(.v17)
+        .iOS(.v17),
+        // macOS is declared so the pure, portable layers (and their unit
+        // tests) can be built and run on the host with `swift test`. The
+        // shipping app is still iOS; this only widens the minimum-OS floor.
+        .macOS(.v13)
     ],
     products: [
         .library(name: "GameEngine", targets: ["GameEngine"]),
@@ -46,6 +50,12 @@ let package = Package(
             name: "UI",
             dependencies: ["GameWorld", "GameEngine", "Audio"],
             path: "UI"
+        ),
+        // Unit tests for the pure rules engine.
+        .testTarget(
+            name: "GameEngineTests",
+            dependencies: ["GameEngine"],
+            path: "Tests/GameEngineTests"
         ),
     ]
 )
