@@ -20,12 +20,17 @@ nei file collegati.
   (10 categorie, kicker, split pot).
 - **`GameEngine` M1.2:** motore di una mano di Texas Hold'em No Limit
   (`HoldemHand`): button/blind, street, sei azioni con min-raise No Limit, pot e
-  side pot esatti, showdown/split, deterministico via seed. 60 unit test verdi.
+  side pot esatti, showdown/split, deterministico via seed.
+- **`GameEngine` M1.3:** intelligenza dei bot. Interfaccia `PokerBot` +
+  `BotContext` (vista redatta, solo info onesta, D-009), baseline matematico
+  (`HandStrength`) modulato da `Personality` (D-010) con tre profili di partenza
+  (`eagerNovice`/`conservativeRock`/`hotAggressor`). 68 unit test verdi.
 
-**Prossimo passo.** Mattone **M1.3 — intelligenza dei bot** dentro `GameEngine`
-(policy che scelgono una mossa fra `HoldemHand.legalActions()`); in parallelo
-`GameWorld` M2.1 inizia a orchestrare una partita contro bot su `HoldemHand`.
-Dettaglio e sequenza completa in [`ROADMAP.md`](ROADMAP.md).
+**Prossimo passo.** Mattone **M1.4 — driver di sessione** in `GameWorld`: il loop
+multi-mano (umano + bot) che costruisce il `BotContext`, applica le azioni,
+ruota il button saltando i bustati e gestisce entrate/uscite. È l'avvio di
+`GameWorld` M2.1 e prima integrazione GameEngine↔GameWorld. Un prototipo del
+loop è già nei test di M1.3. Dettaglio e sequenza in [`ROADMAP.md`](ROADMAP.md).
 
 **Stato completo, sempre aggiornato:** sezione *Stato di sviluppo* in
 [`README.md`](README.md).
@@ -158,3 +163,37 @@ Se il big blind non può coprire la posta, la posta all-in per meno, ma la
 **puntata da eguagliare (`currentBet`) resta il big blind nominale** e il
 min-raise iniziale resta il big blind. La contribuzione ridotta del seat short è
 gestita correttamente dai side pot in base al `totalBet` effettivo.
+
+### D-009 — Informazione onesta garantita da una vista redatta (sessione M1.3)
+`HoldemHand.seats` espone le hole card di **tutti** i seat: passare il motore
+grezzo a un bot gli permetterebbe di barare. Perciò un bot **non** riceve mai
+`HoldemHand`, ma un `BotContext`: una vista **seat-relativa e solo-pubblica**
+(board, pot, stack, puntate, posizione) più le **sole** due carte del seat di
+turno. L'onestà è quindi garantita **per costruzione**, non per disciplina. Il
+`BotContext` si costruisce dal motore (`init?(actingIn:)`) redigendo le carte
+altrui; `PublicSeat` non ha proprio un campo per le hole card.
+
+### D-010 — Personalità come modulazione, non sostituzione (sessione M1.3)
+La forza matematica (equity, pot odds, posizione) è **comune** a tutti i bot; la
+`Personality` è uno strato di manopole 0…1 (tightness, aggression,
+bluffFrequency, riskTolerance, positionAwareness, rationality, tiltReactivity)
+che modula *come* quella forza si esprime. Un solo `HeuristicBot` parametrizzato
+copre molti caratteri; aggiungerne è **additivo** (un preset in più), mentre un
+bot radicalmente diverso è un nuovo conforme a `PokerBot`. Determinismo: l'unica
+casualità è un `SeededGenerator` inizializzato dal `seed` del bot mescolato col
+`fingerprint` del contesto — stesso bot + stessa situazione → stessa azione.
+Tre profili di partenza scelti agli estremi dell'asse emotivo-strategico:
+- **`eagerNovice`** — gioca troppe mani, si spaventa ai bet grossi, bluff
+  improvvisati, molto emotivo (tilt alto), letture fallaci.
+- **`conservativeRock`** — solo mani forti, poca aggressione, quasi mai bluff,
+  disciplinato e imperturbabile, prevedibile.
+- **`hotAggressor`** — rilancia e bluffa spesso, ignora la posizione, ama il
+  rischio; rumoroso e sfruttabile.
+
+### D-011 — Equity Monte Carlo contro range uniforme (sessione M1.3)
+L'equity postflop è stimata con un Monte Carlo seedato (avversari e board
+casuali, molti campioni). Gli avversari sono estratti **uniformemente** (range
+non ristretto): è la stima onesta più semplice, come consentito dal perimetro.
+Restringere il range in base alle azioni degli avversari è un raffinamento
+**additivo** futuro, che non cambia l'ossatura. Preflop si usa un'euristica di
+Chen normalizzata (veloce, niente rollout).

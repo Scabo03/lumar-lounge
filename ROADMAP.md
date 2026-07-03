@@ -49,18 +49,34 @@ chip di resto. Introduce il tipo `Hand` giocatore-centrico (D-002) e i tipi
 `PotMath`. Deterministico via seed. 28 unit test (60 totali nel modulo).
 **Dipendenze:** M1.1. **Note di design:** D-003…D-008 in `CLAUDE.md`.
 
-### ⏭️ M1.3 — Intelligenza dei bot (base)
-Policy di decisione per avversari controllati dal motore: da un bot "onesto"
-basato su forza della mano e pot odds, verso comportamenti parametrizzabili
-(aggressività, bluff) che diventeranno i **caratteri** in `GameWorld`. Consuma
-`HoldemHand.legalActions()` per scegliere una mossa valida.
-**Dipendenze:** M1.2.
+### ✅ M1.3 — Intelligenza dei bot (base)
+Infrastruttura estensibile per i bot: interfaccia `PokerBot` (dato un
+`BotContext`, restituisce un'azione legale) che si aggancia al motore M1.2
+dall'esterno via `legalActions()`/`apply(_:)`, senza modificarlo. Baseline
+matematico (`HandStrength`: euristica Chen preflop + equity Monte Carlo
+postflop) **modulato** da una `Personality` a 7 dimensioni. Tre profili di
+partenza visibilmente diversi (`eagerNovice`, `conservativeRock`, `hotAggressor`).
+Informazione onesta garantita dalla vista redatta `BotContext` (D-009);
+deterministico via seed. 8 unit test (68 totali nel modulo).
+**Dipendenze:** M1.1, M1.2. **Note di design:** D-009…D-011 in `CLAUDE.md`.
 
 > **Rifiniture scoperte in corso d'opera** (rimandate, non nuovi mattoni): il
 > salto dei seat bustati nella rotazione del button e la gestione dei giocatori
 > che entrano/escono appartengono a `GameWorld` (D-006); il burn delle carte è
-> stato omesso perché cosmetico (D-007). Se dovessero servire davvero al tavolo,
-> diventeranno lavoro in M2.1.
+> stato omesso perché cosmetico (D-007); il narrowing del range per l'equity e
+> il tilt cross-mano sono estensioni additive future. Diventeranno lavoro in
+> M1.4/M2.1.
+
+### ⏭️ M1.4 — Driver di sessione: prima integrazione GameEngine ↔ GameWorld
+Il loop che fa girare una **sessione multi-mano** contro bot: costruire il
+`BotContext` per il seat di turno, chiedere l'azione al bot (o al giocatore
+umano), applicarla, e a mano conclusa portare avanti gli stack, ruotare il
+button **saltando i bustati** e gestire chi entra/esce (D-006). È il primo
+mattone che vive in `GameWorld` (non più solo `GameEngine`): di fatto è il cuore
+di [M2.1](#-m21--giocatore-fiches-e-sessione-al-tavolo) e può esserne
+considerato l'avvio. Un prototipo del loop esiste già nei test di M1.3
+(`testMultiHandSimulation…`) e va promosso a codice di `GameWorld`.
+**Dipendenze:** M1.2, M1.3.
 
 ---
 

@@ -66,7 +66,7 @@ public enum Street: Int, Comparable, CaseIterable, Sendable {
 /// Amounts use **"to" semantics**: `bet(n)` and `raise(n)` name the *total* the
 /// seat's street bet becomes, not the delta added. So over a big blind of 10,
 /// `raise(30)` means "make it 30 to go" (the seat adds `30 - alreadyIn`).
-public enum Action: Equatable, Sendable {
+public enum Action: Hashable, Sendable {
     /// Give up the hand.
     case fold
     /// Pass when there is nothing to call (`streetBet == currentBet`).

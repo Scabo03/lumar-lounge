@@ -20,7 +20,7 @@ l'**infrastruttura di rilascio**: signing con Fastlane Match su repo certificati
 privato e pipeline di build → archive → upload verso TestFlight, collaudata e
 guidata da due sole lane.
 
-Dentro `GameEngine` sono stati posati i **primi due mattoni del motore poker**.
+Dentro `GameEngine` sono stati posati i **primi tre mattoni del motore poker**.
 Il primo: la rappresentazione di una carta (`Card`, `Rank`, `Suit`), un mazzo di
 52 carte con mescolata deterministica e seedabile (`Deck`), e la **valutazione
 delle mani** — dato un insieme di cinque o più carte, il sistema trova la miglior
@@ -31,14 +31,20 @@ confronto con altre mani, kicker e split pot inclusi (`HandCategory`, `HandRank`
 all'assegnazione del pot, gestendo rotazione del button, distribuzione delle
 carte, le quattro street, le sei azioni (fold/check/call/bet/raise/all-in) con le
 regole di min-raise del No Limit, pot e side pot esatti anche con stack diversi,
-showdown con split e chip di resto. È interamente deterministico via seed. Tutto
-codice puro su Foundation, coperto da 60 unit test che passano.
+showdown con split e chip di resto. Il terzo: l'**intelligenza dei bot** — un bot
+(`PokerBot`/`HeuristicBot`) che, vista solo l'informazione onesta della mano
+(`BotContext`: stato pubblico più le proprie due carte), unisce un baseline
+matematico (forza mano, pot odds, posizione) a una **personalità** che ne modula
+lo stile. Tre profili di partenza visibilmente diversi — principiante emotivo,
+sasso conservativo, aggressivo caldo. Tutto puro su Foundation, deterministico
+via seed, coperto da 68 unit test che passano.
 
-Il prossimo passo è l'**intelligenza dei bot** dentro `GameEngine` (policy di
-decisione sulle mosse legali), mentre `GameWorld` inizierà a orchestrare una
-partita contro bot appoggiandosi a `HoldemHand`. `Audio` e `UI` restano per ora
-scheletri con la sola dichiarazione d'intenti. La rotta completa fino al primo
-gioco giocabile su TestFlight è tracciata in [`ROADMAP.md`](ROADMAP.md).
+Il prossimo passo esce dal motore puro: **`GameWorld`** costruisce il driver di
+una **sessione multi-mano** (giocatore umano + bot) appoggiandosi a `HoldemHand`
+e ai bot — rotazione del button con salto dei bustati, gestione di chi entra ed
+esce. `Audio` e `UI` restano per ora scheletri con la sola dichiarazione
+d'intenti. La rotta completa fino al primo gioco giocabile su TestFlight è
+tracciata in [`ROADMAP.md`](ROADMAP.md).
 
 > Questa sezione va aggiornata quando si completa un **mattone significativo**
 > (non a ogni commit). I parametri operativi e la pipeline di rilascio, invece,
