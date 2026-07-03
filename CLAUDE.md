@@ -24,13 +24,18 @@ nei file collegati.
 - **`GameEngine` M1.3:** intelligenza dei bot. Interfaccia `PokerBot` +
   `BotContext` (vista redatta, solo info onesta, D-009), baseline matematico
   (`HandStrength`) modulato da `Personality` (D-010) con tre profili di partenza
-  (`eagerNovice`/`conservativeRock`/`hotAggressor`). 68 unit test verdi.
+  (`eagerNovice`/`conservativeRock`/`hotAggressor`).
+- **`GameWorld` M1.4:** primo codice reale di `GameWorld`. `SessionDriver` fa
+  girare una sessione multi-mano (cliente puro del motore, D-014): tavolo ad
+  anello, dead button (D-012), fiches/bust, ingressi tra le mani, azioni da bot
+  o umano via `ActionProvider` async uniforme (D-013). Determinismo end-to-end.
+  75 unit test verdi (68 GameEngine + 7 GameWorld).
 
-**Prossimo passo.** Mattone **M1.4 — driver di sessione** in `GameWorld`: il loop
-multi-mano (umano + bot) che costruisce il `BotContext`, applica le azioni,
-ruota il button saltando i bustati e gestisce entrate/uscite. È l'avvio di
-`GameWorld` M2.1 e prima integrazione GameEngine↔GameWorld. Un prototipo del
-loop è già nei test di M1.3. Dettaglio e sequenza in [`ROADMAP.md`](ROADMAP.md).
+**Prossimo passo.** Mattone **M1.5** — esporre lo svolgimento di una mano in
+forma **osservabile/pilotabile** dalla UI (stato, turno, mosse legali, attesa
+umana già pronta con `HumanActionProvider`) e un flusso di **eventi** mappabile
+da `Audio`/`UI`, senza che `GameWorld` importi UI/Audio. Dettaglio e sequenza in
+[`ROADMAP.md`](ROADMAP.md).
 
 **Stato completo, sempre aggiornato:** sezione *Stato di sviluppo* in
 [`README.md`](README.md).
@@ -197,3 +202,37 @@ non ristretto): è la stima onesta più semplice, come consentito dal perimetro.
 Restringere il range in base alle azioni degli avversari è un raffinamento
 **additivo** futuro, che non cambia l'ossatura. Preflop si usa un'euristica di
 Chen normalizzata (veloce, niente rollout).
+
+### D-012 — Dead button via anello fisico mappato sul motore (sessione M1.4)
+Il tavolo del `SessionDriver` è un **anello di posizioni fisse**; il button
+avanza di **una posizione** ogni mano, anche se cade su un seat vuoto/bustato
+(vero *dead button*). Il motore M1.2, però, vuole un button su un partecipante
+reale: si mappa il dead button sul **primo giocatore idoneo scandendo
+all'indietro (senso antiorario) dalla posizione del button, incluso**. Il suo
+successivo in senso orario è esattamente lo small blind reale, quindi l'ordine
+d'azione che il motore produce coincide col dead button. **Semplificazione
+consapevole:** non si modella il *dead/half small blind* (blind saltato); SB e
+BB sono sempre posti dai due giocatori idonei successivi, coerentemente col
+modello di blind del motore. Rebuy dopo bust non implementato: il seat resta
+`.bustedOut`, pronto ad accoglierlo in futuro.
+
+### D-013 — Interfaccia azione uniforme bot/umano (`ActionProvider`, M1.4)
+Il driver chiede l'azione tramite un unico protocollo **async**
+`ActionProvider.provideAction(for: BotContext) async -> Action`. Un bot risponde
+in modo sincrono dietro la facciata async (`BotActionProvider`); un umano tramite
+`HumanActionProvider`, un **actor** che **sospende** con una `CheckedContinuation`
+finché la UI non chiama `submit(_:)`. Dal punto di vista del driver i due casi
+sono indistinguibili — nessun threading proprio, solo Swift Concurrency. Il
+driver **legalizza** difensivamente l'azione ricevuta (fallback a check/fold) per
+restare totale e deterministico anche con un provider scorretto.
+
+### D-014 — Il driver è cliente puro di GameEngine (sessione M1.4)
+`SessionDriver` **non tocca `GameEngine`**: usa solo le API pubbliche
+(`HoldemHand`, `legalActions()`/`apply(_:)`, `HandResult`, `BotContext`,
+`nextButtonIndex` non necessario grazie alla mappatura dead button). Il motore
+non è stato modificato per accogliere i bot o la sessione. Il criterio di **fine
+sessione è esterno**: il driver espone `playHand()`/`run(continuing:)` e lo stato
+del tavolo, ma la decisione di fermarsi sta nel chiamante. Il driver è un
+`final class` (riferimento, muta stato tra un `await` e l'altro); gli ingressi/
+uscite sono ammessi **solo tra le mani** (guardia `isHandInProgress`, robusta
+anche alla reentrancy).

@@ -67,26 +67,38 @@ deterministico via seed. 8 unit test (68 totali nel modulo).
 > il tilt cross-mano sono estensioni additive future. Diventeranno lavoro in
 > M1.4/M2.1.
 
-### ⏭️ M1.4 — Driver di sessione: prima integrazione GameEngine ↔ GameWorld
-Il loop che fa girare una **sessione multi-mano** contro bot: costruire il
-`BotContext` per il seat di turno, chiedere l'azione al bot (o al giocatore
-umano), applicarla, e a mano conclusa portare avanti gli stack, ruotare il
-button **saltando i bustati** e gestire chi entra/esce (D-006). È il primo
-mattone che vive in `GameWorld` (non più solo `GameEngine`): di fatto è il cuore
-di [M2.1](#-m21--giocatore-fiches-e-sessione-al-tavolo) e può esserne
-considerato l'avvio. Un prototipo del loop esiste già nei test di M1.3
-(`testMultiHandSimulation…`) e va promosso a codice di `GameWorld`.
-**Dipendenze:** M1.2, M1.3.
+### ✅ M1.4 — Driver di sessione: prima integrazione GameEngine ↔ GameWorld
+Primo codice reale di `GameWorld`: `SessionDriver` fa girare una **sessione
+multi-mano**. Rappresenta un tavolo ad anello a capacità fissa, prepara i
+partecipanti e il button per il motore M1.2, guida la mano chiedendo le azioni
+via `BotContext`/`apply`, aggiorna le fiches (split e side pot già calcolati dal
+motore), ruota il button per posizione con **dead button** (D-012), marca i
+bustati (`.bustedOut`, rebuy futuro non implementato) e accetta ingressi/uscite
+**solo tra le mani**. Bot e umano rispondono con la stessa interfaccia async
+`ActionProvider` (D-013). Determinismo end-to-end, fiches conservate, fine
+sessione decisa dal chiamante. 7 unit test.
+**Dipendenze:** M1.2, M1.3. **Note di design:** D-012…D-014 in `CLAUDE.md`.
+
+### ⏭️ M1.5 — Loop di gioco a mano singola pilotabile passo-passo per la UI
+Ponte verso `UI`: esporre lo svolgimento di una mano in una forma che una vista
+possa **osservare e pilotare** (stato corrente, di chi è il turno, mosse legali,
+attesa dell'azione umana già pronta con `HumanActionProvider`), e un flusso di
+**eventi** della mano (carte distribuite, puntate, vincita) che `Audio`/`UI`
+potranno mappare — senza che `GameWorld` importi UI o Audio. È il minimo per
+rendere il driver M1.4 realmente giocabile da una persona in M4.x.
+**Dipendenze:** M1.4.
 
 ---
 
 ## Fase 2 — Mondo attorno al tavolo (`GameWorld`)
 
 ### 🔭 M2.1 — Giocatore, fiches e sessione al tavolo
-Modello del giocatore, **fiches** al tavolo (distinte dai **gettoni** del
-casinò esterno), setup di un tavolo Hold'em con posti, blind level e stack.
-Orchestrazione di una partita completa contro bot usando il motore M1.2.
-**Dipendenze:** M1.2.
+Il **cuore di orchestrazione** (setup del tavolo, sessione multi-mano, fiches,
+bust, rotazione, ingressi/uscite) è già stato consegnato da **M1.4**
+(`SessionDriver`). Qui resta da costruire ciò che sta *attorno*: il **giocatore
+come entità del mondo** (identità, profilo), i blind level che salgono, il
+rebuy dopo bust, e l'aggancio verso la progressione. Si appoggia a M1.4.
+**Dipendenze:** M1.4.
 
 ### 🔭 M2.2 — Avversari con caratteri
 Gli NPC come entità del mondo: nome, personalità, stile di gioco, che mappano i

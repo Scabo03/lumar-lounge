@@ -6,7 +6,8 @@
 // RULE: may import GameEngine. Must NOT import UI nor Audio (nor any
 // SwiftUI/UIKit). The dependency direction is UI → GameWorld → GameEngine.
 //
-// No game-world logic is implemented yet — this is scaffolding only.
+// First real content (M1.4): the multi-hand session driver — see
+// SessionDriver.swift, ActionProvider.swift, SessionTypes.swift and README.md.
 
 import Foundation
 import GameEngine

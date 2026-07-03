@@ -62,5 +62,11 @@ let package = Package(
             dependencies: ["GameEngine"],
             path: "Tests/GameEngineTests"
         ),
+        // Unit tests for the world layer (session driver).
+        .testTarget(
+            name: "GameWorldTests",
+            dependencies: ["GameWorld", "GameEngine"],
+            path: "Tests/GameWorldTests"
+        ),
     ]
 )

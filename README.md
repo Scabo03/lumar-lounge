@@ -39,12 +39,22 @@ lo stile. Tre profili di partenza visibilmente diversi — principiante emotivo,
 sasso conservativo, aggressivo caldo. Tutto puro su Foundation, deterministico
 via seed, coperto da 68 unit test che passano.
 
-Il prossimo passo esce dal motore puro: **`GameWorld`** costruisce il driver di
-una **sessione multi-mano** (giocatore umano + bot) appoggiandosi a `HoldemHand`
-e ai bot — rotazione del button con salto dei bustati, gestione di chi entra ed
-esce. `Audio` e `UI` restano per ora scheletri con la sola dichiarazione
-d'intenti. La rotta completa fino al primo gioco giocabile su TestFlight è
-tracciata in [`ROADMAP.md`](ROADMAP.md).
+Con il quarto mattone il progetto **esce per la prima volta da `GameEngine`** ed
+entra in `GameWorld`: il **driver di sessione** (`SessionDriver`) fa girare una
+serie di mani allo stesso tavolo — le fiches si accumulano e si perdono attraverso
+le mani, il button ruota con la regola del dead button saltando i bustati, i
+giocatori possono entrare e uscire tra una mano e l'altra. Bot e giocatore umano
+rispondono alla stessa richiesta d'azione tramite un'interfaccia asincrona
+uniforme: il bot risponde subito, l'umano quando la UI fornirà l'azione. Il
+driver resta cliente puro del motore, deterministico e con le fiches sempre
+conservate; quando finisce la sessione lo decide chi lo usa, non il driver. 75
+unit test complessivi che passano (68 `GameEngine` + 7 `GameWorld`).
+
+Il prossimo passo è rendere lo svolgimento di una mano **osservabile e
+pilotabile** da una vista, con un flusso di eventi che `Audio` e `UI` potranno
+mappare — il ponte verso il tavolo giocabile. `Audio` e `UI` restano per ora
+scheletri con la sola dichiarazione d'intenti. La rotta completa fino al primo
+gioco giocabile su TestFlight è tracciata in [`ROADMAP.md`](ROADMAP.md).
 
 > Questa sezione va aggiornata quando si completa un **mattone significativo**
 > (non a ogni commit). I parametri operativi e la pipeline di rilascio, invece,
