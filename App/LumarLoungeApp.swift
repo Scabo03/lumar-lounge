@@ -11,7 +11,9 @@ import UI
 struct LumarLoungeApp: App {
     var body: some Scene {
         WindowGroup {
-            RootView()
+            // The single screen of M1.6: the demo poker table. (No navigation
+            // yet — that arrives with later bricks.)
+            PokerTableView()
         }
     }
 }

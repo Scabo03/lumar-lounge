@@ -76,6 +76,20 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
   accessibility label.
 - Approccio **audio-first:** il suono veicola informazione di gioco (non è
   decoro), a beneficio di tutti e in particolare di chi usa VoiceOver.
+- **Pattern implementativi (emersi in M1.6):**
+  - La **pronuncia fonetica italiana** dei termini poker inglesi vive nelle
+    stringhe `it.lproj` ("reis", "blaind", "bàtton", "ol-in", "cek", "col",
+    "tern"), non in codice: è la localizzazione a farla, e il TTS italiano li
+    pronuncia correttamente. L'inglese `en.lproj` usa la grafia normale.
+  - Gli **annunci VoiceOver dinamici** usano `UIAccessibility.post(.announcement)`
+    avvolto in `#if canImport(UIKit)` (no-op sul host macOS, così il modulo `UI`
+    compila per `swift test`).
+  - **Non** applicare modificatori di accessibilità al contenitore più esterno di
+    una schermata (`.accessibilityElement`/`.accessibilityIdentifier` su una
+    ZStack/GeometryReader di root): collassa il sottoalbero in un solo elemento e
+    nasconde gli identifier dei figli. Gli **identifier vanno sui leaf**.
+  - La logica di presentazione (riduzione evento→stato, formattazione testo) va
+    tenuta **pura** e fuori dalle viste SwiftUI, per essere unit-testabile.
 
 ## 5. Testabilità
 

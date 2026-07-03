@@ -2,3 +2,102 @@
 
 /* Main brand title shown on the root screen */
 "app.title" = "Lumar Lounge";
+
+/* ------------------------------------------------------------------ */
+/* Bot display names (M1.6 demo table) */
+"seat.name.novice" = "Il Novizio";
+"seat.name.rock" = "Il Sasso";
+"seat.name.aggressor" = "L'Aggressivo";
+
+/* ------------------------------------------------------------------ */
+/* Cards — visual symbols come from the engine; these are spoken names. */
+"card.rank.2" = "due";
+"card.rank.3" = "tre";
+"card.rank.4" = "quattro";
+"card.rank.5" = "cinque";
+"card.rank.6" = "sei";
+"card.rank.7" = "sette";
+"card.rank.8" = "otto";
+"card.rank.9" = "nove";
+"card.rank.10" = "dieci";
+"card.rank.11" = "fante";
+"card.rank.12" = "donna";
+"card.rank.13" = "re";
+"card.rank.14" = "asso";
+"card.suit.spades" = "picche";
+"card.suit.hearts" = "cuori";
+"card.suit.diamonds" = "quadri";
+"card.suit.clubs" = "fiori";
+"card.spoken.format" = "%1$@ di %2$@";
+"card.a11y.covered" = "carta coperta";
+
+/* Hand categories (spoken) */
+"hand.category.0" = "carta alta";
+"hand.category.1" = "coppia";
+"hand.category.2" = "doppia coppia";
+"hand.category.3" = "tris";
+"hand.category.4" = "scala";
+"hand.category.5" = "colore";
+"hand.category.6" = "full";
+"hand.category.7" = "poker";
+"hand.category.8" = "scala colore";
+"hand.category.9" = "scala reale";
+
+/* ------------------------------------------------------------------ */
+/* Seat labels and spoken summary (poker terms rendered phonetically) */
+"seat.chips" = "%d fiche";
+"badge.button" = "D";
+"badge.smallBlind" = "SB";
+"badge.bigBlind" = "BB";
+"badge.allIn" = "ALL-IN";
+"badge.busted" = "OUT";
+"seat.a11y.base" = "%1$@, %2$d fiche";
+"seat.a11y.button" = "ha il bàtton";
+"seat.a11y.smallBlind" = "smòl blaind";
+"seat.a11y.bigBlind" = "big blaind";
+"seat.a11y.shows" = "mostra %@";
+"seat.a11y.holding" = "ha due carte coperte";
+"seat.a11y.allIn" = "è ol-in";
+"seat.a11y.folded" = "ha fatto fold";
+"seat.a11y.busted" = "eliminato";
+
+/* Table + centre: button holder, board, pot */
+"table.a11y" = "Tavolo da poker";
+"button.none" = "—";
+"button.holder" = "Button: %@";
+"button.a11y" = "Il bàtton è di %@";
+"board.empty" = "In attesa del flop";
+"board.a11y.empty" = "Nessuna carta comune";
+"board.a11y" = "Carte comuni: %@";
+"pot.label" = "Pot: %d";
+"pot.a11y" = "Pot di %d fiche";
+
+/* Winner banner */
+"winner.banner" = "Vince %@!";
+"winner.a11y" = "%@ vince la partita";
+
+/* ------------------------------------------------------------------ */
+/* VoiceOver announcements (phonetic poker terms) */
+"announce.session.start" = "Inizia la partita dimostrativa";
+"announce.hand.start" = "Mano %1$d. Il bàtton è di %2$@";
+"announce.blind.small" = "%1$@ mette lo smòl blaind di %2$d";
+"announce.blind.big" = "%1$@ mette il big blaind di %2$d";
+"announce.hole.dealt" = "Carte distribuite";
+"announce.action.folded" = "%@ fa fold";
+"announce.action.checked" = "%@ fa cek";
+"announce.action.called" = "%1$@ fa col di %2$d";
+"announce.action.called.allin" = "%1$@ fa col ed è ol-in con %2$d";
+"announce.action.bet" = "%1$@ fa bett a %2$d";
+"announce.action.bet.allin" = "%1$@ fa bett ol-in a %2$d";
+"announce.action.raised" = "%1$@ fa reis a %2$d";
+"announce.action.raised.allin" = "%1$@ fa reis ol-in a %2$d";
+"announce.street.flop.header" = "Esce il flop";
+"announce.street.flop" = "Esce il flop: %@";
+"announce.street.turn" = "Esce il tern: %@";
+"announce.street.river" = "Esce il river: %@";
+"announce.shown" = "%1$@ mostra %2$@: %3$@";
+"announce.pot.awarded" = "Il pot di %2$d va a %1$@";
+"announce.hand.end" = "Mano conclusa";
+"announce.hand.end.winner" = "Mano conclusa, %1$@ vince %2$d";
+"announce.bust" = "%@ è stato eliminato";
+"announce.session.winner" = "%@ vince la partita";

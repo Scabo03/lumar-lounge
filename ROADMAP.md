@@ -93,15 +93,26 @@ sono invariate e i loro test passano senza modifiche. La parte "pilotabile"
 (`HumanActionProvider`, `BotContext.legal`, query di stato). 6 unit test (13 nel
 modulo). **Dipendenze:** M1.4. **Note di design:** D-015 in `CLAUDE.md`.
 
-### ⏭️ M1.6 — Primo passo dentro `UI`: schermata che ascolta il flusso
-Il primo codice di `UI`: una vista SwiftUI minima che **si iscrive** al flusso
-del `SessionDriver` come `spectator` (o come `player`) e mostra qualcosa di reale
-— il tavolo, chi ha il button, le carte comuni, l'ultima azione — aggiornandosi
-sugli eventi invece di ricostruire lo stato. Include un `ObservableObject` che
-consuma l'`AsyncStream` e pubblica lo stato alla vista, con accessibility
-identifier/label fin da subito (VoiceOver di prima classe). È il primo consumatore
-del flusso M1.5 e la prova che l'architettura descrittiva regge.
-**Dipendenze:** M1.4, M1.5.
+### ✅ M1.6 — Prima schermata `UI`: tavolo dimostrativo che ascolta il flusso
+Il primo codice di `UI`: `PokerTableView` si iscrive al flusso pubblico del
+`SessionDriver` e mostra una sessione di Hold'em tra tre bot che si svolge
+dall'inizio alla fine, a **ritmo umano** (il ritmo vive nella UI, il driver resta
+a velocità di codice — D-018) e interamente **narrata a VoiceOver** con pronuncia
+italiana fonetica dei termini poker (D-016). Tavolo ovale ad alto contrasto,
+Dynamic Type, carte coperte durante la mano e rivelate allo showdown. Logica di
+presentazione pura e testabile (`TableReducer`/`TableAnnouncer`, D-017); nessuna
+logica di gioco in UI. 17 unit test + 1 XCUITest di accessibilità.
+**Dipendenze:** M1.4, M1.5. **Note di design:** D-016…D-019 in `CLAUDE.md`.
+
+### ⏭️ M1.7 — Il giocatore umano gioca davvero
+Sostituire uno dei bot al tavolo con il **giocatore umano**: quando tocca a lui,
+la UI mostra i **controlli d'azione** (fold/check/call/bet/raise/all-in con le
+mosse legali già esposte da `BotContext.legal`) e, alla conferma, chiama
+`HumanActionProvider.submit(_:)` — l'infrastruttura di attesa/ripresa esiste già
+da M1.4. Il giocatore vede le **proprie** hole card (iscrizione al flusso come
+`player`, non `spectator`), con accessibilità di prima classe sui controlli.
+È il primo tavolo realmente **giocabile** da una persona.
+**Dipendenze:** M1.4, M1.5, M1.6.
 
 ---
 

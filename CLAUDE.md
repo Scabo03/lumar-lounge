@@ -32,12 +32,17 @@ nei file collegati.
 - **`GameWorld` M1.5:** flusso di eventi osservabile. Il driver **narra** ogni
   momento come `SessionEvent` su un `AsyncStream` multicast (`EventHub` actor),
   con distinzione pubblico/privato per audience (D-015). API M1.4 invariate.
-  81 unit test verdi (68 GameEngine + 13 GameWorld).
+- **`UI` M1.6:** prima schermata. `PokerTableView` ascolta il flusso pubblico e
+  mostra una sessione tra 3 bot a **ritmo umano** (D-018), narrata a VoiceOver con
+  pronuncia fonetica italiana (D-016), logica di presentazione pura e testabile
+  (D-017), alto contrasto + Dynamic Type (D-019). 98 unit test verdi
+  (68 GameEngine + 13 GameWorld + 17 UI) + 1 XCUITest di accessibilità.
 
-**Prossimo passo.** Mattone **M1.6** — primo codice in `UI`: una vista SwiftUI
-minima che **si iscrive** al flusso del `SessionDriver` e mostra il tavolo
-aggiornandosi sugli eventi (primo consumatore di M1.5), con accessibilità di
-prima classe. Dettaglio e sequenza in [`ROADMAP.md`](ROADMAP.md).
+**Prossimo passo.** Mattone **M1.7** — il **giocatore umano** gioca davvero:
+controlli d'azione nella UI quando tocca a lui, che chiamano
+`HumanActionProvider.submit(_:)` (attesa/ripresa già pronta da M1.4); iscrizione
+al flusso come `player` per vedere le proprie carte. Dettaglio in
+[`ROADMAP.md`](ROADMAP.md).
 
 **Stato completo, sempre aggiornato:** sezione *Stato di sviluppo* in
 [`README.md`](README.md).
@@ -271,3 +276,44 @@ La "voce" del driver è un canale a cui più consumatori si iscrivono. Scelta:
   dai `bestHands` pubblici del `HandResult`. Descrittivo, non prescrittivo:
   nessun riferimento a suoni/viste. Determinismo: sequenza e contenuti identici a
   parità di stato/seed/azioni.
+
+### D-016 — VoiceOver: annunci dinamici e pronuncia fonetica italiana (M1.6)
+Gli annunci dinamici usano `UIAccessibility.post(.announcement)`, avvolto in
+`#if canImport(UIKit)` così il modulo `UI` **compila sul host macOS** (serve a
+`swift test`) dove diventa no-op. La **pronuncia italiana** dei termini poker
+(inglesi per convenzione) è resa **foneticamente nelle stringhe `it.lproj`**
+("reis", "blaind", "bàtton", "ol-in", "cek", "col", "tern"…), non in codice, così
+il TTS italiano li dice bene. La mappatura evento→momento parlato è una funzione
+**pura** (`TableAnnouncer.spoken(for:)`) testabile senza localizzazione; la resa
+in stringa (`text(for:)`) usa il bundle. Parità vedente/non vedente ("nessuno
+perde niente"): le carte sono **coperte durante la mano** (privacy, coerente con
+D-009 — lo spettatore non riceve nemmeno le hole altrui nel flusso) e **rivelate
+allo showdown** sia visivamente sia a voce, come una vera vista da spettatore.
+
+### D-017 — Logica di presentazione pura, separata da SwiftUI (M1.6)
+Lo stato del tavolo è un valore (`TableState`) e l'evoluzione è una riduzione
+**pura** `evento → stato` (`TableReducer`), senza SwiftUI né localizzazione né
+logica di gioco. Questo tiene la UI "ascolta e mostra, non decide" e rende la
+logica del modulo interamente unit-testabile via `swift test`. Se una logica
+sembra "di gioco", appartiene a `GameWorld`/`GameEngine`, non a `UI`.
+
+### D-018 — Il ritmo umano vive nella UI (M1.6)
+Il flusso di M1.5 è a velocità di codice; il tempo umano è **responsabilità del
+consumatore**. Il `TableViewModel` (`@MainActor ObservableObject`) drena il flusso
+e mette una pausa fra un evento e il successivo (ritmi diversi per tipo; il flop
+esce **una carta alla volta**). Un `HandGate` (actor) tiene il produttore al più
+**una mano avanti**, così i bot non calcolano l'intera sessione in anticipo
+(niente front-load del Monte Carlo, buffering limitato). È esattamente ciò che il
+principio "eventi descrittivi non prescrittivi" di D-015 permette.
+
+### D-019 — Estetica minimalista ad alto contrasto; gotcha albero accessibilità (M1.6)
+Palette definita **in codice** (nessun asset catalog), alto contrasto per
+ipovedenti, **Dynamic Type** ovunque (font di sistema + `@ScaledMetric`).
+L'app presenta `PokerTableView` (non più `RootView`); un argomento di lancio
+`-uiTesting` tiene il tavolo statico per l'XCUITest di struttura.
+**Gotcha registrato:** mettere `.accessibilityElement(children: .contain)` (o
+persino il solo `.accessibilityIdentifier`) sul contenitore esterno
+**collassa l'intero sottoalbero in un unico elemento**, nascondendo gli
+identifier dei figli (seat/board/pot). Regola: **niente modificatori di
+accessibilità sul contenitore grande**; gli identifier vanno sui **leaf** (e
+l'elemento "table.container" è il feltro, reso elemento a sé).

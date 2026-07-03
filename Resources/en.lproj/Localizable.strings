@@ -2,3 +2,102 @@
 
 /* Main brand title shown on the root screen */
 "app.title" = "Lumar Lounge";
+
+/* ------------------------------------------------------------------ */
+/* Bot display names (M1.6 demo table) */
+"seat.name.novice" = "The Novice";
+"seat.name.rock" = "The Rock";
+"seat.name.aggressor" = "The Aggressor";
+
+/* ------------------------------------------------------------------ */
+/* Cards — visual symbols come from the engine; these are spoken names. */
+"card.rank.2" = "two";
+"card.rank.3" = "three";
+"card.rank.4" = "four";
+"card.rank.5" = "five";
+"card.rank.6" = "six";
+"card.rank.7" = "seven";
+"card.rank.8" = "eight";
+"card.rank.9" = "nine";
+"card.rank.10" = "ten";
+"card.rank.11" = "jack";
+"card.rank.12" = "queen";
+"card.rank.13" = "king";
+"card.rank.14" = "ace";
+"card.suit.spades" = "spades";
+"card.suit.hearts" = "hearts";
+"card.suit.diamonds" = "diamonds";
+"card.suit.clubs" = "clubs";
+"card.spoken.format" = "%1$@ of %2$@";
+"card.a11y.covered" = "face-down card";
+
+/* Hand categories (spoken) */
+"hand.category.0" = "high card";
+"hand.category.1" = "pair";
+"hand.category.2" = "two pair";
+"hand.category.3" = "three of a kind";
+"hand.category.4" = "straight";
+"hand.category.5" = "flush";
+"hand.category.6" = "full house";
+"hand.category.7" = "four of a kind";
+"hand.category.8" = "straight flush";
+"hand.category.9" = "royal flush";
+
+/* ------------------------------------------------------------------ */
+/* Seat labels and spoken summary */
+"seat.chips" = "%d chips";
+"badge.button" = "D";
+"badge.smallBlind" = "SB";
+"badge.bigBlind" = "BB";
+"badge.allIn" = "ALL-IN";
+"badge.busted" = "OUT";
+"seat.a11y.base" = "%1$@, %2$d chips";
+"seat.a11y.button" = "on the button";
+"seat.a11y.smallBlind" = "small blind";
+"seat.a11y.bigBlind" = "big blind";
+"seat.a11y.shows" = "shows %@";
+"seat.a11y.holding" = "holding two face-down cards";
+"seat.a11y.allIn" = "all-in";
+"seat.a11y.folded" = "folded";
+"seat.a11y.busted" = "out";
+
+/* Table + centre: button holder, board, pot */
+"table.a11y" = "Poker table";
+"button.none" = "—";
+"button.holder" = "Button: %@";
+"button.a11y" = "The button is %@";
+"board.empty" = "Waiting for the flop";
+"board.a11y.empty" = "No community cards";
+"board.a11y" = "Community cards: %@";
+"pot.label" = "Pot: %d";
+"pot.a11y" = "Pot of %d chips";
+
+/* Winner banner */
+"winner.banner" = "%@ wins!";
+"winner.a11y" = "%@ wins the game";
+
+/* ------------------------------------------------------------------ */
+/* VoiceOver announcements */
+"announce.session.start" = "The demo game begins";
+"announce.hand.start" = "Hand %1$d. The button is %2$@";
+"announce.blind.small" = "%1$@ posts the small blind of %2$d";
+"announce.blind.big" = "%1$@ posts the big blind of %2$d";
+"announce.hole.dealt" = "Hole cards dealt";
+"announce.action.folded" = "%@ folds";
+"announce.action.checked" = "%@ checks";
+"announce.action.called" = "%1$@ calls %2$d";
+"announce.action.called.allin" = "%1$@ calls all-in for %2$d";
+"announce.action.bet" = "%1$@ bets %2$d";
+"announce.action.bet.allin" = "%1$@ bets all-in for %2$d";
+"announce.action.raised" = "%1$@ raises to %2$d";
+"announce.action.raised.allin" = "%1$@ raises all-in to %2$d";
+"announce.street.flop.header" = "The flop";
+"announce.street.flop" = "The flop: %@";
+"announce.street.turn" = "The turn: %@";
+"announce.street.river" = "The river: %@";
+"announce.shown" = "%1$@ shows %2$@: %3$@";
+"announce.pot.awarded" = "The pot of %2$d goes to %1$@";
+"announce.hand.end" = "Hand over";
+"announce.hand.end.winner" = "Hand over, %1$@ wins %2$d";
+"announce.bust" = "%@ is out";
+"announce.session.winner" = "%@ wins the game";

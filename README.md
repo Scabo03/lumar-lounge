@@ -53,18 +53,24 @@ Il quinto mattone dà al driver una **voce**: un flusso di eventi osservabile.
 Mentre svolge le mani, il `SessionDriver` **narra** ogni momento significativo
 (inizio mano, blind, carte distribuite, azioni, flop/turn/river, showdown, pot,
 bust, ingressi e uscite) come valori `SessionEvent` su un canale multicast a cui
-più consumatori potranno iscriversi — domani l'interfaccia per disegnare il
-tavolo, l'audio per suonare al momento giusto, VoiceOver per raccontare. Gli
-eventi sono **descrittivi** (dicono cosa è successo, non cosa fare) e distinguono
-**pubblico e privato**: un giocatore riceve le proprie carte coperte ma mai
-quelle altrui. Chi non ascolta non nota alcuna differenza. Tutto puro,
-deterministico, senza timing artificiale. 81 unit test complessivi che passano
-(68 `GameEngine` + 13 `GameWorld`).
+più consumatori possono iscriversi. Gli eventi sono **descrittivi** (dicono cosa
+è successo, non cosa fare) e distinguono **pubblico e privato**: un giocatore
+riceve le proprie carte coperte ma mai quelle altrui.
 
-Il prossimo passo entra per la prima volta in `UI`: una schermata SwiftUI
-minima che **si iscrive** al flusso del driver e mostra il tavolo aggiornandosi
-sugli eventi — il primo consumatore reale del canale appena costruito, con
-l'accessibilità come priorità fin dalla prima vista. `Audio` resta per ora uno
+Il sesto mattone è la **prima schermata reale**, ed entra per la prima volta in
+`UI`: un tavolo da poker minimalista e ad alto contrasto che si iscrive al flusso
+del driver e mostra una sessione tra tre bot svolgersi dall'inizio alla fine. Qui
+il tempo umano incontra la velocità di codice del flusso: la schermata lo consuma
+a **ritmo umano** (le carte del flop escono una alla volta, le azioni scorrono,
+la fine mano respira), mentre il driver resta a velocità di codice. Soprattutto,
+la partita è **interamente accessibile**: ogni evento genera un annuncio VoiceOver
+con pronuncia italiana curata dei termini del poker, così un non vedente segue
+tutto senza perdere nulla rispetto a un vedente. 98 unit test complessivi più un
+XCUITest di accessibilità, tutti verdi; l'app gira sul simulatore.
+
+Il prossimo passo rende il tavolo davvero **giocabile da una persona**: quando
+tocca al giocatore umano, la UI mostra i controlli d'azione e li inoltra al
+driver (l'infrastruttura di attesa esiste già). `Audio` resta per ora uno
 scheletro con la sola dichiarazione d'intenti. La rotta completa fino al primo
 gioco giocabile su TestFlight è tracciata in [`ROADMAP.md`](ROADMAP.md).
 
