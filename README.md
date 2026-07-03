@@ -47,13 +47,25 @@ giocatori possono entrare e uscire tra una mano e l'altra. Bot e giocatore umano
 rispondono alla stessa richiesta d'azione tramite un'interfaccia asincrona
 uniforme: il bot risponde subito, l'umano quando la UI fornirà l'azione. Il
 driver resta cliente puro del motore, deterministico e con le fiches sempre
-conservate; quando finisce la sessione lo decide chi lo usa, non il driver. 75
-unit test complessivi che passano (68 `GameEngine` + 7 `GameWorld`).
+conservate; quando finisce la sessione lo decide chi lo usa, non il driver.
 
-Il prossimo passo è rendere lo svolgimento di una mano **osservabile e
-pilotabile** da una vista, con un flusso di eventi che `Audio` e `UI` potranno
-mappare — il ponte verso il tavolo giocabile. `Audio` e `UI` restano per ora
-scheletri con la sola dichiarazione d'intenti. La rotta completa fino al primo
+Il quinto mattone dà al driver una **voce**: un flusso di eventi osservabile.
+Mentre svolge le mani, il `SessionDriver` **narra** ogni momento significativo
+(inizio mano, blind, carte distribuite, azioni, flop/turn/river, showdown, pot,
+bust, ingressi e uscite) come valori `SessionEvent` su un canale multicast a cui
+più consumatori potranno iscriversi — domani l'interfaccia per disegnare il
+tavolo, l'audio per suonare al momento giusto, VoiceOver per raccontare. Gli
+eventi sono **descrittivi** (dicono cosa è successo, non cosa fare) e distinguono
+**pubblico e privato**: un giocatore riceve le proprie carte coperte ma mai
+quelle altrui. Chi non ascolta non nota alcuna differenza. Tutto puro,
+deterministico, senza timing artificiale. 81 unit test complessivi che passano
+(68 `GameEngine` + 13 `GameWorld`).
+
+Il prossimo passo entra per la prima volta in `UI`: una schermata SwiftUI
+minima che **si iscrive** al flusso del driver e mostra il tavolo aggiornandosi
+sugli eventi — il primo consumatore reale del canale appena costruito, con
+l'accessibilità come priorità fin dalla prima vista. `Audio` resta per ora uno
+scheletro con la sola dichiarazione d'intenti. La rotta completa fino al primo
 gioco giocabile su TestFlight è tracciata in [`ROADMAP.md`](ROADMAP.md).
 
 > Questa sezione va aggiornata quando si completa un **mattone significativo**

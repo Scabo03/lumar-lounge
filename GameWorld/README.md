@@ -14,7 +14,9 @@ conosce l'interno. **Non** importa `UI` né `Audio`, né alcun framework
 SwiftUI/UIKit: la direzione è `UI → GameWorld → GameEngine`, verificata dal
 compilatore. È codice puro, testabile in isolamento.
 
-## Cosa contiene oggi (M1.4 — driver di sessione)
+## Cosa contiene oggi
+
+### M1.4 — driver di sessione
 
 Una **mano** è un episodio; una **sessione** è una serie di mani legate tra loro
 allo stesso tavolo. Il driver è l'orchestratore che, mano dopo mano, prepara lo
@@ -37,6 +39,31 @@ azioni → stesso risultato), **fiches conservate** a ogni mano, ingressi/uscite
 **solo tra le mani**, e criterio di fine sessione **esterno** al driver (il
 chiamante fa il loop su `playHand()`/`run(...)` e decide quando fermarsi).
 
+### M1.5 — flusso di eventi osservabile
+
+Il driver ha ora una **voce**: mentre fa quello che già faceva, **narra** ogni
+momento significativo come `SessionEvent`, in ordine cronologico, su un canale
+multicast a cui più consumatori possono iscriversi (in futuro UI, Audio,
+VoiceOver). Chi non si iscrive non nota alcuna differenza rispetto a M1.4.
+
+| Tipo | Ruolo |
+|---|---|
+| `SessionEvent` | Un evento: numero di sequenza + `audience` + `payload`. È un **valore** (sicuro tra contesti concorrenti, facile da testare). |
+| `EventPayload` | La **tassonomia** dei momenti: `sessionBegan`/`sessionEnded`, `playerJoined`/`playerLeft`, `handBegan`, `blindPosted`, `holeCardsDealt` (pubblico) e `privateHoleCards` (privato), `playerActed`, `streetOpened`, `handShown`, `potAwarded`, `handEnded`, `playerBusted`. |
+| `EventAudience` / `EventViewer` | Pubblico vs privato: un evento è per `everyone` o per `player(id)`; un iscritto guarda come `spectator` (solo pubblico) o `player(id)` (pubblico + il proprio privato, **mai** l'altrui). |
+| `ActedAction`, `BlindKind`, `SeatSnapshot`, `SessionEndReason` | Descrittori di supporto, self-contained (portano gli importi concreti). |
+| `EventHub` | L'`actor` interno che fa il fan-out a tutti gli iscritti (Swift Concurrency pura, niente lock né thread nostri). |
+
+API: `events(as:) async -> AsyncStream<SessionEvent>` per iscriversi, e
+`endSession(reason:)` che emette `sessionEnded` e **chiude** i flussi (così i
+`for await` dei consumatori terminano). Gli eventi sono **descrittivi** (dicono
+cosa è successo), mai **prescrittivi** (non dicono a nessuno cosa fare): UI e
+Audio li interpreteranno come vorranno. Sequenza **deterministica** dato lo
+stesso stato/seed/azioni. Nessun timing artificiale: il flusso va a velocità di
+codice, il ritmo umano è responsabilità del consumatore. La privacy delle hole
+card è garantita **per costruzione** dall'instradamento per audience (nello
+spirito di D-009).
+
 ## Cosa NON contiene (per scelta architetturale)
 
 - **Nessun "casinò" né progressione tra casinò**: materia di mattoni futuri.
@@ -47,6 +74,10 @@ chiamante fa il loop su `playHand()`/`run(...)` e decide quando fermarsi).
 - **Nessun NPC, dialogo o atmosfera**: questo è un driver puro; i caratteri e
   l'ambiente arrivano dopo.
 - **Niente UI/Audio** e nessuna modifica a `GameEngine`.
+- **Nessun timing/ritmo** negli eventi (nessun ritardo artificiale) e **nessuna
+  persistenza/replay su disco**: il flusso è in memoria, a velocità di codice.
+- Gli eventi sono **neutri**: nessun riferimento a suoni, viste o testi; UI e
+  Audio arriveranno come *consumatori* in mattoni dedicati.
 
 ## Cosa sarà suo compito (prossimo)
 
@@ -56,8 +87,14 @@ Vedi [`../ROADMAP.md`](../ROADMAP.md).
 
 ## Test
 
-`Tests/GameWorldTests/` (7 test, `swift test`): sessione a due bot fino al bust
-con fiches conservate; tre giocatori con uno che busta e la sessione prosegue;
-rotazione del button per posizione con seat bustati saltati; ingresso di un
-nuovo giocatore tra due mani; sospensione/ripresa dell'azione umana (con blocco
-degli ingressi a mano in corso); determinismo end-to-end.
+`Tests/GameWorldTests/` (13 test, `swift test`).
+- `SessionDriverTests` (M1.4, invariati): sessione a due bot fino al bust con
+  fiches conservate; tre giocatori con uno che busta e la sessione prosegue;
+  rotazione del button per posizione con seat bustati saltati; ingresso di un
+  nuovo giocatore tra due mani; sospensione/ripresa dell'azione umana (con blocco
+  degli ingressi a mano in corso); determinismo end-to-end.
+- `SessionEventTests` (M1.5): ordine canonico degli eventi (blind prima delle
+  carte, azioni in ordine di parlata, flop→turn→river, fine mano in coda); più
+  iscritti ricevono la stessa sequenza; un giocatore vede le proprie hole card
+  ma mai le altrui, lo spettatore nessuna; determinismo dell'intero flusso;
+  narrazione di ingressi e bust.

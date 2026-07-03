@@ -65,6 +65,8 @@ public enum SessionError: Error, Equatable, Sendable {
     case notEnoughPlayers
     /// A structural change (join/leave) was attempted while a hand is running.
     case handInProgress
+    /// A hand was requested after the session was ended.
+    case sessionEnded
     case positionOutOfRange(Int)
     case positionOccupied(Int)
     case duplicatePlayerID(Int)

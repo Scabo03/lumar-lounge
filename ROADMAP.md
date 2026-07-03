@@ -79,14 +79,29 @@ bustati (`.bustedOut`, rebuy futuro non implementato) e accetta ingressi/uscite
 sessione decisa dal chiamante. 7 unit test.
 **Dipendenze:** M1.2, M1.3. **Note di design:** D-012…D-014 in `CLAUDE.md`.
 
-### ⏭️ M1.5 — Loop di gioco a mano singola pilotabile passo-passo per la UI
-Ponte verso `UI`: esporre lo svolgimento di una mano in una forma che una vista
-possa **osservare e pilotare** (stato corrente, di chi è il turno, mosse legali,
-attesa dell'azione umana già pronta con `HumanActionProvider`), e un flusso di
-**eventi** della mano (carte distribuite, puntate, vincita) che `Audio`/`UI`
-potranno mappare — senza che `GameWorld` importi UI o Audio. È il minimo per
-rendere il driver M1.4 realmente giocabile da una persona in M4.x.
-**Dipendenze:** M1.4.
+### ✅ M1.5 — Flusso di eventi osservabile del driver di sessione
+Il `SessionDriver` ora **narra** lo svolgimento: un flusso multicast di
+`SessionEvent` (valori) su `AsyncStream`, a cui più consumatori possono
+iscriversi (futuri UI, Audio, VoiceOver) senza che il driver li conosca (D-015).
+Tassonomia completa (sessione, mano, blind, distribuzione carte pubblica +
+privata, azioni, street, showdown, pot, fine mano, bust, ingressi/uscite),
+distinzione **pubblico/privato** con instradamento per audience (un giocatore
+vede solo le proprie hole card), ordine cronologico deterministico, nessun
+timing artificiale. Il driver resta cliente puro di `GameEngine`; le API M1.4
+sono invariate e i loro test passano senza modifiche. La parte "pilotabile"
+(stato, turno, mosse legali, attesa umana) era già coperta da M1.4
+(`HumanActionProvider`, `BotContext.legal`, query di stato). 6 unit test (13 nel
+modulo). **Dipendenze:** M1.4. **Note di design:** D-015 in `CLAUDE.md`.
+
+### ⏭️ M1.6 — Primo passo dentro `UI`: schermata che ascolta il flusso
+Il primo codice di `UI`: una vista SwiftUI minima che **si iscrive** al flusso
+del `SessionDriver` come `spectator` (o come `player`) e mostra qualcosa di reale
+— il tavolo, chi ha il button, le carte comuni, l'ultima azione — aggiornandosi
+sugli eventi invece di ricostruire lo stato. Include un `ObservableObject` che
+consuma l'`AsyncStream` e pubblica lo stato alla vista, con accessibility
+identifier/label fin da subito (VoiceOver di prima classe). È il primo consumatore
+del flusso M1.5 e la prova che l'architettura descrittiva regge.
+**Dipendenze:** M1.4, M1.5.
 
 ---
 

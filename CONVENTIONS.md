@@ -52,6 +52,19 @@ riscoprirle dalla conversazione. Il riassunto operativo per Claude Code sta in
   `en.lproj`).
 - `GameEngine` non ha stringhe utente per definizione (non parla al giocatore).
 
+## 3-bis. Eventi descrittivi, non prescrittivi (emerso in M1.5)
+
+Il flusso di eventi che i livelli bassi (`GameWorld`) espongono ai livelli alti
+(`UI`, `Audio`) deve essere **descrittivo** — dice *cosa è successo* ("il seat X
+ha rilanciato a 40", "è uscito il flop") — e **mai prescrittivo** — non dice al
+consumatore *cosa fare* ("suona questo", "mostra quella vista"). Così ogni
+consumatore interpreta gli eventi come vuole, senza che il produttore ne conosca
+o imponga il comportamento. Gli eventi sono **valori** (enum/struct `Sendable`),
+neutri rispetto a UI/Audio. La distinzione **pubblico vs privato** si modella
+con un'*audience* sull'evento e un *punto di vista* sull'iscrizione, così
+l'informazione riservata (le hole card di un giocatore) è instradata solo a chi
+ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
+
 ## 4. Accessibilità (priorità architetturale)
 
 - L'accessibilità **non è una feature finale ma un vincolo di progetto**, presente

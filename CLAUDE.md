@@ -25,17 +25,19 @@ nei file collegati.
   `BotContext` (vista redatta, solo info onesta, D-009), baseline matematico
   (`HandStrength`) modulato da `Personality` (D-010) con tre profili di partenza
   (`eagerNovice`/`conservativeRock`/`hotAggressor`).
-- **`GameWorld` M1.4:** primo codice reale di `GameWorld`. `SessionDriver` fa
-  girare una sessione multi-mano (cliente puro del motore, D-014): tavolo ad
-  anello, dead button (D-012), fiches/bust, ingressi tra le mani, azioni da bot
-  o umano via `ActionProvider` async uniforme (D-013). Determinismo end-to-end.
-  75 unit test verdi (68 GameEngine + 7 GameWorld).
+- **`GameWorld` M1.4:** `SessionDriver` fa girare una sessione multi-mano
+  (cliente puro del motore, D-014): tavolo ad anello, dead button (D-012),
+  fiches/bust, ingressi tra le mani, azioni da bot o umano via `ActionProvider`
+  async uniforme (D-013).
+- **`GameWorld` M1.5:** flusso di eventi osservabile. Il driver **narra** ogni
+  momento come `SessionEvent` su un `AsyncStream` multicast (`EventHub` actor),
+  con distinzione pubblico/privato per audience (D-015). API M1.4 invariate.
+  81 unit test verdi (68 GameEngine + 13 GameWorld).
 
-**Prossimo passo.** Mattone **M1.5** — esporre lo svolgimento di una mano in
-forma **osservabile/pilotabile** dalla UI (stato, turno, mosse legali, attesa
-umana già pronta con `HumanActionProvider`) e un flusso di **eventi** mappabile
-da `Audio`/`UI`, senza che `GameWorld` importi UI/Audio. Dettaglio e sequenza in
-[`ROADMAP.md`](ROADMAP.md).
+**Prossimo passo.** Mattone **M1.6** — primo codice in `UI`: una vista SwiftUI
+minima che **si iscrive** al flusso del `SessionDriver` e mostra il tavolo
+aggiornandosi sugli eventi (primo consumatore di M1.5), con accessibilità di
+prima classe. Dettaglio e sequenza in [`ROADMAP.md`](ROADMAP.md).
 
 **Stato completo, sempre aggiornato:** sezione *Stato di sviluppo* in
 [`README.md`](README.md).
@@ -236,3 +238,36 @@ del tavolo, ma la decisione di fermarsi sta nel chiamante. Il driver è un
 `final class` (riferimento, muta stato tra un `await` e l'altro); gli ingressi/
 uscite sono ammessi **solo tra le mani** (guardia `isHandInProgress`, robusta
 anche alla reentrancy).
+
+### D-015 — Flusso di eventi: `AsyncStream` multicast via `EventHub` actor (M1.5)
+La "voce" del driver è un canale a cui più consumatori si iscrivono. Scelta:
+**`AsyncStream` multicast** vendute da un `actor EventHub`.
+- **Perché AsyncStream e non Combine/observer/publisher:** è pura libreria
+  standard (nessuna dipendenza esterna, niente Combine/UIKit), si integra con la
+  natura async già presente in M1.4, produce **valori** (eventi struct/enum) e
+  supporta naturalmente più iscritti. Buffering **unbounded** ⇒ il driver non si
+  blocca mai su un consumatore lento (flusso a velocità di codice, nessun timing).
+- **Perché un actor per il fan-out (e non un lock):** il driver resta un
+  `final class` — così **tutte le API sincrone di M1.4 restano sincrone** e i suoi
+  test girano invariati. La parte sensibile alla concorrenza (registro degli
+  iscritti) vive nell'actor `EventHub`: subscribe/emit serializzati senza lock né
+  thread nostri. `emit` è `await hub.emit(...)`: hop d'attore, nessun ritardo.
+- **Pubblico vs privato per costruzione:** ogni evento porta un `EventAudience`
+  (`.everyone`/`.player(id)`); l'iscritto dichiara un `EventViewer`
+  (`.spectator`/`.player(id)`) e l'hub instrada. Un giocatore riceve pubblico +
+  **solo** il proprio privato (le sue hole card), mai l'altrui — stessa filosofia
+  di D-009. Gli eventi privati vengono comunque emessi (consumano un numero di
+  sequenza) anche senza iscritti: un consumatore filtrato vede una sottosequenza.
+- **API sincrone congelate:** `addPlayer`/`removePlayer` (sync in M1.4) non
+  possono `await` l'hub, quindi **accodano** l'evento join/leave e lo si **flusha**
+  all'inizio della mano successiva (o su `endSession`) — cronologicamente "tra le
+  mani", corretto. `sessionBegan` è emesso pigramente alla prima mano;
+  `sessionEnded` da `endSession(reason:)`, che **chiude** i flussi così i
+  `for await` dei consumatori terminano.
+- **Fedeltà senza toccare il motore:** gli eventi si derivano dall'orchestramento
+  del driver — importo di un'azione dal delta di stack (robusto anche quando la
+  street avanza e azzera `streetBet`), aperture di street dagli indici del board
+  (gestisce il runout multi-street di un all-in), vincitori per-pot ricalcolati
+  dai `bestHands` pubblici del `HandResult`. Descrittivo, non prescrittivo:
+  nessun riferimento a suoni/viste. Determinismo: sequenza e contenuti identici a
+  parità di stato/seed/azioni.

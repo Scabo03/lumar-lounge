@@ -13,6 +13,11 @@
 //
 // The session-end decision lives OUTSIDE the driver (the caller loops on
 // `playHand()` / `run(...)` and decides when to stop). GameWorld only.
+//
+// M1.5 adds an OBSERVABLE EVENT STREAM (D-015): while doing exactly what it did
+// in M1.4, the driver narrates every significant moment as a `SessionEvent`
+// through a multicast `EventHub`. Callers that never subscribe see identical
+// behaviour to M1.4 (the emits are no-ops with no subscribers).
 
 import Foundation
 import GameEngine
@@ -44,6 +49,18 @@ public final class SessionDriver {
     public private(set) var handNumber: Int
     /// True while a hand is being played (guards joins/leaves and reentrancy).
     public private(set) var isHandInProgress: Bool = false
+    /// True once the session has been ended (no further hands).
+    public private(set) var hasEnded: Bool = false
+
+    // MARK: Event stream (M1.5)
+
+    /// Multicast fan-out of `SessionEvent`s to any number of subscribers.
+    private let hub = EventHub()
+    /// Whether `sessionBegan` has been emitted yet (lazily, on first activity).
+    private var sessionAnnounced = false
+    /// Join/leave events recorded between hands, flushed at the next hand start
+    /// so `addPlayer`/`removePlayer` can stay synchronous (M1.4 API frozen).
+    private var pendingStructuralEvents: [EventPayload] = []
 
     // MARK: - Init
 
@@ -105,11 +122,31 @@ public final class SessionDriver {
     }
 
     /// Whether another hand can start right now.
-    public var canDealNextHand: Bool { eligiblePlayerCount >= 2 && !isHandInProgress }
+    public var canDealNextHand: Bool { eligiblePlayerCount >= 2 && !isHandInProgress && !hasEnded }
+
+    // MARK: - Event subscription (M1.5)
+
+    /// Subscribes to the session's event stream from a viewpoint. A
+    /// `.spectator` receives public events only; a `.player(id)` also receives
+    /// that player's own private events (its hole cards), never anyone else's.
+    ///
+    /// Subscribe before playing to receive a hand's events from the start;
+    /// streams are live (not replayed), so subscribing mid-session yields events
+    /// from that point on. The stream finishes when the session ends.
+    public func events(as viewer: EventViewer = .spectator) async -> AsyncStream<SessionEvent> {
+        await hub.subscribe(as: viewer)
+    }
+
+    private func emit(_ payload: EventPayload, to audience: EventAudience = .everyone) async {
+        await hub.emit(payload, audience: audience)
+    }
 
     // MARK: - Structural changes (between hands only)
 
     /// Seats a new player. Allowed only between hands (never mid-hand).
+    ///
+    /// The corresponding `playerJoined` event is emitted at the start of the
+    /// next hand (or on `endSession`), keeping this call synchronous.
     public func addPlayer(id: Int, chips: Int, at position: Int, provider: ActionProvider) throws {
         guard !isHandInProgress else { throw SessionError.handInProgress }
         guard (0..<capacity).contains(position) else { throw SessionError.positionOutOfRange(position) }
@@ -118,14 +155,29 @@ public final class SessionDriver {
         guard chips > 0 else { throw SessionError.nonPositiveChips }
         positions[position] = SessionPlayer(id: id, chips: chips, status: .active, position: position)
         providers[id] = provider
+        pendingStructuralEvents.append(.playerJoined(playerID: id, position: position, chips: chips))
     }
 
-    /// Removes a player, freeing its seat. Allowed only between hands.
+    /// Removes a player, freeing its seat. Allowed only between hands. The
+    /// `playerLeft` event is emitted at the start of the next hand.
     public func removePlayer(id: Int) throws {
         guard !isHandInProgress else { throw SessionError.handInProgress }
         guard let seated = player(id) else { throw SessionError.unknownPlayer(id) }
         positions[seated.position] = nil
         providers[id] = nil
+        pendingStructuralEvents.append(.playerLeft(playerID: id))
+    }
+
+    /// Ends the session: emits `sessionEnded` and finishes every event stream
+    /// so consumers' `for await` loops terminate. After this, no more hands can
+    /// be played. The caller decides *when* (and why) to end (D-014).
+    public func endSession(reason: SessionEndReason = .stopped) async {
+        guard !hasEnded else { return }
+        hasEnded = true
+        await announceSessionIfNeeded()
+        await flushPendingStructuralEvents()
+        await emit(.sessionEnded(reason: reason))
+        await hub.finishAll()
     }
 
     // MARK: - Playing
@@ -136,12 +188,18 @@ public final class SessionDriver {
     /// button advances one physical position (ready for the next hand).
     @discardableResult
     public func playHand() async throws -> HandOutcome {
+        guard !hasEnded else { throw SessionError.sessionEnded }
         guard !isHandInProgress else { throw SessionError.handInProgress }
         let participants = eligibleParticipants()
         guard participants.count >= 2 else { throw SessionError.notEnoughPlayers }
 
         isHandInProgress = true
         defer { isHandInProgress = false }
+
+        // Announce the session (once) and any joins/leaves that happened since
+        // the previous hand, before this hand's own events.
+        await announceSessionIfNeeded()
+        await flushPendingStructuralEvents()
 
         // Map the dead-button table onto the engine's participant-relative model.
         let engineSeats = participants.map { Seat(id: $0.id, stack: $0.chips) }
@@ -154,22 +212,91 @@ public final class SessionDriver {
                               bigBlind: bigBlind,
                               seed: handSeed(handNumber))
 
-        // Drive the hand: ask the seat on turn, apply, repeat.
+        // The engine's blind positions (mirrors HoldemHand's own rule).
+        let count = participants.count
+        let smallBlindIndex = count == 2 ? engineButtonIndex : (engineButtonIndex + 1) % count
+        let bigBlindIndex = (smallBlindIndex + 1) % count
+
+        // Hand began, blinds posted, hole cards dealt (public + private).
+        await emit(.handBegan(
+            handNumber: handNumber,
+            buttonPosition: buttonPosition,
+            buttonSeatID: buttonID,
+            smallBlindSeatID: hand.seats[smallBlindIndex].id,
+            bigBlindSeatID: hand.seats[bigBlindIndex].id,
+            smallBlind: smallBlind,
+            bigBlind: bigBlind,
+            seats: participants.map { SeatSnapshot(seatID: $0.id, position: $0.position, chips: $0.chips) }
+        ))
+        await emit(.blindPosted(seatID: hand.seats[smallBlindIndex].id, blind: .small,
+                                amount: hand.seats[smallBlindIndex].streetBet,
+                                isAllIn: hand.seats[smallBlindIndex].isAllIn))
+        await emit(.blindPosted(seatID: hand.seats[bigBlindIndex].id, blind: .big,
+                                amount: hand.seats[bigBlindIndex].streetBet,
+                                isAllIn: hand.seats[bigBlindIndex].isAllIn))
+        for offset in 0..<count {
+            let seat = hand.seats[(smallBlindIndex + offset) % count]
+            await emit(.holeCardsDealt(seatID: seat.id))
+            if let hole = seat.hole {
+                await emit(.privateHoleCards(seatID: seat.id, cards: hole.cards), to: .player(seat.id))
+            }
+        }
+
+        // Drive the hand: ask the seat on turn, apply, narrate.
         while !hand.isComplete {
             guard let context = BotContext(actingIn: hand) else { break }
-            let provider = providers[context.heroSeatID]
+            let actingID = context.heroSeatID
+            let index = hand.seats.firstIndex { $0.id == actingID }!
+            let streetBetBefore = hand.seats[index].streetBet
+            let stackBefore = hand.seats[index].stack
+            let currentBetBefore = hand.currentBet
+            let boardCountBefore = hand.board.count
+
+            let provider = providers[actingID]
             let requested = await provider?.provideAction(for: context)
             let action = legalize(requested ?? .fold, context.legal)
             try hand.apply(action) // legalize guarantees legality → never throws here
+
+            let stackAfter = hand.seats.first { $0.id == actingID }!.stack
+            let committed = stackBefore - stackAfter
+            let acted = classify(action: action,
+                                 currentBetBefore: currentBetBefore,
+                                 toStreetBet: streetBetBefore + committed,
+                                 committed: committed,
+                                 isAllIn: stackAfter == 0)
+            await emit(.playerActed(seatID: actingID, action: acted))
+            await emitStreetOpenings(before: boardCountBefore, board: hand.board)
         }
 
         let result = hand.result!
+
+        // Showdown reveals (public: cards are now on the table).
+        if result.wentToShowdown {
+            for participant in participants where result.shownHands[participant.id] != nil {
+                let hole = result.shownHands[participant.id]!.cards
+                let rank = result.bestHands[participant.id]!
+                await emit(.handShown(seatID: participant.id, holeCards: hole,
+                                      category: rank.category, bestFive: rank.cards))
+            }
+        }
+        // Pot awards (main then side pots).
+        for (potIndex, pot) in result.pots.enumerated() {
+            await emit(.potAwarded(potIndex: potIndex, amount: pot.amount,
+                                   winnerSeatIDs: potWinners(pot, bestHands: result.bestHands)))
+        }
+
+        // Update chips, detect busts.
         var busted: [Int] = []
         for participant in participants {
             let finalStack = result.finalStacks[participant.id] ?? participant.chips
             setChips(participant.id, to: finalStack)
             if finalStack == 0 { busted.append(participant.id) }
         }
+        let chipsByPlayer = Dictionary(uniqueKeysWithValues: players.map { ($0.id, $0.chips) })
+
+        await emit(.handEnded(handNumber: handNumber, wentToShowdown: result.wentToShowdown,
+                              board: hand.board, payouts: result.payouts, chips: chipsByPlayer))
+        for id in busted.sorted() { await emit(.playerBusted(playerID: id)) }
 
         let outcome = HandOutcome(
             handNumber: handNumber,
@@ -177,7 +304,7 @@ public final class SessionDriver {
             participantIDs: participants.map { $0.id },
             result: result,
             bustedThisHand: busted.sorted(),
-            chipsByPlayer: Dictionary(uniqueKeysWithValues: players.map { ($0.id, $0.chips) })
+            chipsByPlayer: chipsByPlayer
         )
 
         handNumber += 1
@@ -255,5 +382,67 @@ public final class SessionDriver {
         z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
         z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
         return z ^ (z >> 31)
+    }
+
+    // MARK: - Event helpers (M1.5)
+
+    private func announceSessionIfNeeded() async {
+        guard !sessionAnnounced else { return }
+        sessionAnnounced = true
+        await emit(.sessionBegan(
+            seats: players.map { SeatSnapshot(seatID: $0.id, position: $0.position, chips: $0.chips) },
+            smallBlind: smallBlind, bigBlind: bigBlind))
+    }
+
+    private func flushPendingStructuralEvents() async {
+        let pending = pendingStructuralEvents
+        pendingStructuralEvents.removeAll()
+        for payload in pending { await emit(payload) }
+    }
+
+    /// Turns the applied action + captured before/after numbers into a
+    /// self-contained `ActedAction`, classified by outcome so an all-in `call`,
+    /// `bet` or `raise` is described faithfully regardless of the raw action.
+    private func classify(action: Action, currentBetBefore: Int, toStreetBet: Int,
+                          committed: Int, isAllIn: Bool) -> ActedAction {
+        switch action {
+        case .fold: return .folded
+        case .check: return .checked
+        default:
+            if committed == 0 { return .checked } // defensive; shouldn't happen
+            if currentBetBefore == 0 { return .bet(to: toStreetBet, amount: committed, isAllIn: isAllIn) }
+            if toStreetBet > currentBetBefore { return .raised(to: toStreetBet, amount: committed, isAllIn: isAllIn) }
+            return .called(amount: committed, isAllIn: isAllIn)
+        }
+    }
+
+    /// Emits a `streetOpened` event for each street newly revealed by the board
+    /// growing from `before` cards to `board.count` (handles multi-street
+    /// all-in runouts, where several streets appear in one step).
+    private func emitStreetOpenings(before: Int, board: [Card]) async {
+        if before < 3 && board.count >= 3 {
+            await emit(.streetOpened(street: .flop, communityCards: Array(board[0..<3])))
+        }
+        if before < 4 && board.count >= 4 {
+            await emit(.streetOpened(street: .turn, communityCards: Array(board[3..<4])))
+        }
+        if before < 5 && board.count >= 5 {
+            await emit(.streetOpened(street: .river, communityCards: Array(board[4..<5])))
+        }
+    }
+
+    /// The winners of a pot: the sole eligible seat, or (at showdown) those tied
+    /// for the best evaluated hand among the eligible seats. Mirrors the engine.
+    private func potWinners(_ pot: Pot, bestHands: [Int: HandRank]) -> [Int] {
+        let eligible = pot.eligibleSeatIDs
+        if eligible.count <= 1 { return eligible }
+        var best: HandRank?
+        var winners: [Int] = []
+        for id in eligible {
+            guard let rank = bestHands[id] else { continue }
+            if best == nil || rank > best! { best = rank; winners = [id] }
+            else if rank == best! { winners.append(id) }
+        }
+        return winners.isEmpty ? eligible : winners
     }
 }
