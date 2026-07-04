@@ -93,9 +93,10 @@ segnala all'avvio cosa manca.
 > **🏁 La prima fase è completa.** Il gioco base è funzionante end-to-end — motore
 > completo, bot credibili, sessione multi-mano, flusso di eventi, UI giocabile e
 > accessibile, e **audio pieno**: i 47 file mp3 consegnati (atmosfera, carte,
-> voce del croupier, voci dei bot, jingle di esito) sono integrati nel bundle;
-> restano silenziosi solo 6 suoni non ancora prodotti (i suoni delle fiches, il
-> brusio di sottofondo, la chiusura neutra di mano). Il progetto è **pronto per un
+> voce del croupier, voci dei bot, jingle di esito) più i 4 suoni delle fiches
+> aggiunti dopo sono integrati nel bundle (51 su 53); restano silenziosi solo 2
+> suoni non ancora prodotti (il brusio di sottofondo e la chiusura neutra di
+> mano). Il progetto è **pronto per un
 > primo upload su TestFlight** (`bundle exec fastlane testflight_upload`). 126
 > unit test più un XCUITest, tutti verdi; l'app compila per iphoneos, gira sul
 > simulatore con audio, e ha icone e `Info.plist` a posto. La fase successiva

@@ -37,10 +37,10 @@ public enum SoundCatalog {
     public static let tblCardDealSingle = SoundID("tbl_card_deal_single")
     public static let tblCardFlipSingle = SoundID("tbl_card_flip_single")
     public static let tblCardsDealFlop = SoundID("tbl_cards_deal_flop")
-    public static let tblChipsSingle = SoundID("tbl_chips_single")        // not delivered
-    public static let tblChipsStack = SoundID("tbl_chips_stack")          // not delivered
-    public static let tblChipsBetLarge = SoundID("tbl_chips_bet_large")   // not delivered
-    public static let tblChipsPotCollect = SoundID("tbl_chips_pot_collect") // not delivered
+    public static let tblChipsSingle = SoundID("tbl_chips_single")
+    public static let tblChipsStack = SoundID("tbl_chips_stack")
+    public static let tblChipsBetLarge = SoundID("tbl_chips_bet_large")
+    public static let tblChipsPotCollect = SoundID("tbl_chips_pot_collect")
     public static let tblMuck = SoundID("tbl_muck")
     public static let tblShuffle = SoundID("tbl_shuffle")
 

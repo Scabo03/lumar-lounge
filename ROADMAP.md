@@ -130,7 +130,8 @@ mancanti → silenzio + log (D-025). 16 unit test.
 **Dipendenze:** M1.5, M1.7. **Note di design:** D-023…D-025 in `CLAUDE.md`.
 **Asset:** i 48 mp3 consegnati sono stati verificati contro il catalogo e
 **integrati** (47 in `Resources/Audio/`, rinominati alla forma del catalogo su
-scelta dell'utente); 6 suoni non consegnati restano silenziosi. 126 unit test.
+scelta dell'utente; poi i 4 `tbl_chips_*` → **51/53**); 2 suoni non ancora
+consegnati restano silenziosi. 126 unit test.
 
 ---
 

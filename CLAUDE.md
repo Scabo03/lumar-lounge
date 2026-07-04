@@ -42,14 +42,14 @@ nei file collegati.
   display via coda MainActor (D-021).
 - **`Audio` M1.8:** modulo audio pieno (`AudioEngine`/AVFoundation), **neutro**;
   mappatura evento→suoni (`AudioScore`) + consumatore parallelo (`AudioDirector`)
-  in `UI` (D-023); coordinamento VoiceOver (D-024). **47 mp3 integrati** in
-  `Resources/Audio/` (6 del catalogo non consegnati → silenziosi, D-025).
+  in `UI` (D-023); coordinamento VoiceOver (D-024). **51 mp3 integrati** in
+  `Resources/Audio/` (2 del catalogo non ancora consegnati → silenziosi, D-025).
   126 unit test verdi + 1 XCUITest.
 
 **🏁 Fase 1 (M1) completa — il gioco base gira end-to-end con audio ed è pronto
 per un primo TestFlight** (motore + bot + sessione + flusso + UI accessibile +
-audio pieno). L'app bundle contiene i 47 mp3; mancano solo 6 suoni non consegnati
-(4 `tbl_chips_*`, `amb_crowd_distant`, `fx_hand_neutral`), da aggiungere in
+audio pieno). L'app bundle contiene 51 mp3; mancano solo **2** suoni non ancora
+consegnati (`amb_crowd_distant`, `fx_hand_neutral`), da aggiungere in
 `Resources/Audio/` quando prodotti.
 
 **Prossimo passo.** **Fase 2 (`GameWorld` — il mondo attorno al tavolo, M2.x)**:
@@ -409,6 +409,8 @@ con nome diverso** (2 typo `botton`→`button`; 5 rinominati; 7 `vob_` senza `_0
 1 extra `tbl_card_distribution`), **6 mancanti** (4 `tbl_chips_*`,
 `amb_crowd_distant`, `fx_hand_neutral`). **Scelta dell'utente: "rinomina tutto al
 catalogo"** → importati 47 file in `Resources/Audio/` rinominati alla forma del
-catalogo, escluso l'extra; `SoundCatalog` riscritto coi nomi reali (53 voci); i 6
-non consegnati restano silenziosi. L'app è pienamente giocabile; il bundle
-contiene i 47 mp3 (log a runtime: **6/53 mancanti**).
+catalogo, escluso l'extra; `SoundCatalog` riscritto coi nomi reali (53 voci).
+Poi l'utente ha consegnato anche i **4 `tbl_chips_*`** (nomi già corretti),
+importati direttamente → **51/53** integrati; restano **2** non consegnati
+(`amb_crowd_distant`, `fx_hand_neutral`), silenziosi e loggati (log a runtime:
+**2/53 mancanti**).
