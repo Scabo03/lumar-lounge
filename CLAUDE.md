@@ -414,3 +414,19 @@ Poi l'utente ha consegnato anche i **4 `tbl_chips_*`** (nomi già corretti),
 importati direttamente → **51/53** integrati; restano **2** non consegnati
 (`amb_crowd_distant`, `fx_hand_neutral`), silenziosi e loggati (log a runtime:
 **2/53 mancanti**).
+
+### D-026 — Primo TestFlight: app record, build number, export compliance (M1.8)
+Primo upload TestFlight riuscito (**Lumar Lounge 1.0**). Tre note operative emerse:
+- **App record su App Store Connect:** l'upload `altool` fallisce con *"Cannot
+  determine the Apple ID from Bundle ID"* finché la app non esiste su App Store
+  Connect. `fastlane produce` **non** accetta la API key (vuole Apple ID + 2FA),
+  quindi la creazione una-tantum è **manuale** (fatta dall'utente sul sito). Da lì
+  in poi la lane `testflight_upload` gira liscia.
+- **Build number auto-incrementale:** la lane inietta `CURRENT_PROJECT_VERSION=
+  #{Time.now.to_i}` (epoch Unix in secondi) all'archive; nell'`Info.plist`
+  `CFBundleVersion = $(CURRENT_PROJECT_VERSION)`. È monotòno crescente, senza stato
+  committato, valido come singolo componente fino al 2106. Si **ignora** l'env
+  condiviso `SCABO_BUILD_NUMBER` (valore fisso, romperebbe l'auto-incremento).
+- **Export compliance:** `ITSAppUsesNonExemptEncryption = false` nell'`Info.plist`
+  (l'app non usa crittografia non esente) → niente domanda di conformità a ogni
+  build su TestFlight.

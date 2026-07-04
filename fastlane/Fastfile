@@ -135,6 +135,15 @@ platform :ios do
     FileUtils.rm_rf(BUILD_DIR)
     FileUtils.mkdir_p(BUILD_DIR)
 
+    # Build number monotòno crescente e SENZA stato committato: l'epoch Unix in
+    # secondi. È sempre più alto del precedente (niente rifiuti per "build già
+    # esistente"), ed essendo < 4_294_967_295 fino al 2106 è un singolo componente
+    # valido di CFBundleVersion (che nell'Info.plist è $(CURRENT_PROJECT_VERSION)).
+    # NB: si ignora di proposito l'env condiviso SCABO_BUILD_NUMBER (valore fisso,
+    # romperebbe l'auto-incremento dal secondo upload).
+    build_number = Time.now.to_i.to_s
+    UI.message("Build number di questo upload: #{build_number}")
+
     # 2. Archive — xcodebuild diretto, niente -destination, piattaforma device.
     sh(
       "xcodebuild", "archive",
@@ -148,6 +157,7 @@ platform :ios do
       "CODE_SIGN_STYLE=Manual",
       "CODE_SIGN_IDENTITY=Apple Distribution",
       "PROVISIONING_PROFILE_SPECIFIER=#{PROFILE_NAME}",
+      "CURRENT_PROJECT_VERSION=#{build_number}",
     )
 
     # 3. Export dell'IPA firmato per l'App Store.

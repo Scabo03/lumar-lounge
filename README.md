@@ -301,6 +301,14 @@ source ~/Developer/private_keys/scabo_deploy.env
 bundle exec fastlane testflight_upload
 ```
 
+Il **build number** è automatico e monotòno crescente (epoch Unix in secondi,
+iniettato all'archive come `CURRENT_PROJECT_VERSION`; nell'`Info.plist`
+`CFBundleVersion = $(CURRENT_PROJECT_VERSION)`): ogni upload ne ha uno più alto,
+niente rifiuti per build duplicato, nessun numero da bumpare a mano. L'app
+dichiara `ITSAppUsesNonExemptEncryption = false`, quindi TestFlight non chiede la
+conformità crittografia a ogni build. La **app record** su App Store Connect va
+creata una tantum a mano (`produce` non supporta la sola API key). Vedi D-026.
+
 ### Variabili d'ambiente
 
 Chiavi lette dall'ambiente (i valori segreti restano fuori dal repo). Le prime
