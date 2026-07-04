@@ -63,8 +63,8 @@ final class AudioCatalogTests: XCTestCase {
             }
         }
         // Driving the engine with missing files must be safe.
-        engine.startAmbient(SoundCatalog.ambientLounge)
-        engine.play(SoundCatalog.chipsBet, category: .table)
+        engine.startAmbient(SoundCatalog.ambLoungeCalm1)
+        engine.play(SoundCatalog.tblChipsStack, category: .table)
         engine.setMasterVolume(0.5)
         engine.setMuted(true)
         engine.stopAll()

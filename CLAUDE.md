@@ -42,14 +42,15 @@ nei file collegati.
   display via coda MainActor (D-021).
 - **`Audio` M1.8:** modulo audio pieno (`AudioEngine`/AVFoundation), **neutro**;
   mappatura evento→suoni (`AudioScore`) + consumatore parallelo (`AudioDirector`)
-  in `UI` (D-023); coordinamento VoiceOver (D-024); degrada con grazia sui file
-  mancanti (D-025). 123 unit test verdi (68 GameEngine + 13 GameWorld + 26 UI
-  + 16 Audio/AudioScore) + 1 XCUITest.
+  in `UI` (D-023); coordinamento VoiceOver (D-024). **47 mp3 integrati** in
+  `Resources/Audio/` (6 del catalogo non consegnati → silenziosi, D-025).
+  126 unit test verdi + 1 XCUITest.
 
-**🏁 Fase 1 (M1) completa — il gioco base gira end-to-end ed è pronto per un primo
-TestFlight** (motore + bot + sessione + flusso + UI accessibile + audio). Manca
-solo copiare i 47 mp3 reali in `Resources/Audio/` e riconciliare i nomi
-provvisori in `SoundCatalog.swift` (i file/catalogo non erano sul Mac in M1.8).
+**🏁 Fase 1 (M1) completa — il gioco base gira end-to-end con audio ed è pronto
+per un primo TestFlight** (motore + bot + sessione + flusso + UI accessibile +
+audio pieno). L'app bundle contiene i 47 mp3; mancano solo 6 suoni non consegnati
+(4 `tbl_chips_*`, `amb_crowd_distant`, `fx_hand_neutral`), da aggiungere in
+`Resources/Audio/` quando prodotti.
 
 **Prossimo passo.** **Fase 2 (`GameWorld` — il mondo attorno al tavolo, M2.x)**:
 lo specifico sarà definito con l'utente nella prossima conversazione. Vedi
@@ -397,15 +398,17 @@ l'accessibilità non è mai ridotta, l'audio arricchisce e basta. La sessione au
 **funzione pura testabile**; il rilevamento VoiceOver è dietro `#if canImport(UIKit)`
 (no-op sul host macOS, così il modulo compila per `swift test`).
 
-### D-025 — Catalogo provvisorio e degradazione con grazia (sessione M1.8)
-I 47 mp3 e il catalogo `Lumar_Lounge_audio_catalog_M1.8.md` **non erano sul Mac**
-in questa sessione (Downloads vuoto, nessun catalogo trovato via `find`/Spotlight).
-Anziché inventare file falsi, si è costruita **tutta l'architettura** con un
-manifesto **provvisorio** (`SoundCatalog`, nomi dedotti dalla traccia) che è
-l'**unico punto** di riconciliazione col catalogo reale. La riproduzione
-**degrada con grazia**: file mancante → silenzio, e all'avvio si logga l'elenco
-dei mancanti (`[Audio] N/M sound files missing…`). L'app è **pienamente giocabile
-con audio parziale o assente**. Gli mp3 vanno in `Resources/Audio/`, dentro il
-gruppo `Resources` **sincronizzato** del target app → auto-bundling **verificato**
-(un file lì finisce nel bundle, cercato per nome via `Bundle.main`). I suffissi
-`_01` sono mantenuti dove serviranno sorelle `02`/`03` future.
+### D-025 — Integrazione del catalogo audio e degradazione con grazia (M1.8)
+Alla prima esecuzione i file **non erano sul Mac** (Downloads vuoto): si è
+costruita **tutta l'architettura** con un manifesto provvisorio, degradazione con
+grazia (file mancante → silenzio + log `[Audio] N/M missing…`), e auto-bundling da
+`Resources/Audio/` (gruppo `Resources` sincronizzato → **verificato**). Poi
+l'utente ha depositato i **48 mp3 + il catalogo** in Downloads. Verifica atteso↔
+trovato (mostrata all'utente, **niente rinomina automatica**): **33 esatti**, **15
+con nome diverso** (2 typo `botton`→`button`; 5 rinominati; 7 `vob_` senza `_01`;
+1 extra `tbl_card_distribution`), **6 mancanti** (4 `tbl_chips_*`,
+`amb_crowd_distant`, `fx_hand_neutral`). **Scelta dell'utente: "rinomina tutto al
+catalogo"** → importati 47 file in `Resources/Audio/` rinominati alla forma del
+catalogo, escluso l'extra; `SoundCatalog` riscritto coi nomi reali (53 voci); i 6
+non consegnati restano silenziosi. L'app è pienamente giocabile; il bundle
+contiene i 47 mp3 (log a runtime: **6/53 mancanti**).

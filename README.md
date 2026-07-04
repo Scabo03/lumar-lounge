@@ -92,14 +92,15 @@ segnala all'avvio cosa manca.
 
 > **🏁 La prima fase è completa.** Il gioco base è funzionante end-to-end — motore
 > completo, bot credibili, sessione multi-mano, flusso di eventi, UI giocabile e
-> accessibile, audio pieno — e il progetto è **pronto per un primo upload su
-> TestFlight** (`bundle exec fastlane testflight_upload`). 123 unit test più un
-> XCUITest, tutti verdi; l'app compila per iphoneos, gira sul simulatore, e ha le
-> icone e l'`Info.plist` a posto. Resta solo da copiare i file mp3 reali in
-> `Resources/Audio/` (in questa sessione non erano ancora sul Mac) perché l'audio
-> non sia muto. La fase successiva (`GameWorld`, il mondo attorno al tavolo) sarà
-> definita nella prossima conversazione. Rotta completa in
-> [`ROADMAP.md`](ROADMAP.md).
+> accessibile, e **audio pieno**: i 47 file mp3 consegnati (atmosfera, carte,
+> voce del croupier, voci dei bot, jingle di esito) sono integrati nel bundle;
+> restano silenziosi solo 6 suoni non ancora prodotti (i suoni delle fiches, il
+> brusio di sottofondo, la chiusura neutra di mano). Il progetto è **pronto per un
+> primo upload su TestFlight** (`bundle exec fastlane testflight_upload`). 126
+> unit test più un XCUITest, tutti verdi; l'app compila per iphoneos, gira sul
+> simulatore con audio, e ha icone e `Info.plist` a posto. La fase successiva
+> (`GameWorld`, il mondo attorno al tavolo) sarà definita nella prossima
+> conversazione. Rotta completa in [`ROADMAP.md`](ROADMAP.md).
 
 > Questa sezione va aggiornata quando si completa un **mattone significativo**
 > (non a ogni commit). I parametri operativi e la pipeline di rilascio, invece,

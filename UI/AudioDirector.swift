@@ -46,6 +46,7 @@ public final class AudioDirector {
     private var rng: SeededGenerator
     private let fastMode: Bool
     private var heroChips: Int?
+    private var heroStartChips: Int?
 
     public init(audio: AudioServicing, heroSeatID: Int, voices: [Int: BotVoiceProfile],
                 seed: UInt64, fastMode: Bool = false) {
@@ -65,18 +66,27 @@ public final class AudioDirector {
         }
     }
 
-    /// Processes one event: plays its cues, and handles the session-end jingle.
-    /// Returns the cues it played (useful for tests).
+    /// Processes one event: plays the mapped cues, plus the hero's per-hand
+    /// win/lose/neutral feedback and the session-final jingle (both decided here
+    /// from chip deltas, not in the pure mapping). Returns the mapped cues.
     @discardableResult
     public func handle(_ payload: EventPayload) -> [SoundCue] {
-        if case let .handEnded(_, _, _, _, chips) = payload {
+        switch payload {
+        case let .handBegan(_, _, _, _, _, _, _, seats):
+            heroStartChips = seats.first { $0.seatID == heroSeatID }?.chips
+        case let .handEnded(_, _, _, _, chips):
             heroChips = chips[heroSeatID]
-        }
-        if case .sessionEnded = payload {
-            let won = (heroChips ?? 0) > 0
-            audio.play(won ? SoundCatalog.fxWinGame : SoundCatalog.fxLoseGame, category: .effect)
+            if let start = heroStartChips, let final = heroChips {
+                let fx = final > start ? SoundCatalog.fxWinHand
+                       : (final < start ? SoundCatalog.fxLoseHand : SoundCatalog.fxHandNeutral)
+                audio.play(fx, category: .effect)
+            }
+        case .sessionEnded:
+            audio.play((heroChips ?? 0) > 0 ? SoundCatalog.fxVictoryFinal : SoundCatalog.fxDefeatFinal, category: .effect)
             audio.stopAll()
             return []
+        default:
+            break
         }
 
         let cues = AudioScore.cues(for: payload, heroSeatID: heroSeatID, voices: voices, rng: &rng)

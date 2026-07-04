@@ -128,9 +128,9 @@ attivo, tutto il resto suona — l'accessibilità non è mai ridotta. Voci dei b
 **probabilistiche** e deterministiche via seed. Degradazione con grazia: file
 mancanti → silenzio + log (D-025). 16 unit test.
 **Dipendenze:** M1.5, M1.7. **Note di design:** D-023…D-025 in `CLAUDE.md`.
-**Nota operativa:** i 47 mp3 e il catalogo non erano sul Mac in questa sessione;
-`SoundCatalog` usa nomi **provvisori** da riconciliare, e gli mp3 vanno copiati in
-`Resources/Audio/` (auto-bundling verificato).
+**Asset:** i 48 mp3 consegnati sono stati verificati contro il catalogo e
+**integrati** (47 in `Resources/Audio/`, rinominati alla forma del catalogo su
+scelta dell'utente); 6 suoni non consegnati restano silenziosi. 126 unit test.
 
 ---
 

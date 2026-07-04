@@ -110,9 +110,9 @@ public final class TableViewModel: ObservableObject {
 
         // Each bot's spoken lines, keyed by seat id, for the audio consumer.
         let voices: [Int: BotVoiceProfile] = [
-            1: BotVoiceProfile(confident: SoundCatalog.vobNoviceHappy, disappointed: SoundCatalog.vobNoviceDisappointed),
-            2: BotVoiceProfile(confident: SoundCatalog.vobRockConfident, disappointed: SoundCatalog.vobRockDisappointed),
-            3: BotVoiceProfile(confident: SoundCatalog.vobAggressorConfident, disappointed: SoundCatalog.vobAggressorDisappointed),
+            1: BotVoiceProfile(assertive: SoundCatalog.vobNoviceExcited, letdown: SoundCatalog.vobNoviceDisappointed),
+            2: BotVoiceProfile(assertive: SoundCatalog.vobRockGrunt, letdown: SoundCatalog.vobRockGrunt),
+            3: BotVoiceProfile(assertive: SoundCatalog.vobAggressorConfident, letdown: SoundCatalog.vobAggressorBluffGiveaway),
         ]
         self.audioDirector = AudioDirector(audio: audio, heroSeatID: 0, voices: voices,
                                            seed: seed, fastMode: fastMode)
@@ -251,17 +251,17 @@ public final class TableViewModel: ObservableObject {
 
     // MARK: - Action-bar intents (called by the view)
 
-    public func fold() { playTapSound(); act(.fold) }
+    public func fold() { playUI(SoundCatalog.uiButtonTap); act(.fold) }
 
     public func checkOrCall() {
         guard let turn = humanTurn else { return }
-        playTapSound()
+        playUI(SoundCatalog.uiButtonTap)
         act(turn.canCheck ? .check : .call)
     }
 
     public func openRaiseBox() {
         guard let turn = humanTurn, turn.canBetOrRaise else { return }
-        playTapSound()
+        playUI(SoundCatalog.uiBoxOpen)
         let box = RaiseBoxState(minTo: turn.minTo, maxTo: turn.maxTo, isBet: turn.isBet)
         raiseBox = box
         announce(uiLocalized("announce.raise.value", box.value))
@@ -269,28 +269,28 @@ public final class TableViewModel: ObservableObject {
 
     public func raisePlus() {
         guard var box = raiseBox else { return }
-        playStepSound()
+        playUI(SoundCatalog.uiRaisePlus)
         box.increase(); raiseBox = box
         announce(uiLocalized("announce.raise.value", box.value), interrupting: true)
     }
 
     public func raiseMinus() {
         guard var box = raiseBox else { return }
-        playStepSound()
+        playUI(SoundCatalog.uiRaiseMinus)
         box.decrease(); raiseBox = box
         announce(uiLocalized("announce.raise.value", box.value), interrupting: true)
     }
 
     public func raiseAllIn() {
         guard var box = raiseBox else { return }
-        playStepSound()
+        playUI(SoundCatalog.uiAllInTrigger)
         box.toMax(); raiseBox = box
         announce(uiLocalized("announce.raise.allin", box.value), interrupting: true)
     }
 
     public func confirmRaise() {
         guard let box = raiseBox, let turn = humanTurn else { return }
-        playTapSound()
+        playUI(SoundCatalog.uiConfirm)
         let action: Action
         if box.isAtMax && turn.canAllIn {
             action = .allIn
@@ -300,7 +300,7 @@ public final class TableViewModel: ObservableObject {
         act(action)
     }
 
-    public func cancelRaise() { playTapSound(); raiseBox = nil }
+    public func cancelRaise() { playUI(SoundCatalog.uiBoxClose); raiseBox = nil }
 
     // MARK: - Outcome
 
@@ -331,12 +331,9 @@ public final class TableViewModel: ObservableObject {
 
     // MARK: - UI input sounds (played by the UI itself, not from the stream)
 
-    /// A tap sound for an action-bar button (D-023: UI feedback is played
-    /// directly, not via the event flow).
-    public func playTapSound() { audio.play(SoundCatalog.uiButtonTap, category: .ui) }
-
-    /// A lighter tick for the Raise box +/− steps.
-    public func playStepSound() { audio.play(SoundCatalog.uiRaiseStep, category: .ui) }
+    /// Plays a UI-feedback sound for a direct user input (D-023: UI feedback is
+    /// played directly, not via the event flow).
+    private func playUI(_ id: SoundID) { audio.play(id, category: .ui) }
 
     // MARK: - Human rhythm
 

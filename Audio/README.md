@@ -43,16 +43,16 @@ VoiceOver.
 
 ## Struttura degli asset audio
 
-Gli mp3 vanno in **`Resources/Audio/`** (vedi il README lì). Quella cartella è
+Gli mp3 stanno in **`Resources/Audio/`** (vedi il README lì). Quella cartella è
 dentro il gruppo `Resources` **sincronizzato** del target app: ogni file lì
 finisce automaticamente nel bundle (verificato). L'engine li cerca per nome via
-`Bundle.main`. I nomi devono combaciare con `SoundCatalog.swift`.
+`Bundle.main`. I nomi combaciano con `SoundCatalog.swift`.
 
-> **Stato M1.8:** i 47 file del catalogo non erano sul Mac quando il modulo è
-> stato costruito, quindi `SoundCatalog` usa nomi **provvisori** dedotti dalla
-> traccia. Quando i file/catalogo saranno disponibili, si riconciliano i nomi in
-> `SoundCatalog.swift` e si copiano gli mp3 in `Resources/Audio/`. Fino ad allora
-> l'app gira **senza audio**, loggando i file mancanti (D-025).
+> **Stato M1.8:** i **47 file consegnati** dall'utente sono stati integrati e
+> rinominati alla forma del catalogo (scelta dell'utente); **6** suoni del
+> catalogo non erano tra i file consegnati (i 4 chip `tbl_chips_*`,
+> `amb_crowd_distant`, `fx_hand_neutral`) e restano silenziosi finché non vengono
+> aggiunti — l'app funziona lo stesso e li logga all'avvio (D-025).
 
 ## Cosa NON contiene ancora (per scelta)
 

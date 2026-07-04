@@ -1,74 +1,103 @@
 // SoundCatalog.swift
 // =====================================================================
 // The manifest of every sound the game can play: a logical name → file name +
-// category. This is the ONE place to reconcile with the user's real audio
-// catalog (Lumar_Lounge_audio_catalog_M1.8.md) — edit the `SoundID` strings
-// here to match the delivered file names and everything downstream follows.
+// category. This is the ONE place to reconcile with the user's audio catalog
+// (Lumar_Lounge_audio_catalog_M1.8.md).
 //
-// ⚠️ PROVISIONAL NAMES (M1.8): the real catalog and the 47 mp3 files were not
-// present on the machine when this module was built, so the file names below
-// are inferred from the brief's examples (ui_button_tap, vo_it_flop,
-// vob_novice_disappointed_01, vob_aggressor_confident_01, fx_win_hand,
-// fx_all_in_dramatic, amb_/tbl_ categories). Drop the mp3s into
-// `Resources/Audio/` and adjust any names here that differ. Missing files are
-// handled gracefully (silence + a startup log) — see `AudioEngine`.
-//
-// The `_01` suffixes are kept where a sound is expected to grow "02", "03"
-// sibling variants later, as the user requested.
+// Names here match that catalog exactly (M1.8): the 47 delivered mp3 files were
+// imported into `Resources/Audio/` and renamed to the catalog form where they
+// differed (typos fixed, `_01` suffixes normalised). Six catalog sounds were not
+// delivered (see `missing`); they are still listed so they play automatically if
+// added later, and are reported at startup meanwhile. Missing files degrade to
+// silence — see `AudioEngine`.
 
 import Foundation
 
 public enum SoundCatalog {
 
-    // MARK: Ambient
-    public static let ambientLounge = SoundID("amb_casino_lounge_01")
+    // MARK: Ambient (5)
+    public static let ambLoungeCalm1 = SoundID("amb_lounge_calm_01")
+    public static let ambLoungeCalm2 = SoundID("amb_lounge_calm_02")
+    public static let ambLoungeTense = SoundID("amb_lounge_tense_01")
+    public static let ambCrowdDistant = SoundID("amb_crowd_distant")     // not delivered
+    public static let ambSilenceTension = SoundID("amb_silence_tension")
 
-    // MARK: Table (physical, non-spoken)
-    public static let cardDeal = SoundID("tbl_card_deal_01")
-    public static let cardFlip = SoundID("tbl_card_flip_01")
-    public static let chipsBet = SoundID("tbl_chips_bet_01")
-    public static let chipsToPot = SoundID("tbl_chips_to_pot_01")
-    public static let cardMuck = SoundID("tbl_card_muck_01")
+    // MARK: UI (9)
+    public static let uiButtonTap = SoundID("ui_button_tap")
+    public static let uiButtonTapSoft = SoundID("ui_button_tap_soft")
+    public static let uiBoxOpen = SoundID("ui_box_open")
+    public static let uiBoxClose = SoundID("ui_box_close")
+    public static let uiRaisePlus = SoundID("ui_raise_plus")
+    public static let uiRaiseMinus = SoundID("ui_raise_minus")
+    public static let uiAllInTrigger = SoundID("ui_all_in_trigger")
+    public static let uiConfirm = SoundID("ui_confirm")
+    public static let uiCancel = SoundID("ui_cancel")
 
-    // MARK: Croupier voices (spoken, Italian)
+    // MARK: Table (9)
+    public static let tblCardDealSingle = SoundID("tbl_card_deal_single")
+    public static let tblCardFlipSingle = SoundID("tbl_card_flip_single")
+    public static let tblCardsDealFlop = SoundID("tbl_cards_deal_flop")
+    public static let tblChipsSingle = SoundID("tbl_chips_single")        // not delivered
+    public static let tblChipsStack = SoundID("tbl_chips_stack")          // not delivered
+    public static let tblChipsBetLarge = SoundID("tbl_chips_bet_large")   // not delivered
+    public static let tblChipsPotCollect = SoundID("tbl_chips_pot_collect") // not delivered
+    public static let tblMuck = SoundID("tbl_muck")
+    public static let tblShuffle = SoundID("tbl_shuffle")
+
+    // MARK: Croupier voices — Italian (15)
+    public static let voYourTurn = SoundID("vo_it_your_turn")
+    public static let voHandStart = SoundID("vo_it_hand_start")
+    public static let voBlindSmall = SoundID("vo_it_blind_small")
+    public static let voBlindBig = SoundID("vo_it_blind_big")
     public static let voFlop = SoundID("vo_it_flop")
     public static let voTurn = SoundID("vo_it_turn")
     public static let voRiver = SoundID("vo_it_river")
-    public static let voAllIn = SoundID("vo_it_all_in")
     public static let voShowdown = SoundID("vo_it_showdown")
+    public static let voActionFold = SoundID("vo_it_action_fold")
+    public static let voActionCheck = SoundID("vo_it_action_check")
+    public static let voActionCall = SoundID("vo_it_action_call")
+    public static let voActionRaise = SoundID("vo_it_action_raise")
+    public static let voActionAllIn = SoundID("vo_it_action_all_in")
+    public static let voPotAwarded = SoundID("vo_it_pot_awarded")
+    public static let voSplitPot = SoundID("vo_it_split_pot")
 
-    // MARK: Bot voices (spoken) — keyed to the M1.7 roster personalities
-    public static let vobNoviceHappy = SoundID("vob_novice_happy_01")
+    // MARK: Bot voices (7)
+    public static let vobNoviceExcited = SoundID("vob_novice_excited_01")
     public static let vobNoviceDisappointed = SoundID("vob_novice_disappointed_01")
-    public static let vobRockConfident = SoundID("vob_rock_confident_01")
-    public static let vobRockDisappointed = SoundID("vob_rock_disappointed_01")
+    public static let vobNoviceNervous = SoundID("vob_novice_nervous_01")
+    public static let vobRockGrunt = SoundID("vob_rock_grunt_01")
     public static let vobAggressorConfident = SoundID("vob_aggressor_confident_01")
-    public static let vobAggressorDisappointed = SoundID("vob_aggressor_disappointed_01")
+    public static let vobAggressorTaunt = SoundID("vob_aggressor_taunt_01")
+    public static let vobAggressorBluffGiveaway = SoundID("vob_aggressor_bluff_giveaway_01")
 
-    // MARK: Dramatic effects (non-spoken)
-    public static let fxAllInDramatic = SoundID("fx_all_in_dramatic")
+    // MARK: Outcome feedback (8)
     public static let fxWinHand = SoundID("fx_win_hand")
     public static let fxLoseHand = SoundID("fx_lose_hand")
-    public static let fxWinGame = SoundID("fx_win_game")
-    public static let fxLoseGame = SoundID("fx_lose_game")
+    public static let fxHandNeutral = SoundID("fx_hand_neutral")          // not delivered
+    public static let fxAllInDramatic = SoundID("fx_all_in_dramatic")
+    public static let fxBustPlayer = SoundID("fx_bust_player")
+    public static let fxBustHero = SoundID("fx_bust_hero")
+    public static let fxVictoryFinal = SoundID("fx_victory_final")
+    public static let fxDefeatFinal = SoundID("fx_defeat_final")
 
-    // MARK: UI feedback (non-spoken, played on user input)
-    public static let uiButtonTap = SoundID("ui_button_tap")
-    public static let uiRaiseStep = SoundID("ui_raise_step_01")
-
-    /// Every sound with its category — used to preload and to report which
-    /// files are missing from the bundle at startup.
+    /// Every sound with its category — used to preload and to report which files
+    /// are missing from the bundle at startup.
     public static let all: [(id: SoundID, category: SoundCategory)] = [
-        (ambientLounge, .ambient),
-        (cardDeal, .table), (cardFlip, .table), (chipsBet, .table),
-        (chipsToPot, .table), (cardMuck, .table),
-        (voFlop, .croupier), (voTurn, .croupier), (voRiver, .croupier),
-        (voAllIn, .croupier), (voShowdown, .croupier),
-        (vobNoviceHappy, .botVoice), (vobNoviceDisappointed, .botVoice),
-        (vobRockConfident, .botVoice), (vobRockDisappointed, .botVoice),
-        (vobAggressorConfident, .botVoice), (vobAggressorDisappointed, .botVoice),
-        (fxAllInDramatic, .effect), (fxWinHand, .effect), (fxLoseHand, .effect),
-        (fxWinGame, .effect), (fxLoseGame, .effect),
-        (uiButtonTap, .ui), (uiRaiseStep, .ui),
+        (ambLoungeCalm1, .ambient), (ambLoungeCalm2, .ambient), (ambLoungeTense, .ambient),
+        (ambCrowdDistant, .ambient), (ambSilenceTension, .ambient),
+        (uiButtonTap, .ui), (uiButtonTapSoft, .ui), (uiBoxOpen, .ui), (uiBoxClose, .ui),
+        (uiRaisePlus, .ui), (uiRaiseMinus, .ui), (uiAllInTrigger, .ui), (uiConfirm, .ui), (uiCancel, .ui),
+        (tblCardDealSingle, .table), (tblCardFlipSingle, .table), (tblCardsDealFlop, .table),
+        (tblChipsSingle, .table), (tblChipsStack, .table), (tblChipsBetLarge, .table),
+        (tblChipsPotCollect, .table), (tblMuck, .table), (tblShuffle, .table),
+        (voYourTurn, .croupier), (voHandStart, .croupier), (voBlindSmall, .croupier), (voBlindBig, .croupier),
+        (voFlop, .croupier), (voTurn, .croupier), (voRiver, .croupier), (voShowdown, .croupier),
+        (voActionFold, .croupier), (voActionCheck, .croupier), (voActionCall, .croupier),
+        (voActionRaise, .croupier), (voActionAllIn, .croupier), (voPotAwarded, .croupier), (voSplitPot, .croupier),
+        (vobNoviceExcited, .botVoice), (vobNoviceDisappointed, .botVoice), (vobNoviceNervous, .botVoice),
+        (vobRockGrunt, .botVoice), (vobAggressorConfident, .botVoice), (vobAggressorTaunt, .botVoice),
+        (vobAggressorBluffGiveaway, .botVoice),
+        (fxWinHand, .effect), (fxLoseHand, .effect), (fxHandNeutral, .effect), (fxAllInDramatic, .effect),
+        (fxBustPlayer, .effect), (fxBustHero, .effect), (fxVictoryFinal, .effect), (fxDefeatFinal, .effect),
     ]
 }
