@@ -90,6 +90,14 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     nasconde gli identifier dei figli. Gli **identifier vanno sui leaf**.
   - La logica di presentazione (riduzione evento→stato, formattazione testo) va
     tenuta **pura** e fuori dalle viste SwiftUI, per essere unit-testabile.
+  - **Audio mai sopra VoiceOver (emerso in M1.8, D-024).** L'audio arricchisce ma
+    **non è mai indispensabile**: VoiceOver da solo deve sempre bastare per
+    giocare. Quando VoiceOver è attivo, i suoni **parlati** (voci di croupier e
+    bot) tacciono, mentre quelli **non parlati** (ambient, effetti, feedback UI)
+    restano. Come per il parlato (M1.6), la **mappatura evento→suoni è una
+    funzione pura** separata dalla riproduzione; il modulo `Audio` resta neutro
+    (suoni opachi + categorie), e la mappatura vive dove si vedono sia gli eventi
+    sia `Audio` (cioè in `UI`), mai dentro `Audio`.
   - **Input numerico a incremento con annuncio istantaneo (pattern riusabile,
     emerso in M1.7 col box Raise, D-020).** Per un controllo che regola una cifra
     con `+`/`−` (rilancio a poker, ma anche puntata a blackjack/roulette in

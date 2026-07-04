@@ -116,15 +116,31 @@ bot, con schermata di esito e restart. Accessibilità di prima classe su ogni
 controllo. 10 unit test (curva) + XCUITest di layout/interazione.
 **Dipendenze:** M1.4, M1.5, M1.6. **Note di design:** D-020…D-022 in `CLAUDE.md`.
 
-### ⏭️ M1.8 — Audio e aptica come consumatori del flusso
-Dare **voce e tatto** al tavolo: il modulo `Audio` (finora solo interfaccia
-`AudioServicing`, M0.1) implementa la riproduzione reale, e un consumatore
-ascolta lo **stesso flusso di eventi** di M1.5 — in parallelo alla UI, senza che
-il driver sappia nulla — per suonare carte, puntate, vincite e per rinforzare
-l'esperienza audio-first. Nessuna nuova logica di gioco; l'audio è descrittivo,
-mappato dagli eventi. È l'ultimo strato sensoriale prima di rifinire il primo
-TestFlight giocabile.
-**Dipendenze:** M1.5, M1.7, M3.1.
+### ✅ M1.8 — Audio come consumatore parallelo del flusso
+Il quarto cerchio è pieno. Il modulo `Audio` (`AudioEngine` su AVFoundation)
+riproduce ambient in loop, effetti del tavolo, voci del croupier e dei bot,
+feedback di esito — restando **neutro** (suoni opachi + categorie, nessuna
+conoscenza del poker). La **mappatura evento→suoni** (`AudioScore`, pura) e il
+**consumatore parallelo** del flusso (`AudioDirector`) vivono in `UI`, unico
+strato che vede sia `SessionEvent` sia `Audio` (D-023). **Coordinamento con
+VoiceOver** (D-024): i suoni parlati (croupier/bot) tacciono quando VoiceOver è
+attivo, tutto il resto suona — l'accessibilità non è mai ridotta. Voci dei bot
+**probabilistiche** e deterministiche via seed. Degradazione con grazia: file
+mancanti → silenzio + log (D-025). 16 unit test.
+**Dipendenze:** M1.5, M1.7. **Note di design:** D-023…D-025 in `CLAUDE.md`.
+**Nota operativa:** i 47 mp3 e il catalogo non erano sul Mac in questa sessione;
+`SoundCatalog` usa nomi **provvisori** da riconciliare, e gli mp3 vanno copiati in
+`Resources/Audio/` (auto-bundling verificato).
+
+---
+
+> **🏁 Fase 1 (M1) completata.** Il gioco base è funzionante **end-to-end**:
+> motore Hold'em No Limit completo, bot credibili, sessione multi-mano, flusso di
+> eventi osservabile, UI giocabile e accessibile, audio pieno. Il progetto è
+> **pronto per un primo upload su TestFlight** (`bundle exec fastlane
+> testflight_upload`) — basta aggiungere gli mp3 reali per l'audio non muto.
+> La Fase 2 (`GameWorld` — il mondo attorno al tavolo) sarà definita nel dettaglio
+> nella prossima conversazione con l'utente.
 
 ---
 

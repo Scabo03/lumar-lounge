@@ -71,8 +71,14 @@ let package = Package(
         // Unit tests for the UI layer's pure logic (reducer, announcer text).
         .testTarget(
             name: "UITests",
-            dependencies: ["UI", "GameWorld", "GameEngine"],
+            dependencies: ["UI", "GameWorld", "GameEngine", "Audio"],
             path: "Tests/UITests"
+        ),
+        // Unit tests for the audio layer (catalog, engine, VoiceOver policy).
+        .testTarget(
+            name: "AudioTests",
+            dependencies: ["Audio"],
+            path: "Tests/AudioTests"
         ),
     ]
 )

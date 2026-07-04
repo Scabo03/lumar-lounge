@@ -17,6 +17,7 @@
 import Foundation
 import GameWorld
 import GameEngine
+import Audio
 
 /// The information the action bar needs when it's the human's turn.
 public struct HumanTurnInfo: Equatable, Sendable {
@@ -75,13 +76,17 @@ public final class TableViewModel: ObservableObject {
     private let announcer = Announcer()
     private let gate = HandGate()
     private let fastMode: Bool
+    private let audio: AudioServicing
+    private let audioDirector: AudioDirector
 
     private var eventQueue: [EventPayload] = []
     private var streamFinished = false
     private var turnContinuation: CheckedContinuation<Void, Never>?
 
-    public init(seed: UInt64 = 20_260_704, fastMode: Bool = false) {
+    public init(seed: UInt64 = 20_260_704, fastMode: Bool = false,
+                audio: AudioServicing = NullAudioService()) {
         self.fastMode = fastMode
+        self.audio = audio
         // Seat 0 is the human (bottom of the screen); seats 1–3 are the bots.
         let bots: [(id: Int, personality: Personality, nameKey: String)] = [
             (1, .eagerNovice, "seat.name.novice"),
@@ -103,6 +108,15 @@ public final class TableViewModel: ObservableObject {
         for bot in bots { names[bot.id] = uiLocalized(bot.nameKey) }
         self.names = names
 
+        // Each bot's spoken lines, keyed by seat id, for the audio consumer.
+        let voices: [Int: BotVoiceProfile] = [
+            1: BotVoiceProfile(confident: SoundCatalog.vobNoviceHappy, disappointed: SoundCatalog.vobNoviceDisappointed),
+            2: BotVoiceProfile(confident: SoundCatalog.vobRockConfident, disappointed: SoundCatalog.vobRockDisappointed),
+            3: BotVoiceProfile(confident: SoundCatalog.vobAggressorConfident, disappointed: SoundCatalog.vobAggressorDisappointed),
+        ]
+        self.audioDirector = AudioDirector(audio: audio, heroSeatID: 0, voices: voices,
+                                           seed: seed, fastMode: fastMode)
+
         self.state = TableState(
             seats: ([0] + bots.map { $0.id }).map { SeatPresentation(id: $0, position: $0, chips: startingChips) },
             phase: .idle, heroSeatID: 0
@@ -114,11 +128,16 @@ public final class TableViewModel: ObservableObject {
     /// Runs the session: relays the stream, plays hands (producer), and narrates
     /// them at human pace while handling the human's turns (consumer).
     public func run() async {
-        let stream = await driver.events(as: .player(heroSeatID))
+        // Two parallel subscribers to the same multicast flow: the display
+        // (as the human player, to see its own cards) and the audio director
+        // (as a spectator — audio needs no private cards).
+        let display = await driver.events(as: .player(heroSeatID))
+        let audioStream = await driver.events(as: .spectator)
         await withTaskGroup(of: Void.self) { group in
-            group.addTask { await self.relay(stream) }
+            group.addTask { await self.relay(display) }
             group.addTask { await self.produce() }
             group.addTask { await self.consume() }
+            group.addTask { await self.audioDirector.run(audioStream) }
         }
     }
 
@@ -201,7 +220,7 @@ public final class TableViewModel: ObservableObject {
         default:
             state = TableReducer.reduce(state, payload)
             if let message = narration(for: payload) { announce(message) }
-            await pause(paceSeconds(for: payload))
+            await pause(Pacing.seconds(for: payload))
         }
     }
 
@@ -232,15 +251,17 @@ public final class TableViewModel: ObservableObject {
 
     // MARK: - Action-bar intents (called by the view)
 
-    public func fold() { act(.fold) }
+    public func fold() { playTapSound(); act(.fold) }
 
     public func checkOrCall() {
         guard let turn = humanTurn else { return }
+        playTapSound()
         act(turn.canCheck ? .check : .call)
     }
 
     public func openRaiseBox() {
         guard let turn = humanTurn, turn.canBetOrRaise else { return }
+        playTapSound()
         let box = RaiseBoxState(minTo: turn.minTo, maxTo: turn.maxTo, isBet: turn.isBet)
         raiseBox = box
         announce(uiLocalized("announce.raise.value", box.value))
@@ -248,24 +269,28 @@ public final class TableViewModel: ObservableObject {
 
     public func raisePlus() {
         guard var box = raiseBox else { return }
+        playStepSound()
         box.increase(); raiseBox = box
         announce(uiLocalized("announce.raise.value", box.value), interrupting: true)
     }
 
     public func raiseMinus() {
         guard var box = raiseBox else { return }
+        playStepSound()
         box.decrease(); raiseBox = box
         announce(uiLocalized("announce.raise.value", box.value), interrupting: true)
     }
 
     public func raiseAllIn() {
         guard var box = raiseBox else { return }
+        playStepSound()
         box.toMax(); raiseBox = box
         announce(uiLocalized("announce.raise.allin", box.value), interrupting: true)
     }
 
     public func confirmRaise() {
         guard let box = raiseBox, let turn = humanTurn else { return }
+        playTapSound()
         let action: Action
         if box.isAtMax && turn.canAllIn {
             action = .allIn
@@ -275,7 +300,7 @@ public final class TableViewModel: ObservableObject {
         act(action)
     }
 
-    public func cancelRaise() { raiseBox = nil }
+    public func cancelRaise() { playTapSound(); raiseBox = nil }
 
     // MARK: - Outcome
 
@@ -304,20 +329,16 @@ public final class TableViewModel: ObservableObject {
         announcer.announce(message, interrupting: interrupting)
     }
 
-    // MARK: - Human rhythm
+    // MARK: - UI input sounds (played by the UI itself, not from the stream)
 
-    private func paceSeconds(for payload: EventPayload) -> Double {
-        switch payload {
-        case .sessionBegan: return 0.6
-        case .handBegan: return 0.8
-        case .blindPosted: return 0.45
-        case .holeCardsDealt: return 0.2
-        case .streetOpened: return 0.7
-        case .handShown: return 1.0
-        case .playerBusted: return 1.0
-        default: return 0.3
-        }
-    }
+    /// A tap sound for an action-bar button (D-023: UI feedback is played
+    /// directly, not via the event flow).
+    public func playTapSound() { audio.play(SoundCatalog.uiButtonTap, category: .ui) }
+
+    /// A lighter tick for the Raise box +/− steps.
+    public func playStepSound() { audio.play(SoundCatalog.uiRaiseStep, category: .ui) }
+
+    // MARK: - Human rhythm
 
     private func pause(_ seconds: Double) async {
         let effective = fastMode ? 0.01 : seconds

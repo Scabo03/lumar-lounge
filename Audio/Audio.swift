@@ -1,59 +1,95 @@
 // Audio
 // =====================================================================
-// Cross-cutting sound and haptics system.
+// Cross-cutting sound system. Transversal and GAME-AGNOSTIC (D-023): it knows
+// nothing about poker, events, seats or rules. It plays opaque, caller-defined
+// sounds grouped into categories, and it owns the one piece of accessibility
+// policy that belongs to the audio layer itself: never talk over VoiceOver.
 //
-// RULE: this module is transversal. It must know NOTHING about poker,
-// blackjack or any specific game. It exposes a generic interface that the
-// rest of the project drives via opaque, caller-defined identifiers.
-//
-// It deliberately does not depend on GameEngine, GameWorld or UI.
-// No playback is implemented yet — this is scaffolding only.
+// It may import AVFoundation (its raison d'être) and, only for VoiceOver
+// detection, UIKit under `#if canImport(UIKit)`. It must NOT import GameEngine,
+// GameWorld or UI: whoever knows the game (UI) maps events to these opaque
+// sounds and drives this module.
 
 import Foundation
 
-/// An opaque identifier for a sound effect. Callers define their own values;
-/// the audio layer never interprets the meaning of the identifier.
+/// An opaque identifier for a sound: the base file name (without extension) of a
+/// bundled audio resource. The audio layer never interprets its meaning.
 public struct SoundID: Hashable, Sendable {
     public let rawValue: String
     public init(_ rawValue: String) { self.rawValue = rawValue }
 }
 
-/// An opaque identifier for a music track.
-public struct MusicID: Hashable, Sendable {
-    public let rawValue: String
-    public init(_ rawValue: String) { self.rawValue = rawValue }
+/// The kind of sound, which decides its default volume and whether it is a
+/// SPOKEN sound that must yield to VoiceOver.
+public enum SoundCategory: String, CaseIterable, Sendable {
+    /// Looping background atmosphere.
+    case ambient
+    /// Physical table effects (cards, chips). Non-spoken.
+    case table
+    /// The croupier's spoken lines. SPOKEN → yields to VoiceOver.
+    case croupier
+    /// The bots' spoken lines. SPOKEN → yields to VoiceOver.
+    case botVoice
+    /// Dramatic outcome feedback (win/lose/all-in). Non-spoken.
+    case effect
+    /// UI feedback for direct user input (taps). Non-spoken.
+    case ui
+
+    /// Spoken categories would collide with VoiceOver's own speech.
+    public var isSpoken: Bool { self == .croupier || self == .botVoice }
+
+    /// Default gain 0…1 for the category (tuned to be present but not invasive).
+    public var defaultVolume: Float {
+        switch self {
+        case .ambient: return 0.35
+        case .table: return 0.8
+        case .croupier: return 1.0
+        case .botVoice: return 0.9
+        case .effect: return 0.95
+        case .ui: return 0.7
+        }
+    }
 }
 
-/// An opaque identifier for a haptic pattern.
-public struct HapticID: Hashable, Sendable {
-    public let rawValue: String
-    public init(_ rawValue: String) { self.rawValue = rawValue }
+/// The single accessibility rule the audio layer enforces (D-024): when
+/// VoiceOver is speaking, spoken sounds (croupier/bot voices) stay silent so the
+/// two voices never overlap. Everything non-spoken keeps playing.
+public enum AudioPolicy {
+    public static func shouldPlay(_ category: SoundCategory, voiceOverRunning: Bool) -> Bool {
+        if voiceOverRunning && category.isSpoken { return false }
+        return true
+    }
 }
 
-/// Generic, game-agnostic audio and haptics interface that the rest of the
-/// project can depend on without knowing how playback is implemented.
+/// The generic audio interface the rest of the app depends on. Driven by opaque
+/// sounds; unaware of poker. In practice its callers (UI) are on the main actor,
+/// so implementations are effectively main-confined, but the protocol is left
+/// non-isolated to avoid friction constructing it from SwiftUI `init`s.
 public protocol AudioServicing: AnyObject {
-    func playSound(_ id: SoundID)
-    func playMusic(_ id: MusicID)
-    func stopMusic()
-    func playHaptic(_ id: HapticID)
+    /// Starts (or replaces) the looping ambient bed.
+    func startAmbient(_ id: SoundID)
+    /// Plays a one-shot sound, overlapping whatever else is playing.
+    func play(_ id: SoundID, category: SoundCategory)
+    /// Stops the ambient bed and all one-shots.
+    func stopAll()
+    /// Master volume 0…1 applied on top of per-category volumes.
+    func setMasterVolume(_ volume: Float)
+    /// Mutes/unmutes everything.
     func setMuted(_ muted: Bool)
 }
 
-/// A do-nothing implementation, useful as a default and for previews/tests.
-/// Real playback (AVFoundation / CoreHaptics) will be added behind this same
-/// protocol later, so callers never change.
+/// A do-nothing implementation for tests, previews, and platforms without audio.
 public final class NullAudioService: AudioServicing {
     public init() {}
-    public func playSound(_ id: SoundID) {}
-    public func playMusic(_ id: MusicID) {}
-    public func stopMusic() {}
-    public func playHaptic(_ id: HapticID) {}
+    public func startAmbient(_ id: SoundID) {}
+    public func play(_ id: SoundID, category: SoundCategory) {}
+    public func stopAll() {}
+    public func setMasterVolume(_ volume: Float) {}
     public func setMuted(_ muted: Bool) {}
 }
 
 /// Namespace and metadata for the audio layer.
 public enum Audio {
     /// Semantic version of the audio layer.
-    public static let version = "0.1.0"
+    public static let version = "1.0.0"
 }

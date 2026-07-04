@@ -39,12 +39,21 @@ nei file collegati.
 - **`UI` M1.7:** tavolo **giocabile** dal giocatore umano. Layout stratificato
   (D-022), barra azioni attiva al proprio turno, box Raise a curva progressiva
   (D-020); il turno umano usa l'`HumanActionProvider` di M1.4, sincronizzato col
-  display via coda MainActor (D-021). 108 unit test verdi
-  (68 GameEngine + 13 GameWorld + 27 UI) + 1 XCUITest di layout/interazione.
+  display via coda MainActor (D-021).
+- **`Audio` M1.8:** modulo audio pieno (`AudioEngine`/AVFoundation), **neutro**;
+  mappatura evento→suoni (`AudioScore`) + consumatore parallelo (`AudioDirector`)
+  in `UI` (D-023); coordinamento VoiceOver (D-024); degrada con grazia sui file
+  mancanti (D-025). 123 unit test verdi (68 GameEngine + 13 GameWorld + 26 UI
+  + 16 Audio/AudioScore) + 1 XCUITest.
 
-**Prossimo passo.** Mattone **M1.8** — **Audio** come consumatore parallelo dello
-stesso flusso di eventi (M1.5): implementare `AudioServicing` e mappare gli eventi
-a suoni/aptica, senza toccare driver né UI. Dettaglio in [`ROADMAP.md`](ROADMAP.md).
+**🏁 Fase 1 (M1) completa — il gioco base gira end-to-end ed è pronto per un primo
+TestFlight** (motore + bot + sessione + flusso + UI accessibile + audio). Manca
+solo copiare i 47 mp3 reali in `Resources/Audio/` e riconciliare i nomi
+provvisori in `SoundCatalog.swift` (i file/catalogo non erano sul Mac in M1.8).
+
+**Prossimo passo.** **Fase 2 (`GameWorld` — il mondo attorno al tavolo, M2.x)**:
+lo specifico sarà definito con l'utente nella prossima conversazione. Vedi
+[`ROADMAP.md`](ROADMAP.md).
 
 **Stato completo, sempre aggiornato:** sezione *Stato di sviluppo* in
 [`README.md`](README.md).
@@ -357,3 +366,46 @@ avversari sul tavolo**, realisticamente le tengono in mano), **avversari come
 badge in alto** (nome, stack, stato, evidenza "di turno"). Resta il principio:
 la UI **non decide**, raccoglie input e lo inoltra. Fine partita al bust
 dell'umano o dei bot, con esito (`won`/`lost`) e restart via `.id()`.
+
+### D-023 — Separazione mappatura evento→suoni vs riproduzione (sessione M1.8)
+`Audio` resta **neutro e agnostico**: riproduce suoni opachi (`SoundID`) per
+categoria (`SoundCategory`), senza conoscere `SessionEvent` né il poker. La
+**mappatura evento→suoni** (`AudioScore`, funzione **pura**, come `TableAnnouncer`
+per il parlato) e il **consumatore** che si iscrive al flusso (`AudioDirector`)
+vivono in **`UI`**, e non in `Audio` né in `GameWorld`, perché:
+- **non in `Audio`**: dovrebbe importare `SessionEvent` → non sarebbe più neutro;
+- **non in `GameWorld`**: la regola di dipendenza vieta a `GameWorld` di importare
+  `Audio` (`Audio` è trasversale). Solo `UI` vede sia `SessionEvent` (via
+  `GameWorld`) sia `Audio`.
+L'`AudioDirector` è un **consumatore parallelo** al consumatore visivo (seconda
+iscrizione multicast, come `.spectator` — l'audio non serve le carte private) e
+si **auto-ritma** con la stessa cadenza umana del display (`Pacing` condiviso):
+il suono resta agganciato all'immagine, con drift che si azzera a ogni fine mano.
+Le voci dei bot sono **probabilistiche e deterministiche** (RNG seedato passato
+alla funzione pura). I suoni di **input UI** (tap) li riproduce direttamente la
+vista, non il flusso.
+
+### D-024 — Coordinamento audio ↔ VoiceOver (sessione M1.8)
+Due voci che parlano insieme si annullano. Strategia adottata (la proposta nella
+traccia, valutata la migliore): quando **VoiceOver è attivo**
+(`UIAccessibility.isVoiceOverRunning`), i suoni **parlati** (`croupier`,
+`botVoice`) vengono **silenziati** (`AudioPolicy.shouldPlay`), mentre i
+**non parlati** (ambient, effetti del tavolo, feedback UI, jingle di esito)
+continuano. VoiceOver resta la **fonte di verità** per l'informazione parlata:
+l'accessibilità non è mai ridotta, l'audio arricchisce e basta. La sessione audio
+è `.ambient` + `.mixWithOthers` per non "abbassare" VoiceOver. La policy è una
+**funzione pura testabile**; il rilevamento VoiceOver è dietro `#if canImport(UIKit)`
+(no-op sul host macOS, così il modulo compila per `swift test`).
+
+### D-025 — Catalogo provvisorio e degradazione con grazia (sessione M1.8)
+I 47 mp3 e il catalogo `Lumar_Lounge_audio_catalog_M1.8.md` **non erano sul Mac**
+in questa sessione (Downloads vuoto, nessun catalogo trovato via `find`/Spotlight).
+Anziché inventare file falsi, si è costruita **tutta l'architettura** con un
+manifesto **provvisorio** (`SoundCatalog`, nomi dedotti dalla traccia) che è
+l'**unico punto** di riconciliazione col catalogo reale. La riproduzione
+**degrada con grazia**: file mancante → silenzio, e all'avvio si logga l'elenco
+dei mancanti (`[Audio] N/M sound files missing…`). L'app è **pienamente giocabile
+con audio parziale o assente**. Gli mp3 vanno in `Resources/Audio/`, dentro il
+gruppo `Resources` **sincronizzato** del target app → auto-bundling **verificato**
+(un file lì finisce nel bundle, cercato per nome via `Bundle.main`). I suffissi
+`_01` sono mantenuti dove serviranno sorelle `02`/`03` future.

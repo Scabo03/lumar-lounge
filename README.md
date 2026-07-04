@@ -77,14 +77,29 @@ accelerazione verso l'all-in). La sua azione passa alla UI e da lì
 all'infrastruttura di attesa già pronta nel driver. Tutto resta accessibile con la
 stessa cura: annuncio affidabile del proprio turno, delle proprie carte, e di ogni
 scatto del box Raise. La partita finisce quando l'umano busta o quando battono
-tutti i bot, con una schermata di esito e un tasto per ricominciare. 108 unit test
-più un XCUITest di layout e interazione, tutti verdi; l'app gira sul simulatore.
+tutti i bot, con una schermata di esito e un tasto per ricominciare.
 
-Il prossimo passo dà al tavolo **voce e tatto**: il modulo `Audio` implementerà
-la riproduzione reale e ascolterà lo stesso flusso di eventi in parallelo alla
-UI, per suonare carte, puntate e vincite senza che il driver sappia nulla. La
-rotta completa fino al primo gioco giocabile su TestFlight è tracciata in
-[`ROADMAP.md`](ROADMAP.md).
+L'ottavo mattone dà al tavolo una **voce**, e chiude la prima fase del progetto.
+Il modulo `Audio` — l'ultimo dei quattro cerchi — riproduce l'atmosfera di
+sottofondo, gli effetti di carte e fiches, le battute del croupier e dei bot, i
+jingle di vittoria e sconfitta. Ascolta lo **stesso flusso di eventi** in
+parallelo alla UI, senza che il driver sappia nulla, e resta neutro: non conosce
+il poker, riproduce solo suoni per categoria. Il coordinamento con VoiceOver è la
+cura chiave: quando lo screen reader parla, le voci registrate tacciono, così le
+due voci non si accavallano mai — l'audio arricchisce, ma VoiceOver da solo
+basta sempre. Il gioco **degrada con grazia** se un suono manca: gira lo stesso e
+segnala all'avvio cosa manca.
+
+> **🏁 La prima fase è completa.** Il gioco base è funzionante end-to-end — motore
+> completo, bot credibili, sessione multi-mano, flusso di eventi, UI giocabile e
+> accessibile, audio pieno — e il progetto è **pronto per un primo upload su
+> TestFlight** (`bundle exec fastlane testflight_upload`). 123 unit test più un
+> XCUITest, tutti verdi; l'app compila per iphoneos, gira sul simulatore, e ha le
+> icone e l'`Info.plist` a posto. Resta solo da copiare i file mp3 reali in
+> `Resources/Audio/` (in questa sessione non erano ancora sul Mac) perché l'audio
+> non sia muto. La fase successiva (`GameWorld`, il mondo attorno al tavolo) sarà
+> definita nella prossima conversazione. Rotta completa in
+> [`ROADMAP.md`](ROADMAP.md).
 
 > Questa sezione va aggiornata quando si completa un **mattone significativo**
 > (non a ogni commit). I parametri operativi e la pipeline di rilascio, invece,

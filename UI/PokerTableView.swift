@@ -19,6 +19,7 @@
 
 import SwiftUI
 import GameEngine
+import Audio
 
 public struct PokerTableView: View {
     /// Bumping this restarts the whole session (fresh view + view model).
@@ -39,7 +40,10 @@ struct TableScreen: View {
     let onRestart: () -> Void
 
     init(seed: UInt64, fastMode: Bool, onRestart: @escaping () -> Void) {
-        _model = StateObject(wrappedValue: TableViewModel(seed: seed, fastMode: fastMode))
+        // The real audio engine on the app; missing sound files degrade to
+        // silence (D-024) with a startup log.
+        _model = StateObject(wrappedValue: TableViewModel(seed: seed, fastMode: fastMode,
+                                                          audio: AudioEngine()))
         self.onRestart = onRestart
     }
 
