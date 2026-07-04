@@ -1,77 +1,107 @@
 // PokerTableView.swift
 // =====================================================================
-// The first real screen: a minimalist, high-contrast Texas Hold'em table that
-// listens to the SessionDriver's public event stream (M1.5) and shows a demo
-// session between three bots unfolding, at a human pace, fully narrated to
-// VoiceOver.
+// The first PLAYABLE screen (M1.7): a layered Hold'em table where the human is
+// the protagonist at the bottom and the bots are abstracted badges at the top.
 //
-// It is a pure LISTENER: no game logic lives here (that would belong in
-// GameWorld). It renders `TableViewModel.state` and lets the view model drive
-// the rhythm. Accessibility is first-class on every element (D-016, D-019).
+//   ┌───────────────────────────────┐
+//   │  opponents (badges)           │  top band
+//   ├───────────────────────────────┤
+//   │  table: board · pot · button  │  centre
+//   ├───────────────────────────────┤
+//   │  Check/Call   Fold   Raise     │  action bar
+//   ├───────────────────────────────┤
+//   │  🂡 🂮   your cards + stack     │  bottom band (hero)
+//   └───────────────────────────────┘
+//
+// A pure listener + input forwarder: it renders `TableViewModel.state` and sends
+// the human's taps to the model, which forwards them to GameWorld's
+// HumanActionProvider. No game logic here. Accessibility is first-class (D-016).
 
 import SwiftUI
 import GameEngine
 
 public struct PokerTableView: View {
-    @StateObject private var model = TableViewModel()
+    /// Bumping this restarts the whole session (fresh view + view model).
+    @State private var restartToken = 0
 
     public init() {}
 
     public var body: some View {
+        TableScreen(seed: 20_260_704 &+ UInt64(restartToken),
+                    fastMode: ProcessInfo.processInfo.arguments.contains("-uiTesting"),
+                    onRestart: { restartToken += 1 })
+            .id(restartToken)
+    }
+}
+
+struct TableScreen: View {
+    @StateObject private var model: TableViewModel
+    let onRestart: () -> Void
+
+    init(seed: UInt64, fastMode: Bool, onRestart: @escaping () -> Void) {
+        _model = StateObject(wrappedValue: TableViewModel(seed: seed, fastMode: fastMode))
+        self.onRestart = onRestart
+    }
+
+    var body: some View {
         GeometryReader { geometry in
             ZStack {
                 TablePalette.background.ignoresSafeArea()
 
-                feltShape(in: geometry.size)
+                VStack(spacing: 6) {
+                    OpponentBadgesView(state: model.state, names: model.names)
+                        .frame(height: geometry.size.height * 0.20)
 
-                centerArea
-                    .frame(maxWidth: geometry.size.width * 0.5)
-                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                    TableCenterView(state: model.state, names: model.names)
+                        .frame(maxHeight: .infinity)
 
-                ForEach(model.state.seats, id: \.id) { seat in
-                    SeatView(seat: seat,
-                             name: model.names[seat.id] ?? "",
-                             isSmallBlind: model.state.smallBlindSeatID == seat.id,
-                             isBigBlind: model.state.bigBlindSeatID == seat.id)
-                        .position(seatPosition(for: seat, in: geometry.size))
+                    ActionBarView(model: model)
+
+                    HeroZoneView(state: model.state)
+                        .frame(height: geometry.size.height * 0.28)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+
+                if let box = model.raiseBox {
+                    ZStack {
+                        Color.black.opacity(0.45).ignoresSafeArea()
+                            .onTapGesture { model.cancelRaise() }
+                            .accessibilityHidden(true)
+                        RaiseBoxView(model: model, box: box)
+                    }
                 }
 
-                if model.state.phase == .finished { winnerBanner }
+                if let outcome = model.outcome {
+                    EndOverlay(outcome: outcome, onRestart: onRestart)
+                }
             }
         }
-        .background(TablePalette.background.ignoresSafeArea())
-        .task {
-            // Under UI testing the demo is left static (pre-populated) so the
-            // accessibility tree is stable to inspect; otherwise it auto-plays.
-            if !ProcessInfo.processInfo.arguments.contains("-uiTesting") {
-                await model.run()
+        .task { await model.run() }
+    }
+}
+
+// MARK: - Centre: the table itself (community cards, pot, button)
+
+struct TableCenterView: View {
+    let state: TableState
+    let names: [Int: String]
+
+    var body: some View {
+        ZStack {
+            Ellipse()
+                .fill(TablePalette.felt)
+                .overlay(Ellipse().strokeBorder(TablePalette.feltEdge, lineWidth: 3))
+                .accessibilityElement()
+                .accessibilityIdentifier("table.container")
+                .accessibilityLabel(Text(verbatim: uiLocalized("table.a11y")))
+
+            VStack(spacing: 10) {
+                buttonIndicator
+                board
+                pot
             }
-        }
-        // NOTE: no accessibility modifier on this container — doing so would
-        // collapse the whole subtree into one element and hide the seats. The
-        // "table.container" element is the felt (below); children stay exposed.
-    }
-
-    // MARK: - Table felt
-
-    private func feltShape(in size: CGSize) -> some View {
-        Ellipse()
-            .fill(TablePalette.felt)
-            .overlay(Ellipse().strokeBorder(TablePalette.feltEdge, lineWidth: 3))
-            .frame(width: size.width * 0.82, height: size.height * 0.66)
-            .position(x: size.width / 2, y: size.height / 2)
-            .accessibilityElement()
-            .accessibilityIdentifier("table.container")
-            .accessibilityLabel(Text(verbatim: uiLocalized("table.a11y")))
-    }
-
-    // MARK: - Centre: button holder, board, pot
-
-    private var centerArea: some View {
-        VStack(spacing: 12) {
-            buttonIndicator
-            boardView
-            potView
+            .padding(.horizontal, 12)
         }
     }
 
@@ -80,92 +110,49 @@ public struct PokerTableView: View {
             .font(.footnote.weight(.semibold))
             .foregroundStyle(TablePalette.accent)
             .accessibilityIdentifier("table.button")
-            .accessibilityLabel(Text(verbatim: buttonAccessibility))
+            .accessibilityLabel(Text(verbatim: buttonA11y))
     }
 
-    private var boardView: some View {
+    private var board: some View {
         HStack(spacing: 6) {
-            if model.state.board.isEmpty {
+            if state.board.isEmpty {
                 Text(verbatim: uiLocalized("board.empty"))
                     .font(.subheadline)
                     .foregroundStyle(TablePalette.secondaryText)
             } else {
-                ForEach(Array(model.state.board.enumerated()), id: \.offset) { _, card in
+                ForEach(Array(state.board.enumerated()), id: \.offset) { _, card in
                     CardView(face: .up(card))
                 }
             }
         }
-        .padding(10)
+        .padding(8)
         .background(RoundedRectangle(cornerRadius: 12).fill(Color.black.opacity(0.25)))
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("table.board")
-        .accessibilityLabel(Text(verbatim: boardAccessibility))
+        .accessibilityLabel(Text(verbatim: boardA11y))
     }
 
-    private var potView: some View {
-        Text(verbatim: uiLocalized("pot.label", model.state.pot))
+    private var pot: some View {
+        Text(verbatim: uiLocalized("pot.label", state.pot))
             .font(.headline.monospacedDigit())
             .foregroundStyle(TablePalette.primaryText)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 14).padding(.vertical, 6)
             .background(Capsule().fill(Color.black.opacity(0.4)))
             .overlay(Capsule().strokeBorder(TablePalette.accent.opacity(0.7), lineWidth: 1))
             .accessibilityIdentifier("table.pot")
-            .accessibilityLabel(Text(verbatim: uiLocalized("pot.a11y", model.state.pot)))
+            .accessibilityLabel(Text(verbatim: uiLocalized("pot.a11y", state.pot)))
     }
-
-    // MARK: - Winner
-
-    private var winnerBanner: some View {
-        let winnerName = model.state.winnerSeatID.flatMap { model.names[$0] } ?? ""
-        return Text(verbatim: uiLocalized("winner.banner", winnerName))
-            .font(.title2.weight(.bold))
-            .multilineTextAlignment(.center)
-            .foregroundStyle(TablePalette.primaryText)
-            .padding(20)
-            .background(RoundedRectangle(cornerRadius: 16).fill(TablePalette.cardBack))
-            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(TablePalette.accent, lineWidth: 2))
-            .accessibilityIdentifier("table.winner")
-            .accessibilityLabel(Text(verbatim: uiLocalized("winner.a11y", winnerName)))
-            .accessibilityAddTraits(.isHeader)
-    }
-
-    // MARK: - Geometry
-
-    /// Places a seat on the ellipse: bottom, then clockwise. Position 0 sits at
-    /// the bottom (where the human player will be in M1.7).
-    private func seatPosition(for seat: SeatPresentation, in size: CGSize) -> CGPoint {
-        let ordered = model.state.seats.sorted { $0.position < $1.position }
-        let index = ordered.firstIndex { $0.id == seat.id } ?? 0
-        let count = max(ordered.count, 1)
-        let angle = (Double(index) / Double(count)) * 2 * .pi + .pi / 2
-        let cx = size.width / 2
-        let cy = size.height / 2
-        let rx = size.width * 0.36
-        let ry = size.height * 0.34
-        return CGPoint(x: cx + rx * cos(angle), y: cy + ry * sin(angle))
-    }
-
-    // MARK: - Text
 
     private var buttonText: String {
-        guard let id = model.state.buttonSeatID, let name = model.names[id] else {
-            return uiLocalized("button.none")
-        }
+        guard let id = state.buttonSeatID, let name = names[id] else { return uiLocalized("button.none") }
         return uiLocalized("button.holder", name)
     }
-
-    private var buttonAccessibility: String {
-        guard let id = model.state.buttonSeatID, let name = model.names[id] else {
-            return uiLocalized("button.none")
-        }
+    private var buttonA11y: String {
+        guard let id = state.buttonSeatID, let name = names[id] else { return uiLocalized("button.none") }
         return uiLocalized("button.a11y", name)
     }
-
-    private var boardAccessibility: String {
-        model.state.board.isEmpty
-            ? uiLocalized("board.a11y.empty")
-            : uiLocalized("board.a11y", CardText.spoken(model.state.board))
+    private var boardA11y: String {
+        state.board.isEmpty ? uiLocalized("board.a11y.empty") : uiLocalized("board.a11y", CardText.spoken(state.board))
     }
 }
 

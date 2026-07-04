@@ -68,11 +68,18 @@ public struct TableState: Equatable, Sendable {
     public var lastAction: LastAction?
     public var lastStreet: Street?
     public var winnerSeatID: Int?
+    /// The seat id of the human player (its zone is the bottom of the screen).
+    public var heroSeatID: Int?
+    /// The human's own two hole cards this hand (nil until dealt, or after muck).
+    public var heroHole: [Card]?
+    /// The seat currently acting / to act (drives the "turn" highlight).
+    public var activeSeatID: Int?
 
     public init(seats: [SeatPresentation] = [], board: [Card] = [], pot: Int = 0,
                 buttonSeatID: Int? = nil, smallBlindSeatID: Int? = nil, bigBlindSeatID: Int? = nil,
                 handNumber: Int? = nil, phase: TablePhase = .idle, lastAction: LastAction? = nil,
-                lastStreet: Street? = nil, winnerSeatID: Int? = nil) {
+                lastStreet: Street? = nil, winnerSeatID: Int? = nil,
+                heroSeatID: Int? = nil, heroHole: [Card]? = nil, activeSeatID: Int? = nil) {
         self.seats = seats
         self.board = board
         self.pot = pot
@@ -84,10 +91,18 @@ public struct TableState: Equatable, Sendable {
         self.lastAction = lastAction
         self.lastStreet = lastStreet
         self.winnerSeatID = winnerSeatID
+        self.heroSeatID = heroSeatID
+        self.heroHole = heroHole
+        self.activeSeatID = activeSeatID
     }
 
     /// The empty starting state.
     public static let empty = TableState()
 
     public func seat(_ id: Int) -> SeatPresentation? { seats.first { $0.id == id } }
+
+    /// The opponents (everyone but the human), in clockwise order.
+    public var opponents: [SeatPresentation] {
+        seats.filter { $0.id != heroSeatID }.sorted { $0.position < $1.position }
+    }
 }

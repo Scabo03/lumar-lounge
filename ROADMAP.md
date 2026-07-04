@@ -104,15 +104,27 @@ presentazione pura e testabile (`TableReducer`/`TableAnnouncer`, D-017); nessuna
 logica di gioco in UI. 17 unit test + 1 XCUITest di accessibilità.
 **Dipendenze:** M1.4, M1.5. **Note di design:** D-016…D-019 in `CLAUDE.md`.
 
-### ⏭️ M1.7 — Il giocatore umano gioca davvero
-Sostituire uno dei bot al tavolo con il **giocatore umano**: quando tocca a lui,
-la UI mostra i **controlli d'azione** (fold/check/call/bet/raise/all-in con le
-mosse legali già esposte da `BotContext.legal`) e, alla conferma, chiama
-`HumanActionProvider.submit(_:)` — l'infrastruttura di attesa/ripresa esiste già
-da M1.4. Il giocatore vede le **proprie** hole card (iscrizione al flusso come
-`player`, non `spectator`), con accessibilità di prima classe sui controlli.
-È il primo tavolo realmente **giocabile** da una persona.
-**Dipendenze:** M1.4, M1.5, M1.6.
+### ✅ M1.7 — Il giocatore umano gioca davvero
+Il tavolo è **giocabile**. Layout stratificato (umano protagonista in basso, bot
+come badge in alto — D-022); barra azioni Check/Call (dinamica)/Fold/Raise attiva
+solo al turno dell'umano; box **Raise a curva progressiva** con +/−, all-in,
+conferma/annulla e annunci istantanei interrompenti (D-020). L'azione dell'umano
+passa all'`HumanActionProvider` di M1.4; il turno umano si sincronizza col ritmo
+del display via coda MainActor + provider in attesa (D-021). Il giocatore vede le
+**proprie** carte (flusso come `player`). Fine partita al bust dell'umano o dei
+bot, con schermata di esito e restart. Accessibilità di prima classe su ogni
+controllo. 10 unit test (curva) + XCUITest di layout/interazione.
+**Dipendenze:** M1.4, M1.5, M1.6. **Note di design:** D-020…D-022 in `CLAUDE.md`.
+
+### ⏭️ M1.8 — Audio e aptica come consumatori del flusso
+Dare **voce e tatto** al tavolo: il modulo `Audio` (finora solo interfaccia
+`AudioServicing`, M0.1) implementa la riproduzione reale, e un consumatore
+ascolta lo **stesso flusso di eventi** di M1.5 — in parallelo alla UI, senza che
+il driver sappia nulla — per suonare carte, puntate, vincite e per rinforzare
+l'esperienza audio-first. Nessuna nuova logica di gioco; l'audio è descrittivo,
+mappato dagli eventi. È l'ultimo strato sensoriale prima di rifinire il primo
+TestFlight giocabile.
+**Dipendenze:** M1.5, M1.7, M3.1.
 
 ---
 

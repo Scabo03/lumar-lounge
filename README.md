@@ -65,14 +65,26 @@ a **ritmo umano** (le carte del flop escono una alla volta, le azioni scorrono,
 la fine mano respira), mentre il driver resta a velocità di codice. Soprattutto,
 la partita è **interamente accessibile**: ogni evento genera un annuncio VoiceOver
 con pronuncia italiana curata dei termini del poker, così un non vedente segue
-tutto senza perdere nulla rispetto a un vedente. 98 unit test complessivi più un
-XCUITest di accessibilità, tutti verdi; l'app gira sul simulatore.
+tutto senza perdere nulla rispetto a un vedente.
 
-Il prossimo passo rende il tavolo davvero **giocabile da una persona**: quando
-tocca al giocatore umano, la UI mostra i controlli d'azione e li inoltra al
-driver (l'infrastruttura di attesa esiste già). `Audio` resta per ora uno
-scheletro con la sola dichiarazione d'intenti. La rotta completa fino al primo
-gioco giocabile su TestFlight è tracciata in [`ROADMAP.md`](ROADMAP.md).
+Il settimo mattone rende il tavolo **giocabile da una persona**. Il giocatore
+umano entra al tavolo insieme a tre bot, in un layout stratificato dove è
+protagonista in basso con le sue due carte grandi e scoperte, gli avversari sono
+badge astratti in alto, e in mezzo il tavolo con le carte comuni e il pot. Quando
+tocca a lui i tasti — Check/Call, Fold, Raise — si accendono; il Raise apre un box
+per regolare la cifra con una curva progressiva (controllo fine vicino al minimo,
+accelerazione verso l'all-in). La sua azione passa alla UI e da lì
+all'infrastruttura di attesa già pronta nel driver. Tutto resta accessibile con la
+stessa cura: annuncio affidabile del proprio turno, delle proprie carte, e di ogni
+scatto del box Raise. La partita finisce quando l'umano busta o quando battono
+tutti i bot, con una schermata di esito e un tasto per ricominciare. 108 unit test
+più un XCUITest di layout e interazione, tutti verdi; l'app gira sul simulatore.
+
+Il prossimo passo dà al tavolo **voce e tatto**: il modulo `Audio` implementerà
+la riproduzione reale e ascolterà lo stesso flusso di eventi in parallelo alla
+UI, per suonare carte, puntate e vincite senza che il driver sappia nulla. La
+rotta completa fino al primo gioco giocabile su TestFlight è tracciata in
+[`ROADMAP.md`](ROADMAP.md).
 
 > Questa sezione va aggiornata quando si completa un **mattone significativo**
 > (non a ogni commit). I parametri operativi e la pipeline di rilascio, invece,

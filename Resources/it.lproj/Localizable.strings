@@ -101,3 +101,57 @@
 "announce.hand.end.winner" = "Mano conclusa, %1$@ vince %2$d";
 "announce.bust" = "%@ è stato eliminato";
 "announce.session.winner" = "%@ vince la partita";
+
+/* ------------------------------------------------------------------ */
+/* M1.7 — human player, action buttons, raise box, end game */
+"seat.name.you" = "Tu";
+"badge.folded" = "FOLD";
+"seat.a11y.acting" = "sta agendo";
+
+/* Hero (bottom) zone */
+"hero.you" = "Tu";
+"hero.stack.a11y" = "il tuo stack: %d fiche";
+"hero.cards.a11y" = "le tue carte: %@";
+"hero.nocards" = "—";
+"hero.nocards.a11y" = "nessuna carta in mano";
+
+/* Action buttons (visible normal spelling; a11y phonetic) */
+"action.checkcall.idle" = "Check / Call";
+"action.check" = "Check";
+"action.check.a11y" = "cek";
+"action.call" = "Call %d";
+"action.call.a11y" = "col %d";
+"action.fold" = "Fold";
+"action.fold.a11y" = "fold";
+"action.raise" = "Raise";
+"action.raise.a11y" = "reis";
+
+/* Raise box */
+"raise.title.raise" = "Raise";
+"raise.title.bet" = "Bet";
+"raise.minus.a11y" = "meno";
+"raise.plus.a11y" = "più";
+"raise.allin" = "All-in";
+"raise.allin.a11y" = "ol-in";
+"raise.value.a11y" = "cifra: %d fiche";
+"raise.cancel" = "Annulla";
+"raise.cancel.a11y" = "annulla";
+"raise.confirm.to" = "Raise a %d";
+"raise.confirm.a11y" = "conferma reis a %d fiche";
+"raise.confirm.allin.a11y" = "conferma ol-in di %d fiche";
+
+/* Turn + raise announcements */
+"announce.hero.cards" = "le tue carte: %@";
+"announce.your.turn.call" = "il tuo turno. Il pot è di %1$d, per chiamare servono %2$d";
+"announce.your.turn.check" = "il tuo turno. Il pot è di %d, puoi fare cek";
+"announce.raise.value" = "%d fiche";
+"announce.raise.allin" = "ol-in, %d fiche";
+"announce.pot.you" = "vinci il pot di %d fiche";
+"announce.you.won" = "hai vinto la partita";
+"announce.you.lost" = "hai perso la partita";
+
+/* End of game */
+"endgame.won" = "Hai vinto!";
+"endgame.lost" = "Hai perso";
+"endgame.continue" = "Continua";
+"endgame.restart" = "Ricomincia";

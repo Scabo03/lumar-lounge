@@ -90,6 +90,17 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     nasconde gli identifier dei figli. Gli **identifier vanno sui leaf**.
   - La logica di presentazione (riduzione evento→stato, formattazione testo) va
     tenuta **pura** e fuori dalle viste SwiftUI, per essere unit-testabile.
+  - **Input numerico a incremento con annuncio istantaneo (pattern riusabile,
+    emerso in M1.7 col box Raise, D-020).** Per un controllo che regola una cifra
+    con `+`/`−` (rilancio a poker, ma anche puntata a blackjack/roulette in
+    futuro): (a) la **curva di incremento è una funzione pura** separata e
+    testabile; (b) lo stato tiene un **conteggio di step** come sorgente di
+    verità, col valore derivato e clampato a un intervallo legale; (c) ogni
+    pressione posta **subito** un annuncio VoiceOver del nuovo valore con
+    **priorità alta interrompente**, così una raffica di clic annuncia solo
+    l'ultimo valore senza accodarsi; (d) ordine di swipe esplicito
+    (`−`, valore, `+`, all-in, poi conferma/annulla) e ogni elemento con
+    identifier e label fonetica. Riusare questa forma per input analoghi.
 
 ## 5. Testabilità
 

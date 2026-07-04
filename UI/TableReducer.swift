@@ -42,6 +42,8 @@ public enum TableReducer {
             next.lastAction = nil
             next.lastStreet = nil
             next.winnerSeatID = nil
+            next.heroHole = nil
+            next.activeSeatID = nil
             for snapshot in seats {
                 mutate(&next, snapshot.seatID) {
                     $0.chips = snapshot.chips
@@ -63,14 +65,17 @@ public enum TableReducer {
         case let .holeCardsDealt(seatID):
             mutate(&next, seatID) { $0.hasCards = true }
 
-        case .privateHoleCards:
-            break // a spectator never receives these
+        case let .privateHoleCards(seatID, cards):
+            // Only the human subscribes as a player, so this arrives only for the
+            // hero — shown large and face-up in the bottom zone.
+            if seatID == next.heroSeatID { next.heroHole = cards }
 
         case let .playerActed(seatID, action):
             next.lastAction = LastAction(seatID: seatID, action: action)
             switch action {
             case .folded:
                 mutate(&next, seatID) { $0.isFolded = true; $0.hasCards = false }
+                if seatID == next.heroSeatID { next.heroHole = nil } // muck
             case .checked:
                 break
             case let .called(amount, isAllIn):

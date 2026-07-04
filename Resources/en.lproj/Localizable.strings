@@ -101,3 +101,57 @@
 "announce.hand.end.winner" = "Hand over, %1$@ wins %2$d";
 "announce.bust" = "%@ is out";
 "announce.session.winner" = "%@ wins the game";
+
+/* ------------------------------------------------------------------ */
+/* M1.7 — human player, action buttons, raise box, end game */
+"seat.name.you" = "You";
+"badge.folded" = "FOLD";
+"seat.a11y.acting" = "acting";
+
+/* Hero (bottom) zone */
+"hero.you" = "You";
+"hero.stack.a11y" = "your stack: %d chips";
+"hero.cards.a11y" = "your cards: %@";
+"hero.nocards" = "—";
+"hero.nocards.a11y" = "no cards in hand";
+
+/* Action buttons */
+"action.checkcall.idle" = "Check / Call";
+"action.check" = "Check";
+"action.check.a11y" = "check";
+"action.call" = "Call %d";
+"action.call.a11y" = "call %d";
+"action.fold" = "Fold";
+"action.fold.a11y" = "fold";
+"action.raise" = "Raise";
+"action.raise.a11y" = "raise";
+
+/* Raise box */
+"raise.title.raise" = "Raise";
+"raise.title.bet" = "Bet";
+"raise.minus.a11y" = "minus";
+"raise.plus.a11y" = "plus";
+"raise.allin" = "All-in";
+"raise.allin.a11y" = "all-in";
+"raise.value.a11y" = "amount: %d chips";
+"raise.cancel" = "Cancel";
+"raise.cancel.a11y" = "cancel";
+"raise.confirm.to" = "Raise to %d";
+"raise.confirm.a11y" = "confirm raise to %d chips";
+"raise.confirm.allin.a11y" = "confirm all-in of %d chips";
+
+/* Turn + raise announcements */
+"announce.hero.cards" = "your cards: %@";
+"announce.your.turn.call" = "your turn. The pot is %1$d, to call you need %2$d";
+"announce.your.turn.check" = "your turn. The pot is %d, you can check";
+"announce.raise.value" = "%d chips";
+"announce.raise.allin" = "all-in, %d chips";
+"announce.pot.you" = "you win the pot of %d chips";
+"announce.you.won" = "you won the game";
+"announce.you.lost" = "you lost the game";
+
+/* End of game */
+"endgame.won" = "You won!";
+"endgame.lost" = "You lost";
+"endgame.continue" = "Continue";
+"endgame.restart" = "Restart";

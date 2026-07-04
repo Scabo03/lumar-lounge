@@ -15,9 +15,18 @@ struct CardView: View {
     }
 
     let face: Face
+    private let big: Bool
 
-    @ScaledMetric(relativeTo: .title3) private var width: CGFloat = 40
-    @ScaledMetric(relativeTo: .title3) private var height: CGFloat = 56
+    @ScaledMetric private var width: CGFloat
+    @ScaledMetric private var height: CGFloat
+
+    /// - Parameter big: a large variant for the human's own hole cards.
+    init(face: Face, big: Bool = false) {
+        self.face = face
+        self.big = big
+        _width = ScaledMetric(wrappedValue: big ? 78 : 40, relativeTo: .title3)
+        _height = ScaledMetric(wrappedValue: big ? 108 : 56, relativeTo: .title3)
+    }
 
     var body: some View {
         ZStack {
@@ -27,7 +36,7 @@ struct CardView: View {
                 .strokeBorder(Color.black.opacity(0.25), lineWidth: 1)
             if case let .up(card) = face {
                 Text(CardText.symbol(card))
-                    .font(.title3.weight(.bold))
+                    .font((big ? Font.largeTitle : Font.title3).weight(.bold))
                     .minimumScaleFactor(0.5)
                     .foregroundStyle(TablePalette.suitColor(card.suit))
                     .padding(2)

@@ -35,14 +35,16 @@ nei file collegati.
 - **`UI` M1.6:** prima schermata. `PokerTableView` ascolta il flusso pubblico e
   mostra una sessione tra 3 bot a **ritmo umano** (D-018), narrata a VoiceOver con
   pronuncia fonetica italiana (D-016), logica di presentazione pura e testabile
-  (D-017), alto contrasto + Dynamic Type (D-019). 98 unit test verdi
-  (68 GameEngine + 13 GameWorld + 17 UI) + 1 XCUITest di accessibilità.
+  (D-017), alto contrasto + Dynamic Type (D-019).
+- **`UI` M1.7:** tavolo **giocabile** dal giocatore umano. Layout stratificato
+  (D-022), barra azioni attiva al proprio turno, box Raise a curva progressiva
+  (D-020); il turno umano usa l'`HumanActionProvider` di M1.4, sincronizzato col
+  display via coda MainActor (D-021). 108 unit test verdi
+  (68 GameEngine + 13 GameWorld + 27 UI) + 1 XCUITest di layout/interazione.
 
-**Prossimo passo.** Mattone **M1.7** — il **giocatore umano** gioca davvero:
-controlli d'azione nella UI quando tocca a lui, che chiamano
-`HumanActionProvider.submit(_:)` (attesa/ripresa già pronta da M1.4); iscrizione
-al flusso come `player` per vedere le proprie carte. Dettaglio in
-[`ROADMAP.md`](ROADMAP.md).
+**Prossimo passo.** Mattone **M1.8** — **Audio** come consumatore parallelo dello
+stesso flusso di eventi (M1.5): implementare `AudioServicing` e mappare gli eventi
+a suoni/aptica, senza toccare driver né UI. Dettaglio in [`ROADMAP.md`](ROADMAP.md).
 
 **Stato completo, sempre aggiornato:** sezione *Stato di sviluppo* in
 [`README.md`](README.md).
@@ -316,4 +318,42 @@ persino il solo `.accessibilityIdentifier`) sul contenitore esterno
 **collassa l'intero sottoalbero in un unico elemento**, nascondendo gli
 identifier dei figli (seat/board/pot). Regola: **niente modificatori di
 accessibilità sul contenitore grande**; gli identifier vanno sui **leaf** (e
-l'elemento "table.container" è il feltro, reso elemento a sé).
+l'elemento "table.container" è il feltro, reso elemento a sé). *Ribadito in M1.7:
+vale per OGNI zona-contenitore (opponents/hero/action bar) — l'identifier sta
+sui leaf (`opponent.N`, `hero.cards`, `action.*`), mai sul gruppo.*
+
+### D-020 — Box Raise a curva progressiva (sessione M1.7)
+Il rilancio si regola con una **curva progressiva** (`RaiseCurve`, pura e
+testabile): +10×3, +25×3, +50×2, +100×2, poi +250 a clic, fino allo stack.
+Controllo fine vicino al minimo, accelerazione verso l'all-in. Lo stato del box
+(`RaiseBoxState`) tiene un **conteggio di clic** come sorgente di verità; il
+valore è derivato e clampato a `[minRaiseTo, maxRaiseTo]` (da `legalActions`).
+L'all-in salta al conteggio che raggiunge il massimo, così "−" da all-in scende
+di uno step. **Accessibilità:** ogni `+/−` e l'all-in postano un annuncio con
+**priorità alta interrompente** (`AttributedString.accessibilitySpeechAnnouncementPriority
+= .high`), così una raffica di clic annuncia solo l'ultimo valore senza
+accodarsi. Pattern candidato a diventare convenzione riusabile (blackjack,
+roulette) — vedi `CONVENTIONS.md`.
+
+### D-021 — Sincronizzazione del turno umano col display (sessione M1.7)
+Il seat umano usa l'`HumanActionProvider` di M1.4 (suspend/`submit`); nessuna
+logica nuova in `GameWorld`. Il problema: il produttore (a velocità di codice) si
+sospende sul turno umano *dopo* aver emesso gli eventi pre-turno, mentre il
+consumatore li mostra ancora a ritmo umano. Soluzione **tutta in UI**: il flusso
+è **rilanciato in una coda su `MainActor`** posseduta dal view model; i pulsanti
+appaiono quando la coda è **svuotata** *e* il provider è in attesa
+(`pendingContext != nil`) — cioè quando il display ha raggiunto il punto di
+decisione. Alla conferma la UI chiama `submit`, il produttore riprende ed emette
+l'azione dell'umano nella coda. **Nota:** qui è stato corretto un bug latente di
+M1.6 — `HandGate` ora viene **rilasciato su `handEnded`** (prima non lo era mai;
+in M1.6 non emergeva perché i test UI non avviavano la sessione).
+
+### D-022 — Layout stratificato del tavolo giocabile (sessione M1.7)
+Il tavolo passa dall'ellisse centrata di M1.6 a un **layout a fasce** più fedele
+a un'app di poker mobile: **umano protagonista in basso** (due carte grandi
+scoperte + stack, nessun bollino ridondante), **barra azioni** sopra, **tavolo**
+al centro (solo carte comuni, pot, button — **nessuna carta coperta degli
+avversari sul tavolo**, realisticamente le tengono in mano), **avversari come
+badge in alto** (nome, stack, stato, evidenza "di turno"). Resta il principio:
+la UI **non decide**, raccoglie input e lo inoltra. Fine partita al bust
+dell'umano o dei bot, con esito (`won`/`lost`) e restart via `.id()`.

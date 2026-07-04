@@ -17,11 +17,21 @@ public struct Announcer: Sendable {
 
     /// Announces a message via VoiceOver (no-op if VoiceOver isn't running, or
     /// on platforms without UIKit).
+    ///
+    /// - Parameter interrupting: when `true`, the announcement is posted at high
+    ///   priority so it interrupts a pending one — used for the rapid +/- of the
+    ///   Raise box, where only the latest value matters (D-020).
     @MainActor
-    public func announce(_ message: String) {
+    public func announce(_ message: String, interrupting: Bool = false) {
         #if canImport(UIKit)
         guard UIAccessibility.isVoiceOverRunning else { return }
-        UIAccessibility.post(notification: .announcement, argument: message)
+        if interrupting {
+            var announcement = AttributedString(message)
+            announcement.accessibilitySpeechAnnouncementPriority = .high
+            UIAccessibility.post(notification: .announcement, argument: announcement)
+        } else {
+            UIAccessibility.post(notification: .announcement, argument: message)
+        }
         #endif
     }
 

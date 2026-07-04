@@ -21,46 +21,58 @@ La UI **ascolta e mostra, non decide**: non contiene logica di gioco (quella sta
 in `GameEngine`/`GameWorld`). Consuma il flusso di eventi del `SessionDriver`
 (M1.5) e ne riflette lo stato.
 
-## Cosa contiene oggi (M1.6 — prima schermata: tavolo dimostrativo)
+## Cosa contiene oggi (M1.7 — tavolo giocabile dal giocatore umano)
 
-Una schermata `PokerTableView` che si iscrive al **flusso pubblico** del
-`SessionDriver` e mostra una sessione di Texas Hold'em tra **tre bot** (le
-personalità di M1.3) che si svolge dall'inizio alla fine, a **ritmo umano** e
-interamente **narrata a VoiceOver**.
+`PokerTableView` è ora un **tavolo stratificato e giocabile**: il giocatore umano
+è protagonista in basso, i tre bot (personalità di M1.3) sono astratti in alto.
+
+```
+ opponents (badge: nome, stack, stato, "di turno")     ← fascia alta
+ tavolo: carte comuni · pot · button                   ← centro
+ Check/Call    Fold    Raise                            ← barra azioni
+ 🂡 🂮   le tue carte + stack                            ← fascia bassa (hero)
+```
+
+Quando tocca all'umano i tasti si accendono; la sua azione passa alla UI e poi
+all'`HumanActionProvider` di M1.4 (`submit`). Il **layout stratificato** (D-022),
+la **sincronizzazione del turno umano** (D-021) e il **box Raise a curva
+progressiva** (D-020) sono le novità di M1.7.
 
 | Tipo | Ruolo |
 |---|---|
-| `PokerTableView` | La schermata: tavolo ovale ad alto contrasto, seat attorno, board centrale, pot, indicatore di button, banner del vincitore. Pura ascoltatrice. |
-| `TableViewModel` | `@MainActor ObservableObject` che possiede la sessione demo, consuma il flusso a ritmo umano (sleep tra eventi; flop una carta alla volta), riduce in `TableState` e posta gli annunci VoiceOver. |
-| `TableState` / `TableReducer` | Lo stato di presentazione (valore puro) e la **riduzione pura** `evento → stato`. Niente SwiftUI, niente localizzazione, niente logica di gioco → testabile. |
-| `TableAnnouncer` / `SpokenEvent` | Mappa **pura** evento → momento narrabile (`spoken(for:)`, testabile) + resa localizzata fonetica (`text(for:)`). |
-| `Announcer` | Posta gli annunci via `UIAccessibility`, protetto da `#if canImport(UIKit)` (no-op su macOS host, così il modulo compila per `swift test`). |
-| `HandGate` | Gate async che tiene il produttore (a velocità di codice) al più **una mano avanti** rispetto al consumatore (a ritmo umano). |
-| `SeatView`, `CardView`, `TablePalette`, `Localization` | Sottoviste, palette ad alto contrasto in codice, e helper di localizzazione + naming carte. |
+| `PokerTableView` / `TableScreen` / `TableCenterView` | La schermata stratificata; il centro mostra solo carte comuni, pot e button. `.id()` per il restart a fine partita. |
+| `OpponentBadgesView` | I tre bot in alto: badge con nome, stack, stato (di turno/folded/all-in/bustato). Nessuna carta coperta sul tavolo. |
+| `HeroZoneView` | La fascia bassa: le due carte del giocatore, grandi e scoperte, + il suo stack. Nessun bollino ridondante. |
+| `ActionBarView` | I tasti Check/Call (testo dinamico), Fold, Raise — attivi solo al turno dell'umano; il box Raise; l'overlay di fine partita. |
+| `RaiseCurve` / `RaiseBoxState` | La **curva progressiva** del rilancio (pura, testabile): fine vicino al minimo, accelerazione verso l'all-in. |
+| `TableViewModel` | `@MainActor ObservableObject`: possiede la sessione (umano + 3 bot), consuma il flusso a ritmo umano, gestisce il turno umano e il box Raise, e l'esito (`won`/`lost`). |
+| `TableState` / `TableReducer` | Stato di presentazione (valore) + riduzione **pura** `evento → stato` (ora anche le carte private dell'umano). Testabile. |
+| `TableAnnouncer`, `Announcer`, `HandGate`, `SeatView`, `CardView`, `TablePalette`, `Localization` | Narrazione fonetica, annunci (con priorità interrompente per il box Raise), gate produttore/consumatore, sottoviste e helper. |
 
-Punti fermi: **ritmo umano nella UI** (il driver resta a velocità di codice come
-da M1.5), **Dynamic Type** ovunque, **alto contrasto**, **carte coperte** durante
-la mano (privacy) e rivelate solo allo showdown (come una vera vista da
-spettatore), ogni seat un unico elemento accessibile con riassunto parlato.
+Punti fermi: **ritmo umano nella UI**; **Dynamic Type** e **alto contrasto**
+ovunque; annunci VoiceOver affidabili (proprio turno, proprie carte, ogni
+`+/−` del box Raise con priorità interrompente); accessibilità di prima classe
+su **ogni** nuovo controllo (identifier, label fonetica, stato attivo/disattivo
+riflesso anche per VoiceOver).
 
 ## Cosa NON contiene ancora (per scelta)
 
-- **Nessuna interazione umana**: il giocatore che gioca davvero arriva con M1.7
-  (l'infrastruttura `HumanActionProvider` esiste già in `GameWorld`).
 - **Nessun audio**: arriverà come consumatore parallelo del flusso, in un mattone
   dedicato.
-- **Nessuna navigazione né altre schermate**, nessun menù, casinò o NPC: qui c'è
-  solo il tavolo dimostrativo.
-- **Nessuna persistenza.** Nessuna estetica ricca di casinò: chiarezza prima di
-  tutto.
-- **Nessuna logica di gioco** e nessuna modifica a `GameEngine`/`SessionDriver`.
+- **Nessuna navigazione né altre schermate**, nessun menù, pausa, impostazioni,
+  casinò o NPC: c'è solo il tavolo.
+- **Nessuna statistica/cronologia mani**, nessuna persistenza, nessuna
+  progressione o gettoni.
+- **Nessuna logica di gioco** e nessuna modifica a `GameEngine`/`SessionDriver`:
+  la UI raccoglie l'input e lo inoltra, poi ascolta il flusso come in M1.6.
 
 ## Test
 
-- `Tests/UITests/` (`swift test`, 17 test): riduzione pura dello stato
-  (`TableReducerTests`) e mappatura evento→speech (`TableAnnouncerTests` +
-  formattazione simboli carta). Niente localizzazione/SwiftUI: logica pura.
-- `LumarLoungeUITests/` (XCUITest sul simulatore): verifica che la struttura di
-  accessibilità sia in piedi — `table.container`, i tre `seat.N`, `table.board`,
-  `table.pot`, `table.button` esistono e sono raggiungibili per identifier. Usa
-  l'argomento di lancio `-uiTesting` per tenere il tavolo statico.
+- `Tests/UITests/` (`swift test`): riduzione pura dello stato
+  (`TableReducerTests`), mappatura evento→speech (`TableAnnouncerTests`), e la
+  **curva del rilancio** (`RaiseCurveTests`). Logica pura, niente SwiftUI.
+- `LumarLoungeUITests/` (XCUITest sul simulatore): il layout stratificato è
+  accessibile (`table.container`, `opponent.N`, `hero.cards`, i tasti azione);
+  i tasti sono attivi al turno dell'umano e disabilitati al turno di un bot; il
+  box Raise si apre coi quattro controlli (minus, value, plus, all-in) + conferma
+  e annulla e si chiude; e una sequenza minima di gioco prosegue end-to-end.
