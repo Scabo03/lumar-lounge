@@ -4,23 +4,12 @@ import GameWorld
 import GameEngine
 import Audio
 
-/// Records what the audio layer was asked to do, for the integration test.
-private final class RecordingAudioService: AudioServicing {
-    var ambient: [SoundID] = []
-    var played: [(id: SoundID, category: SoundCategory)] = []
-    var stoppedAll = 0
-    func startAmbient(_ id: SoundID) { ambient.append(id) }
-    func play(_ id: SoundID, category: SoundCategory) { played.append((id, category)) }
-    func stopAll() { stoppedAll += 1 }
-    func setMasterVolume(_ volume: Float) {}
-    func setMuted(_ muted: Bool) {}
-}
-
+/// The pure NON-spoken layer (D-029): physical table sounds and effects only —
+/// never a croupier voice (that is the conductor's job).
 final class AudioScoreTests: XCTestCase {
 
-    private func cues(_ payload: EventPayload, voices: [Int: BotVoiceProfile] = [:], seed: UInt64 = 1) -> [SoundCue] {
-        var rng = SeededGenerator(seed: seed)
-        return AudioScore.cues(for: payload, heroSeatID: 0, voices: voices, rng: &rng)
+    private func cues(_ payload: EventPayload) -> [SoundCue] {
+        AudioScore.cues(for: payload, heroSeatID: 0)
     }
 
     private func handBegan() -> EventPayload {
@@ -28,53 +17,31 @@ final class AudioScoreTests: XCTestCase {
                    smallBlind: 10, bigBlind: 20, seats: [])
     }
 
-    // MARK: - Pure mapping per event type
-
-    func testSessionBeganStartsAmbient() {
-        XCTAssertEqual(cues(.sessionBegan(seats: [], smallBlind: 10, bigBlind: 20)),
-                       [.startAmbient(SoundCatalog.ambLoungeCalm1)])
+    private func hasCroupier(_ cues: [SoundCue]) -> Bool {
+        cues.contains { if case .play(_, .croupier) = $0 { return true }; return false }
     }
 
-    func testHandBeganShufflesAndAnnounces() {
-        XCTAssertEqual(cues(handBegan()),
-                       [.play(SoundCatalog.tblShuffle, .table), .play(SoundCatalog.voHandStart, .croupier)])
+    func testHandBeganShuffles() {
+        XCTAssertEqual(cues(handBegan()), [.play(SoundCatalog.tblShuffle, .table)])
     }
 
-    func testBlindsPlayChipsAndCroupier() {
+    func testBlindsAndHoleCardsArePhysicalOnly() {
         XCTAssertEqual(cues(.blindPosted(seatID: 1, blind: .small, amount: 10, isAllIn: false)),
-                       [.play(SoundCatalog.tblChipsSingle, .table), .play(SoundCatalog.voBlindSmall, .croupier)])
-        XCTAssertEqual(cues(.blindPosted(seatID: 2, blind: .big, amount: 20, isAllIn: false)),
-                       [.play(SoundCatalog.tblChipsSingle, .table), .play(SoundCatalog.voBlindBig, .croupier)])
-    }
-
-    func testHoleCardsDealt() {
+                       [.play(SoundCatalog.tblChipsSingle, .table)])
         XCTAssertEqual(cues(.holeCardsDealt(seatID: 1)), [.play(SoundCatalog.tblCardDealSingle, .table)])
     }
 
-    func testStreets() {
-        XCTAssertEqual(cues(.streetOpened(street: .flop, communityCards: [])),
-                       [.play(SoundCatalog.tblCardsDealFlop, .table), .play(SoundCatalog.voFlop, .croupier)])
-        XCTAssertEqual(cues(.streetOpened(street: .turn, communityCards: [])),
-                       [.play(SoundCatalog.tblCardFlipSingle, .table), .play(SoundCatalog.voTurn, .croupier)])
-        XCTAssertEqual(cues(.streetOpened(street: .river, communityCards: [])),
-                       [.play(SoundCatalog.tblCardFlipSingle, .table), .play(SoundCatalog.voRiver, .croupier)])
+    func testStreetsArePhysicalOnly() {
+        XCTAssertEqual(cues(.streetOpened(street: .flop, communityCards: [])), [.play(SoundCatalog.tblCardsDealFlop, .table)])
+        XCTAssertEqual(cues(.streetOpened(street: .turn, communityCards: [])), [.play(SoundCatalog.tblCardFlipSingle, .table)])
+        XCTAssertEqual(cues(.streetOpened(street: .river, communityCards: [])), [.play(SoundCatalog.tblCardFlipSingle, .table)])
     }
 
-    // Strategy C (D-028): player actions carry no croupier voice — only physical
-    // table sounds (and, occasionally, a bot's own voice, tested separately).
-    func testActionsCarryNoCroupierVoice() {
-        XCTAssertEqual(cues(.playerActed(seatID: 1, action: .folded)),
-                       [.play(SoundCatalog.tblMuck, .table)])
+    func testActionsArePhysicalOnly() {
+        XCTAssertEqual(cues(.playerActed(seatID: 1, action: .folded)), [.play(SoundCatalog.tblMuck, .table)])
         XCTAssertEqual(cues(.playerActed(seatID: 1, action: .checked)), [])
         XCTAssertEqual(cues(.playerActed(seatID: 1, action: .called(amount: 20, isAllIn: false))),
                        [.play(SoundCatalog.tblChipsStack, .table)])
-        let actions: [ActedAction] = [.folded, .checked, .called(amount: 20, isAllIn: false),
-                                      .bet(to: 40, amount: 40, isAllIn: false),
-                                      .raised(to: 60, amount: 60, isAllIn: false)]
-        for action in actions {
-            XCTAssertFalse(hasCroupier(cues(.playerActed(seatID: 1, action: action))),
-                           "action \(action) must not trigger a croupier voice")
-        }
     }
 
     func testAllInPlaysBigChipsAndDramaticEffectWithoutCroupier() {
@@ -84,26 +51,11 @@ final class AudioScoreTests: XCTestCase {
         XCTAssertFalse(hasCroupier(result))
     }
 
-    // The croupier always voices the institutional moments — the mapping has no
-    // VoiceOver input at all, so it is unconditional (D-028: croupier always plays).
-    func testInstitutionalEventsAlwaysCarryCroupierVoice() {
-        XCTAssertTrue(hasCroupier(cues(handBegan())))
-        XCTAssertTrue(hasCroupier(cues(.blindPosted(seatID: 1, blind: .small, amount: 10, isAllIn: false))))
-        XCTAssertTrue(hasCroupier(cues(.streetOpened(street: .flop, communityCards: []))))
-        XCTAssertTrue(hasCroupier(cues(.streetOpened(street: .turn, communityCards: []))))
-        XCTAssertTrue(hasCroupier(cues(.streetOpened(street: .river, communityCards: []))))
-        XCTAssertTrue(hasCroupier(cues(.potAwarded(potIndex: 0, amount: 100, winnerSeatIDs: [1]))))
-    }
-
-    private func hasCroupier(_ cues: [SoundCue]) -> Bool {
-        cues.contains { if case .play(_, .croupier) = $0 { return true }; return false }
-    }
-
-    func testPotAwardedAndSplit() {
+    func testShowdownAndPotArePhysicalOnly() {
+        XCTAssertEqual(cues(.handShown(seatID: 1, holeCards: [], category: .pair, bestFive: [])),
+                       [.play(SoundCatalog.tblCardFlipSingle, .table)])
         XCTAssertEqual(cues(.potAwarded(potIndex: 0, amount: 100, winnerSeatIDs: [1])),
-                       [.play(SoundCatalog.tblChipsPotCollect, .table), .play(SoundCatalog.voPotAwarded, .croupier)])
-        XCTAssertEqual(cues(.potAwarded(potIndex: 0, amount: 100, winnerSeatIDs: [1, 2])),
-                       [.play(SoundCatalog.tblChipsPotCollect, .table), .play(SoundCatalog.voSplitPot, .croupier)])
+                       [.play(SoundCatalog.tblChipsPotCollect, .table)])
     }
 
     func testBustSounds() {
@@ -111,51 +63,16 @@ final class AudioScoreTests: XCTestCase {
         XCTAssertEqual(cues(.playerBusted(playerID: 1)), [.play(SoundCatalog.fxBustPlayer, .effect)])
     }
 
-    func testHandEndedAndSessionEndedAreSilentInTheMapping() {
-        XCTAssertEqual(cues(.handEnded(handNumber: 0, wentToShowdown: true, board: [], payouts: [:], chips: [:])), [])
-        XCTAssertEqual(cues(.sessionEnded(reason: .stopped)), [])
-    }
-
-    // MARK: - Determinism
-
-    func testProbabilisticCuesAreDeterministic() {
-        let voices = [1: BotVoiceProfile(assertive: SoundCatalog.vobNoviceExcited, letdown: SoundCatalog.vobNoviceDisappointed)]
-        let event = EventPayload.playerActed(seatID: 1, action: .raised(to: 60, amount: 60, isAllIn: false))
-        XCTAssertEqual(cues(event, voices: voices, seed: 99), cues(event, voices: voices, seed: 99))
-    }
-
-    // MARK: - Integration: the audio consumer reacts to the whole flow
-
-    @MainActor
-    func testAudioDirectorReactsToWholeSession() async throws {
-        let recorder = RecordingAudioService()
-        let voices = [
-            0: BotVoiceProfile(assertive: SoundCatalog.vobNoviceExcited, letdown: SoundCatalog.vobNoviceDisappointed),
-            1: BotVoiceProfile(assertive: SoundCatalog.vobRockGrunt, letdown: SoundCatalog.vobRockGrunt),
-            2: BotVoiceProfile(assertive: SoundCatalog.vobAggressorConfident, letdown: SoundCatalog.vobAggressorBluffGiveaway),
+    func testNoCroupierVoiceInThePhysicalLayerEver() {
+        let events: [EventPayload] = [
+            handBegan(),
+            .blindPosted(seatID: 1, blind: .small, amount: 10, isAllIn: false),
+            .streetOpened(street: .flop, communityCards: []),
+            .handShown(seatID: 1, holeCards: [], category: .pair, bestFive: []),
+            .potAwarded(potIndex: 0, amount: 100, winnerSeatIDs: [1]),
+            .playerActed(seatID: 1, action: .raised(to: 60, amount: 60, isAllIn: false)),
+            .playerActed(seatID: 1, action: .raised(to: 300, amount: 300, isAllIn: true)),
         ]
-        let director = AudioDirector(audio: recorder, heroSeatID: 0, voices: voices, seed: 7, fastMode: true)
-
-        func bot(_ p: Personality, _ s: UInt64) -> BotActionProvider {
-            BotActionProvider(HeuristicBot(personality: p, seed: s, equitySamples: 30))
-        }
-        let driver = SessionDriver(capacity: 3, seats: [
-            SeatAssignment(position: 0, playerID: 0, chips: 300, provider: bot(.eagerNovice, 1)),
-            SeatAssignment(position: 1, playerID: 1, chips: 300, provider: bot(.conservativeRock, 2)),
-            SeatAssignment(position: 2, playerID: 2, chips: 300, provider: bot(.hotAggressor, 3)),
-        ], buttonPosition: 0, smallBlind: 10, bigBlind: 20, seed: 42)
-
-        let stream = await driver.events(as: .spectator)
-        _ = try await driver.run(maxHands: 6)
-        await driver.endSession()
-
-        var handled = 0
-        for await event in stream { director.handle(event.payload); handled += 1 }
-
-        XCTAssertGreaterThan(handled, 0)
-        XCTAssertEqual(recorder.ambient, [SoundCatalog.ambLoungeCalm1])
-        XCTAssertTrue(recorder.played.contains { $0.category == .table })
-        XCTAssertTrue(recorder.played.contains { $0.category == .croupier })
-        XCTAssertGreaterThan(recorder.stoppedAll, 0)
+        for e in events { XCTAssertFalse(hasCroupier(cues(e)), "\(e) must not emit a croupier voice") }
     }
 }

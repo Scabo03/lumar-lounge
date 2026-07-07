@@ -15,6 +15,15 @@ public struct Announcer: Sendable {
 
     public init() {}
 
+    /// Whether VoiceOver is currently active (always false without UIKit).
+    public var isVoiceOverRunning: Bool {
+        #if canImport(UIKit)
+        return UIAccessibility.isVoiceOverRunning
+        #else
+        return false
+        #endif
+    }
+
     /// Announces a message via VoiceOver (no-op if VoiceOver isn't running, or
     /// on platforms without UIKit).
     ///

@@ -42,10 +42,11 @@ nei file collegati.
   display via coda MainActor (D-021).
 - **`Audio` M1.8:** modulo audio pieno (`AudioEngine`/AVFoundation), **neutro**;
   mappatura evento→suoni (`AudioScore`) + consumatore parallelo (`AudioDirector`)
-  in `UI` (D-023); coordinamento audio↔VoiceOver a **domini separati** (D-028, che
-  supera la strategia di silenziamento D-024 dopo il primo test reale). **51 mp3 integrati** in
+  in `UI` (D-023); coordinamento audio↔VoiceOver a **domini separati** con mappatura
+  autorevole evento→sorgente vocale e `SpeechConductor` seriale (D-028→**D-029**, che
+  superano il silenziamento D-024 dopo i test reali). **51 mp3 integrati** in
   `Resources/Audio/` (2 del catalogo non ancora consegnati → silenziosi, D-025).
-  131 unit test verdi + 1 XCUITest.
+  132 unit test verdi + 1 XCUITest.
 
 **🏁 Fase 1 (M1) completa — il gioco base gira end-to-end con audio ed è pronto
 per un primo TestFlight** (motore + bot + sessione + flusso + UI accessibile +
@@ -523,3 +524,56 @@ niente concorrenza, **domini separati**.
 **Vincoli rispettati:** nessuna modifica a `GameEngine`/`SessionDriver`/flusso M1.5;
 cambi solo in `UI` (annunci) e `Audio` (riproduzione/coordinamento); nessuna nuova
 dipendenza. **D-024 è superata da questa voce.**
+
+### D-029 — Mappatura autorevole evento→sorgente vocale + fix "disco rotto" (secondo test reale, raffina D-028)
+Il secondo test su iPhone ha mostrato che D-028, pur giusta nei principi, era ancora
+approssimativa: annunci VoiceOver ancora sovrapposti, e soprattutto **voci ripetute
+in loop** (in particolare `vo_it_pot_awarded` 3-4 volte back-to-back), e VoiceOver
+che sintetizzava cose per cui **esiste già un mp3** (grave: "è il tuo turno" a sintesi
+invece di `vo_it_your_turn.mp3`). Radice: la mappatura evento→mp3 e evento→sintesi
+erano ancora costruite **separatamente**, senza una fonte di verità unica.
+**Nuova architettura — una sola tabella, due layer parlanti disgiunti:**
+- **`SpeechMap` (puro, fonte di verità, D-029):** `plan(for:heroSeatID:names:)`
+  ritorna per ogni evento un `SpeechPlan` = (croupier `SoundID?`, `SynthLine?`).
+  È la tabella autorevole: chi parla ogni momento. Reso in stringa da `text(for:)`
+  (testabile senza localizzazione). Ha sostituito `TableAnnouncer`.
+- **`SpeechConductor` (MainActor, seriale):** unico proprietario dei DUE sistemi
+  parlanti (mp3 croupier + sintesi VoiceOver). Riproduce un item per volta: prima
+  l'mp3 croupier (attesa **completion reale** via `AVAudioPlayerDelegate`, non un
+  ritardo fisso), poi la sintesi. Così "flop" (mp3) → carte del flop (sintesi) è in
+  ordine garantito, e i due non si sovrappongono mai.
+- **Fix del disco rotto — causa reale trovata:** `SessionDriver` emette **un
+  `potAwarded` per pot** (`result.pots.enumerated()`); una mano con side pot ne
+  emette 3-4 (verificato: nel log dei suoni anche una mano semplice ne emette 2).
+  Ogni evento mappava `vo_it_pot_awarded` → il croupier lo diceva N volte. Fix
+  **alla radice del layer audio**: il conductor **de-duplica once-per-hand** le voci
+  {showdown, pot, split} (reset a `handBegan`), così suonano **una sola volta**;
+  ogni evento mantiene la sua sintesi specifica. Non si tocca `GameWorld` (il flusso
+  è corretto per gli altri consumatori; consolidare i pot è fuori scopo audio).
+  Test: `SpeechConductorTests` prova 3 `potAwarded` → 1 sola riproduzione.
+- **"È il tuo turno" ora è l'mp3:** il turno umano riproduce `vo_it_your_turn.mp3`;
+  la sintesi aggiunge il **solo** contesto "per chiamare X, pot Y" e **solo** se
+  `toCall>0` (check libero → solo mp3). Niente più sintesi ridondante.
+- **Sintesi = solo ciò che l'mp3 non può pre-registrare:** proprie carte, contenuto
+  di flop/turn/river (dopo il croupier), mani allo showdown ("giocatore 2: …"),
+  conclusione pot ("hai vinto con doppia coppia" — categoria presa dallo showdown
+  tracciato), fine sessione. L'**azione confermata dell'umano non è più annunciata**
+  (correzione di D-028): ci sono i suoni fisici.
+- **Layer non-parlato separato e potato:** `AudioScore` (puro) ora emette **solo**
+  suoni fisici/effetti, **nessun croupier** (spostato nel conductor) e nessuna voce
+  bot. `AudioDirector` (spectator) fa: fisici, effetti (win/lose/bust/all-in),
+  **ambient dinamico** (crossfade calm↔`tense` su all-in in gioco; duck +
+  `amb_silence_tension` allo showdown; ritorno a calm dopo il pot; layer continuo
+  `amb_crowd_distant`), e **voci bot** deterministiche per carattere (novice
+  eccitato/deluso/nervoso, rock grunt raro ~10%, aggressor confident/taunt ~22%) con
+  **anti-ripetizione** (mai due azioni consecutive dello stesso bot) e seed → sequenza
+  riproducibile.
+- **Audio: completion + ambient dinamico.** `AudioServicing`/`AudioEngine` ora
+  espongono `play(_:category:completion:)` (via delegate; completion immediata se
+  file mancante/muto, così una sequenza avanza sempre), `crossfadeAmbient`,
+  `startAmbientLayer`, `setAmbientScale`. `AudioEngine` è ora `NSObject` +
+  `AVAudioPlayerDelegate`.
+**Principio permanente (in CONVENTIONS §4):** con più sorgenti vocali definire per
+ogni evento **una sola** sorgente responsabile, mai due che dicono la stessa cosa.
+**Vincoli:** solo `UI` + `Audio`, nessuna modifica a `GameEngine`/`SessionDriver`/
+flusso M1.5, nessuna dipendenza nuova. 132 test verdi. **Raffina/estende D-028.**

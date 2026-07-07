@@ -45,11 +45,19 @@ concorrenti**:
 - **VoiceOver** parla solo del **personale** del giocatore umano (proprie carte,
   proprio turno, propria azione, proprio esito). Le azioni degli avversari non le
   annuncia nessuno dei due (basta il suono fisico + eventuale voce del bot).
-- **Coordinamento temporale (una direzione):** se una voce parlata è in corso,
-  VoiceOver **aspetta**. Il modulo espone `spokenAudioRemaining()` (tempo residuo
-  della voce più lunga, da `duration - currentTime`); lo strato `UI`
-  (`SpeechCoordinator` + `Announcer.announce(after:)`) ritarda l'annuncio di
-  conseguenza. Il croupier è il metronomo, VoiceOver gli cede il passo.
+- **Coordinamento seriale con completion (D-029):** un unico `SpeechConductor`
+  (in `UI`) possiede i due sistemi parlanti e riproduce un item per volta — prima
+  l'mp3 croupier, poi la sintesi — usando il **completion handler** dell'engine
+  (`play(_:category:completion:)`, via `AVAudioPlayerDelegate`), non un ritardo
+  fisso. Così "flop" (mp3) → carte del flop (sintesi) è in ordine garantito e le
+  due voci non si sovrappongono. Il conductor **de-duplica** le voci once-per-hand
+  (showdown, pot, split): il driver emette un `potAwarded` per pot, ma la voce si
+  dice **una volta sola** (fix del "disco rotto").
+- **Ambient dinamico (D-029):** l'engine espone `crossfadeAmbient`,
+  `startAmbientLayer` (layer continuo, es. folla lontana) e `setAmbientScale`
+  (duck). Le **decisioni** (calm ↔ `tense` con l'all-in in gioco, duck +
+  `amb_silence_tension` allo showdown, ritorno a calm dopo il pot) stanno in `UI`
+  (`AudioDirector`), così `Audio` resta neutro (id opachi).
 
 La sessione audio resta `.ambient` + `.mixWithOthers`, così i nostri suoni non
 "abbassano" VoiceOver.

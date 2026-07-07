@@ -147,6 +147,20 @@ degli avversari non annunciate, e un coordinamento temporale a una direzione
 Cambi solo in `UI` e `Audio`, nessuna modifica a `GameEngine`/`SessionDriver`/flusso.
 131 unit test verdi. **Note di design:** D-028 in `CLAUDE.md`.
 
+### ✅ Fix post-M1.8 (2) — Mappatura autorevole evento→sorgente vocale e fix "disco rotto" (D-029)
+Secondo giro di test reale. D-028 era giusta nei principi ma ancora approssimativa:
+annunci sovrapposti, **voci ripetute in loop** (il `vo_it_pot_awarded` 3-4 volte) e
+sintesi ridondante dove esiste già un mp3 ("è il tuo turno"). Radice: mp3 e sintesi
+mappati **separatamente**. Rifatto con **una sola fonte di verità** — `SpeechMap`
+(funzione pura event→sorgente) + `SpeechConductor` (seriale: mp3 croupier con
+completion **poi** sintesi; **de-dup once-per-hand** di showdown/pot → fix del disco
+rotto, causa vera: `SessionDriver` emette un `potAwarded` per pot). Il turno umano
+ora **suona** `vo_it_your_turn.mp3`; la sintesi copre solo ciò che l'mp3 non può dire
+(carte, mani allo showdown, conclusione pot). Aggiunti **ambient dinamico** (tense su
+all-in, hush allo showdown) e **voci bot** deterministiche per carattere con
+anti-ripetizione. Solo `UI` + `Audio`, nessuna modifica al motore/flusso. 132 test
+verdi. **Note di design:** D-029 in `CLAUDE.md`.
+
 ---
 
 > **🏁 Fase 1 (M1) completata.** Il gioco base è funzionante **end-to-end**:

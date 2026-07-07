@@ -66,22 +66,41 @@ public protocol AudioServicing: AnyObject {
     func startAmbient(_ id: SoundID)
     /// Plays a one-shot sound, overlapping whatever else is playing.
     func play(_ id: SoundID, category: SoundCategory)
+    /// Plays a one-shot and calls `completion` when it finishes (immediately if the
+    /// file is missing or muted). Lets a caller sequence one cue after another —
+    /// e.g. the croupier line, THEN the VoiceOver synthesis (D-029).
+    func play(_ id: SoundID, category: SoundCategory, completion: (() -> Void)?)
     /// Stops the ambient bed and all one-shots.
     func stopAll()
     /// Master volume 0…1 applied on top of per-category volumes.
     func setMasterVolume(_ volume: Float)
     /// Mutes/unmutes everything.
     func setMuted(_ muted: Bool)
-    /// Seconds of SPOKEN audio (croupier/bot voices) still playing, else 0. Lets
-    /// the VoiceOver layer wait for a spoken cue to finish before announcing, so
-    /// the two speaking systems never overlap (D-028).
+    /// Seconds of SPOKEN audio (croupier/bot voices) still playing, else 0.
     func spokenAudioRemaining() -> TimeInterval
+
+    // MARK: Dynamic ambient (opaque ids — the caller decides which bed fits when)
+    /// Crossfades the looping ambient bed to a new sound (no-op if already on it).
+    func crossfadeAmbient(to id: SoundID, duration: TimeInterval)
+    /// Starts a second, continuous, low background layer (e.g. distant crowd).
+    func startAmbientLayer(_ id: SoundID, volume: Float)
+    /// Scales the ambient bed's volume (1 = normal, <1 = ducked) over `duration`,
+    /// e.g. to drop under a dramatic showdown pause.
+    func setAmbientScale(_ scale: Float, duration: TimeInterval)
 }
 
 public extension AudioServicing {
     /// Default: silent implementations (tests, previews, `NullAudioService`) have
     /// nothing playing, so nothing to wait for.
     func spokenAudioRemaining() -> TimeInterval { 0 }
+    /// Default: forward to the plain play and report completion at once.
+    func play(_ id: SoundID, category: SoundCategory, completion: (() -> Void)?) {
+        play(id, category: category)
+        completion?()
+    }
+    func crossfadeAmbient(to id: SoundID, duration: TimeInterval) { startAmbient(id) }
+    func startAmbientLayer(_ id: SoundID, volume: Float) {}
+    func setAmbientScale(_ scale: Float, duration: TimeInterval) {}
 }
 
 /// A do-nothing implementation for tests, previews, and platforms without audio.

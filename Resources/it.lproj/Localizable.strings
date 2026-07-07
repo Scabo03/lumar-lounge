@@ -150,6 +150,15 @@
 "announce.you.won" = "hai vinto la partita";
 "announce.you.lost" = "hai perso la partita";
 
+/* Spoken layer that COMPLETES a croupier mp3 or is VoiceOver-only (D-029) */
+"announce.your.turn.context" = "per chiamare %1$d, pot %2$d";
+"announce.hero.won" = "hai vinto il pot";
+"announce.hero.won.category" = "hai vinto con %@";
+"announce.other.won" = "ha vinto %@";
+"announce.other.won.category" = "ha vinto %1$@ con %2$@";
+"announce.session.won" = "hai vinto la sessione";
+"announce.session.lost" = "hai perso la sessione";
+
 /* Confirmation of the human's own action (D-028), phonetic poker terms */
 "announce.you.folded" = "fai fold";
 "announce.you.checked" = "fai cek";

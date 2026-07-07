@@ -150,6 +150,15 @@
 "announce.you.won" = "you won the game";
 "announce.you.lost" = "you lost the game";
 
+/* Spoken layer that COMPLETES a croupier mp3 or is VoiceOver-only (D-029) */
+"announce.your.turn.context" = "to call %1$d, pot %2$d";
+"announce.hero.won" = "you won the pot";
+"announce.hero.won.category" = "you won with %@";
+"announce.other.won" = "%@ won";
+"announce.other.won.category" = "%1$@ won with %2$@";
+"announce.session.won" = "you won the session";
+"announce.session.lost" = "you lost the session";
+
 /* Confirmation of the human's own action (D-028) */
 "announce.you.folded" = "you fold";
 "announce.you.checked" = "you check";

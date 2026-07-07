@@ -78,10 +78,14 @@ public final class TableViewModel: ObservableObject {
     private let fastMode: Bool
     private let audio: AudioServicing
     private let audioDirector: AudioDirector
+    /// The serial owner of the croupier voice + VoiceOver synthesis (D-029).
+    private let conductor: SpeechConductor
 
     private var eventQueue: [EventPayload] = []
     private var streamFinished = false
     private var turnContinuation: CheckedContinuation<Void, Never>?
+    /// Each seat's hand category revealed at showdown, for the pot conclusion line.
+    private var shownCategory: [Int: HandCategory] = [:]
 
     public init(seed: UInt64 = 20_260_704, fastMode: Bool = false,
                 audio: AudioServicing = NullAudioService()) {
@@ -108,14 +112,11 @@ public final class TableViewModel: ObservableObject {
         for bot in bots { names[bot.id] = uiLocalized(bot.nameKey) }
         self.names = names
 
-        // Each bot's spoken lines, keyed by seat id, for the audio consumer.
-        let voices: [Int: BotVoiceProfile] = [
-            1: BotVoiceProfile(assertive: SoundCatalog.vobNoviceExcited, letdown: SoundCatalog.vobNoviceDisappointed),
-            2: BotVoiceProfile(assertive: SoundCatalog.vobRockGrunt, letdown: SoundCatalog.vobRockGrunt),
-            3: BotVoiceProfile(assertive: SoundCatalog.vobAggressorConfident, letdown: SoundCatalog.vobAggressorBluffGiveaway),
-        ]
-        self.audioDirector = AudioDirector(audio: audio, heroSeatID: 0, voices: voices,
+        // Each bot's CHARACTER, so the audio director picks fitting voicelines.
+        let characters: [Int: BotCharacter] = [1: .novice, 2: .rock, 3: .aggressor]
+        self.audioDirector = AudioDirector(audio: audio, heroSeatID: 0, characters: characters,
                                            seed: seed, fastMode: fastMode)
+        self.conductor = SpeechConductor(audio: audio, announcer: Announcer())
 
         self.state = TableState(
             seats: ([0] + bots.map { $0.id }).map { SeatPresentation(id: $0, position: $0, chips: startingChips) },
@@ -177,10 +178,17 @@ public final class TableViewModel: ObservableObject {
 
     private func present(_ payload: EventPayload) async {
         switch payload {
+        case .handBegan:
+            conductor.handBegan()          // reset once-per-hand voices (D-029)
+            shownCategory.removeAll()
+            state = TableReducer.reduce(state, payload)
+            speak(payload)                 // croupier: "new hand"
+            await pause(Pacing.seconds(for: payload))
+
         case let .streetOpened(.flop, cards):
-            // Reveal the flop one card at a time. The croupier says "flop" (D-028),
-            // so VoiceOver stays silent here — the board element speaks the cards on
-            // demand if the reader swipes to it.
+            // The croupier says "flop", then the conductor reads the three cards
+            // (D-029). Meanwhile reveal them one at a time.
+            speak(payload)
             for card in cards {
                 state = TableReducer.reduce(state, .streetOpened(street: .flop, communityCards: [card]))
                 await pause(0.55)
@@ -189,24 +197,26 @@ public final class TableViewModel: ObservableObject {
 
         case let .privateHoleCards(seatID, _) where seatID == heroSeatID:
             state = TableReducer.reduce(state, payload)
-            announceIfPersonal(payload)
+            speak(payload)                 // synthesis: the human's own cards
             await pause(0.6)
 
         case let .playerActed(seatID, _):
             state.activeSeatID = seatID
             if seatID != heroSeatID { await pause(0.55) } // bot "thinking"
             state = TableReducer.reduce(state, payload)
-            // Only the human's own action is spoken, as confirmation (D-028);
-            // opponents' actions are silent for VoiceOver.
-            announceIfPersonal(payload, interrupting: seatID == heroSeatID)
+            speak(payload)                 // croupier only if it's an all-in (D-029)
             await pause(0.4)
             if state.activeSeatID == seatID { state.activeSeatID = nil }
 
+        case let .handShown(seatID, _, category, _):
+            shownCategory[seatID] = category
+            state = TableReducer.reduce(state, payload)
+            speak(payload)                 // croupier "showdown" (once) + reveal
+            await pause(Pacing.seconds(for: payload))
+
         case .potAwarded:
             state = TableReducer.reduce(state, payload)
-            // Speaks only if the human is among the winners; the croupier's voice
-            // covers the institutional pot award for everyone (D-028).
-            announceIfPersonal(payload)
+            speakPot(payload)              // pot voice once/hand + "you won with …"
             await pause(1.1)
 
         case .handEnded:
@@ -219,18 +229,35 @@ public final class TableViewModel: ObservableObject {
             finishSession()
 
         default:
-            // Institutional moments (hand start, blinds, turn/river, showdown,
-            // busts) are the croupier's domain — VoiceOver stays silent (D-028).
+            // Blinds (croupier), turn/river handled above; public hole-cards-dealt,
+            // busts, joins → the map decides (mostly silent for the spoken layer).
             state = TableReducer.reduce(state, payload)
+            speak(payload)
             await pause(Pacing.seconds(for: payload))
         }
     }
 
-    /// Speaks a payload only if it is personal to the human player (D-028);
-    /// everything else is the croupier's job or intentionally silent.
-    private func announceIfPersonal(_ payload: EventPayload, interrupting: Bool = false) {
-        guard let spoken = TableAnnouncer.spoken(for: payload, heroSeatID: heroSeatID) else { return }
-        announce(TableAnnouncer.text(for: spoken), interrupting: interrupting)
+    /// Sends an event's spoken plan (croupier and/or synthesis) to the conductor.
+    private func speak(_ payload: EventPayload) {
+        let plan = SpeechMap.plan(for: payload, heroSeatID: heroSeatID, names: names)
+        conductor.say(croupier: plan.croupier, synthesis: plan.synthesis.map(SpeechMap.text))
+    }
+
+    /// The pot conclusion: the once-per-hand croupier pot voice plus a synthesis
+    /// naming the winner and — if it went to showdown — the winning hand (D-029).
+    private func speakPot(_ payload: EventPayload) {
+        guard case let .potAwarded(_, _, winners) = payload else { return }
+        let plan = SpeechMap.plan(for: payload, heroSeatID: heroSeatID, names: names)
+        let line: SynthLine?
+        if winners.contains(heroSeatID) {
+            line = .heroWon(category: shownCategory[heroSeatID])
+        } else if let winner = winners.first {
+            line = .otherWon(who: winners.map { names[$0] ?? "\($0)" }.joined(separator: ", "),
+                             category: shownCategory[winner])
+        } else {
+            line = nil
+        }
+        conductor.say(croupier: plan.croupier, synthesis: line.map(SpeechMap.text))
     }
 
     // MARK: - The human's turn
@@ -239,7 +266,12 @@ public final class TableViewModel: ObservableObject {
         let info = HumanTurnInfo(from: context)
         humanTurn = info
         state.activeSeatID = heroSeatID
-        announceHumanTurn(info)
+        // The croupier says "it's your turn" (vo_it_your_turn); synthesis adds the
+        // call context only when there's something to call (D-029).
+        let callContext: String? = info.toCall > 0
+            ? SpeechMap.text(for: .yourTurnContext(toCall: info.toCall, pot: info.potSize))
+            : nil
+        conductor.say(croupier: SoundCatalog.voYourTurn, synthesis: callContext)
         await withCheckedContinuation { turnContinuation = $0 }
         humanTurn = nil
         raiseBox = nil
@@ -318,23 +350,17 @@ public final class TableViewModel: ObservableObject {
         let heroChips = state.seat(heroSeatID)?.chips ?? 0
         let didWin = heroChips > 0
         outcome = didWin ? .won : .lost
-        announce(uiLocalized(didWin ? "announce.you.won" : "announce.you.lost"))
+        conductor.say(croupier: nil, synthesis: SpeechMap.text(for: didWin ? .sessionWon : .sessionLost))
     }
 
     // MARK: - Narration helpers
 
-    private func announceHumanTurn(_ info: HumanTurnInfo) {
-        let message = info.toCall > 0
-            ? uiLocalized("announce.your.turn.call", info.potSize, info.toCall)
-            : uiLocalized("announce.your.turn.check", info.potSize)
-        announce(message, interrupting: true)
-    }
-
+    /// Immediate VoiceOver feedback for the Raise box (D-027): interrupting so a
+    /// burst of +/- taps collapses to the latest value. Not routed through the
+    /// conductor — it's rapid UI feedback, not narrative, and no croupier voice
+    /// plays while the box is open.
     private func announce(_ message: String, interrupting: Bool = false) {
-        // Wait out any croupier/bot voice still playing so the two speaking systems
-        // never overlap (D-028). Usually 0 (nothing spoken is playing).
-        let delay = SpeechCoordinator.voiceOverDelay(spokenRemaining: audio.spokenAudioRemaining())
-        announcer.announce(message, interrupting: interrupting, after: delay)
+        announcer.announce(message, interrupting: interrupting)
     }
 
     // MARK: - UI input sounds (played by the UI itself, not from the stream)

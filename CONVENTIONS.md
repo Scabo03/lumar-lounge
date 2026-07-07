@@ -108,6 +108,16 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     controllo.
   - La logica di presentazione (riduzione evento→stato, formattazione testo) va
     tenuta **pura** e fuori dalle viste SwiftUI, per essere unit-testabile.
+  - **Più sorgenti vocali → per ogni evento UNA sola responsabile (D-029).** Quando
+    coesistono più sorgenti che parlano (voci pre-registrate, sintesi VoiceOver,
+    voci di caratteri), definisci una **mappatura autorevole** evento→sorgente come
+    **funzione pura testabile** (`SpeechMap`) che dice, per ogni evento, chi parla:
+    mp3 pre-registrato, sintesi, entrambi (mp3 **poi** sintesi per il contenuto non
+    pre-registrabile), o nessuno. **Mai due sorgenti che dicono la stessa cosa.** Un
+    unico **conduttore seriale** possiede le sorgenti parlanti e le riproduce una per
+    volta (mp3 con completion reale → poi sintesi), così non si sovrappongono; e
+    **de-duplica** le voci once-per-evento-logico (es. il pot: il produttore può
+    emettere più `potAwarded` per i side pot — la voce va detta **una volta sola**).
   - **Due sistemi audio parlanti → domini separati, mai concorrenti (D-028,
     supera D-024).** Quando VoiceOver e voci pre-registrate (croupier/bot)
     coesistono, **non farli competere sullo stesso evento** e **non risolvere
