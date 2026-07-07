@@ -183,3 +183,15 @@
 "endgame.lost" = "Hai perso";
 "endgame.continue" = "Continua";
 "endgame.restart" = "Ricomincia";
+
+/* ------------------------------------------------------------------ */
+/* Settings screen and permanent chrome (D-033/D-034) */
+"settings.button.a11y" = "Impostazioni";
+"settings.button.hint" = "Apre le impostazioni del gioco";
+"settings.title" = "Impostazioni";
+"settings.done" = "Fine";
+"settings.vomode.label" = "Modalità VoiceOver dell'app";
+"settings.vomode.desc" = "Sincronizza il ritmo del gioco con gli annunci vocali";
+"settings.vomode.a11y" = "Modalità VoiceOver dell'app";
+"settings.vomode.hint" = "Quando attiva, il gioco procede al ritmo degli annunci vocali";
+"settings.vomode.footer" = "Indipendente da VoiceOver di iOS: puoi tenerla attiva anche con VoiceOver di sistema spento, o disattivarla anche se è acceso.";

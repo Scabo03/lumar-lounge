@@ -108,6 +108,19 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     controllo.
   - La logica di presentazione (riduzione evento→stato, formattazione testo) va
     tenuta **pura** e fuori dalle viste SwiftUI, per essere unit-testabile.
+  - **L'app espone una modalità VoiceOver propria, indipendente da iOS (D-034).**
+    Uno stato osservabile (`AppVoiceOverMode`, persistito, default OFF) che l'utente
+    controlla dalle impostazioni, **indipendente** dallo stato di iOS VoiceOver
+    (attivabile a sistema spento, disattivabile a sistema acceso). Quando **ON**,
+    **modula il ritmo di consumo del flusso di eventi lato UI**: il consumatore
+    attende che il canale parlato (croupier + coda annunci) sia quieto prima di
+    mostrare l'evento successivo, così occhio e orecchio camminano insieme. Quando
+    **OFF**, ritmo interno veloce. **Mai** si modifica il produttore `SessionDriver`:
+    la sincronizzazione è **solo lato consumatore** (il produttore resta puro).
+  - **Chrome persistente riusabile (D-033).** Il pulsante Impostazioni e la
+    schermata impostazioni vivono in un contenitore condiviso (`GameChrome`) che
+    avvolge ogni schermata principale, non replicato per gioco/vista. La schermata
+    impostazioni è una lista a sezioni pensata per **crescere**.
   - **Tutti gli annunci VoiceOver passano da una coda seriale con priorità e
     coordinamento (D-032).** Nel codice applicativo **nessuna chiamata diretta a
     `UIAccessibility.post`**: ogni annuncio passa dall'`AnnouncementQueue` (unico

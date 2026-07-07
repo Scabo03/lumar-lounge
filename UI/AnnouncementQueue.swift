@@ -59,6 +59,15 @@ public final class AnnouncementQueue {
     public var dropObserver: ((String, AnnouncementPriority) -> Void)?
     /// Test seam: override the VoiceOver-running state (nil = ask the system).
     public var voiceOverOverride: Bool?
+    /// When true, announcements take their ESTIMATED speaking time even if nobody
+    /// is listening (iOS VoiceOver off) — so the app's own VoiceOver mode can pace
+    /// the visuals to the theoretical announcement durations (D-034).
+    public var pacedWhenSilent = false
+
+    /// Whether the spoken channel is idle: nothing speaking, nothing queued, and no
+    /// croupier mp3 holding it. Lets the UI advance the visual timeline in step with
+    /// the ear when the app's VoiceOver mode is on (D-034).
+    public var isQuiet: Bool { current == nil && pending.isEmpty && !externalSpeechActive }
     /// Test seam: the currently queued (not-yet-started) items.
     public func pendingSnapshot() -> [(String, AnnouncementPriority)] { pending.map { ($0.text, $0.priority) } }
 
@@ -162,15 +171,26 @@ public final class AnnouncementQueue {
         let token = currentToken
         synthesisObserver?(item.text)
         SpokenLog.log("SPEAK [\(item.priority)] \(item.text)")
-        guard isVoiceOverRunning else { finishCurrent(); return }  // off-device: no-op, advance
+        guard isVoiceOverRunning else {
+            // Nobody is listening. Either simulate the duration (app mode ON, so the
+            // visuals still pace to it, D-034) or advance at once (mode OFF).
+            if pacedWhenSilent { scheduleAdvance(after: Self.speakTime(item.text), token: token) }
+            else { finishCurrent() }
+            return
+        }
         post(item.text, interrupting: false)
         // Fallback: advance if the finish notification never arrives. The cap is the
         // estimated speech time plus the 1 s max pause, so it never truncates.
-        let cap = Self.speakTime(item.text) + maxPause
+        scheduleAdvance(after: Self.speakTime(item.text) + maxPause, token: token)
+    }
+
+    /// Advances to the next item after `seconds`, unless the current one already
+    /// finished (token mismatch). Used for the finish-notification cap and for the
+    /// silent-but-paced simulation (D-034).
+    private func scheduleAdvance(after seconds: TimeInterval, token: Int) {
         Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(cap * 1_000_000_000))
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             guard let self, self.currentToken == token, self.current != nil else { return }
-            SpokenLog.log("cap-advance")
             self.finishCurrent()
         }
     }

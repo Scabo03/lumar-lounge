@@ -80,6 +80,37 @@ final class AnnouncementQueueTests: XCTestCase {
         }
     }
 
+    // MARK: - isQuiet + paced-when-silent (D-034)
+
+    func testIsQuietReflectsTheSpokenState() async {
+        let queue = AnnouncementQueue()
+        queue.voiceOverOverride = false
+        XCTAssertTrue(queue.isQuiet, "a fresh queue is quiet")
+        await queue.beginExternalSpeech()
+        XCTAssertFalse(queue.isQuiet, "not quiet while the croupier holds it")
+        queue.endExternalSpeech()
+        XCTAssertTrue(queue.isQuiet)
+    }
+
+    func testPacedWhenSilentSimulatesTheDurationSoTheVisualCanFollow() async {
+        let queue = AnnouncementQueue()
+        queue.voiceOverOverride = false      // nobody listening (iOS VoiceOver off)
+        queue.pacedWhenSilent = true         // but app mode ON → simulate durations
+        queue.enqueue("otto nove dieci", priority: .medium)
+        XCTAssertFalse(queue.isQuiet, "stays busy for the simulated duration")
+        try? await Task.sleep(nanoseconds: 2_000_000_000)
+        XCTAssertTrue(queue.isQuiet, "quiet again after the simulated duration")
+    }
+
+    func testNotPacedWhenSilentAdvancesImmediately() async {
+        let queue = AnnouncementQueue()
+        queue.voiceOverOverride = false
+        queue.pacedWhenSilent = false        // app mode OFF → no waiting
+        queue.enqueue("qualcosa", priority: .medium)
+        await Task.yield()
+        XCTAssertTrue(queue.isQuiet, "drains at once when not paced")
+    }
+
     // MARK: - Croupier coordination (one spoken channel)
 
     func testQueueHoldsWhileCroupierIsSpeakingThenResumes() async {

@@ -45,7 +45,7 @@ nei file collegati.
   in `UI` (D-023); coordinamento audio↔VoiceOver a **domini separati** con mappatura
   autorevole evento→sorgente vocale e `SpeechConductor` seriale (D-028→…→**D-032**, che superano il silenziamento D-024 dopo i test reali). **51 mp3 integrati** in
   `Resources/Audio/` (2 del catalogo non ancora consegnati → silenziosi, D-025).
-  146 unit test verdi + 1 XCUITest.
+  157 unit test verdi + 2 XCUITest.
 
 **🏁 Fase 1 (M1) completa — il gioco base gira end-to-end con audio ed è pronto
 per un primo TestFlight** (motore + bot + sessione + flusso + UI accessibile +
@@ -679,3 +679,56 @@ dalla coda).
 flusso; nessuna dipendenza nuova. 146 test verdi (nuovi: ordine senza troncamento,
 raffica di 5 con drop di low/medium e high preservati, bump high, tetto 1 s, blocco
 reciproco col croupier, guard statico anti-post-diretto). **Estende D-029..D-031.**
+
+### D-033 — Chrome persistente e schermata impostazioni riusabili
+Serviva un pulsante di **impostazioni permanente** al tavolo, ma pensato per **tutto
+il progetto** (menu, casinò, accesso futuri), non specifico al poker. Introdotto un
+**contenitore di chrome condiviso** `GameChrome<Content>` (UI): una shell che avvolge
+qualunque schermata principale e ospita una **top bar** con il pulsante Impostazioni
+in alto a destra e presenta la schermata impostazioni (`.sheet`). La top bar **riserva
+la propria striscia**, così il pulsante non si sovrappone al contenuto (i bollini
+avversari sono ora sotto la barra, non coperti). Il pulsante è pienamente accessibile:
+label "Impostazioni" (niente fonetica), hint, identifier `settings.button`, tap target
+44×44, alto contrasto. `PokerTableView` avvolge `TableScreen` in `GameChrome`; lo sfondo
+del tavolo è passato al chrome. La `SettingsView` è una **schermata riusabile** (List a
+sezioni con `NavigationStack` + Done) progettata per **crescere**: oggi una sola voce,
+domani molte. Navigabile da VoiceOver dall'alto in basso. Per ora contiene lo switch
+"Modalità VoiceOver dell'app" (vedi D-034).
+
+### D-034 — Modalità VoiceOver dell'app (indipendente da iOS) e ritmo visivo adattivo
+Dopo il fix della coda annunci, l'utente ha notato uno **sfasamento occhio-orecchio**:
+a fine mano la sintesi annuncia ancora il vincitore mentre visivamente sono già uscite
+le carte della mano dopo. Causa: il produttore `SessionDriver` emette a velocità di
+codice, la UI mostra a ritmo umano, ma la sintesi non ha finito di parlare del passato.
+**Direzione (invariata la purezza del produttore):** la sincronizzazione è **solo lato
+consumatore** in `UI`; `SessionDriver` **non si tocca** (CONVENTIONS).
+- **`AppVoiceOverMode`** (UI, `ObservableObject`): lo stato **osservabile** della
+  modalità VoiceOver *dell'app*, **indipendente** da iOS. Default **OFF**. Persistito
+  in `UserDefaults` (store iniettabile per i test), ripristinato all'avvio. Vive
+  **sopra** il confine di restart (`@StateObject` in `PokerTableView`), così sopravvive
+  a una nuova partita.
+- **Ritmo adattivo (ON):** il `TableViewModel`, dopo aver mostrato un evento e
+  consegnato i suoi annunci, **attende che il canale parlato sia quieto**
+  (`conductor.isIdle && announcements.isQuiet`) prima del prossimo evento →
+  "un evento visualizzato per ogni annuncio completato". Eventi **senza** annuncio
+  passano subito (il canale resta quieto). Il canale parlato include **croupier + coda
+  sintesi**: la UI aspetta la combinazione dei due (già serializzati in D-032), non solo
+  la sintesi. In ON la coda non accumula backlog (la UI aspetta a ogni passo), quindi
+  **nessun drop**: tutti gli annunci sono detti, il ritmo è più lento ma sincrono.
+- **Ritmo interno (OFF):** invariato, veloce e fluido (pause umane); il croupier suona
+  come effetto **non bloccante**, la UI non lo aspetta; la coda droppa sotto backlog
+  come da D-032.
+- **Doppia indipendenza da iOS VoiceOver (rispettata):** *(a)* iOS ON + app OFF → la UI
+  non attende, gli annunci sono postati normalmente (VoiceOver li legge a modo suo).
+  *(b)* iOS OFF + app ON → la coda **simula** le durate (`AnnouncementQueue.pacedWhenSilent`,
+  = tempo stimato per annuncio anche se nessuno ascolta) e la UI si adegua al ritmo
+  teorico. È esplicitamente la libertà che l'utente ha chiesto.
+- **Cambio di modalità mid-game: EFFETTO IMMEDIATO.** Motivazione dai fatti del codice:
+  il ritmo è letto **per-evento** in `pace()`; il toggle non tocca lo stato di gioco
+  (riduzione + annunci invariati), cambia **solo la tempistica** del prossimo evento →
+  **nessuno stato inconsistente mid-hand**. Passando a ON mid-mano la UI semplicemente
+  **aspetta** che l'audio recuperi il backlog e poi si sincronizza; passando a OFF
+  smette di aspettare. Non serve rimandare alla partita successiva.
+- **Log:** `SpokenLog` traccia ogni evento visualizzato con timestamp e modalità.
+**Vincoli:** solo `UI`, nessuna modifica a `GameEngine`/`SessionDriver`/`Audio`(salvo
+`AnnouncementQueue`); nessuna dipendenza nuova. 157 test verdi + 1 XCUITest impostazioni.

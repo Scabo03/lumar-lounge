@@ -186,6 +186,18 @@ troncare, priorità+drop di low/medium, completamento via
 col `SpeechConductor` (blocco reciproco croupier↔sintesi). `Announcer` rimosso, log
 unificato in `SpokenLog`. Solo `UI` + `Audio`. 146 test verdi. **Note di design:** D-032.
 
+### ✅ Impostazioni permanenti + modalità VoiceOver dell'app + ritmo adattivo (D-033/D-034)
+L'utente ha notato uno **sfasamento occhio-orecchio** a fine mano (la sintesi parla del
+passato mentre il visivo è già avanti). Introdotti: un **chrome persistente**
+(`GameChrome`) con pulsante Impostazioni riusabile per tutto il progetto e una
+**schermata impostazioni** che crescerà (D-033); una **modalità VoiceOver dell'app**
+(`AppVoiceOverMode`, osservabile, persistita, **indipendente** da iOS, default OFF) che
+quando **ON** fa **attendere alla UI** il canale parlato (croupier + coda sintesi)
+prima di mostrare l'evento successivo — occhio e orecchio insieme — e quando OFF tiene
+il ritmo veloce (D-034). Cambio modalità a **effetto immediato**. `SessionDriver` **non
+toccato** (sincronia solo lato consumatore). Solo `UI`. 157 test + XCUITest impostazioni.
+**Note di design:** D-033, D-034.
+
 ---
 
 > **🏁 Fase 1 (M1) completata.** Il gioco base è funzionante **end-to-end**:

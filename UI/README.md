@@ -82,6 +82,27 @@ drop scelta dai dati (Strategia C — vedi D-032). Uso tipico: la `SpeechConduct
 gli passa la sintesi *fire-and-forget* con la priorità della `SpeechMap`; il box Raise
 usa `announceLiveValue`. Debug: `SpokenLog.enabled = true` (DEBUG).
 
+## `GameChrome` + `SettingsView` + `AppVoiceOverMode` (chrome e impostazioni, D-033/D-034)
+
+**Componenti riusabili per tutto il progetto**, non specifici al tavolo.
+
+- **`GameChrome<Content>`** — la shell persistente: avvolge qualunque schermata
+  principale, mostra una **top bar** col pulsante Impostazioni in alto a destra
+  (accessibile: label "Impostazioni", hint, identifier `settings.button`, 44×44),
+  e presenta la `SettingsView` come `.sheet`. La barra riserva la propria striscia,
+  quindi non copre il contenuto. Ogni schermata futura (menu, casinò) lo riusa.
+- **`SettingsView`** — la schermata impostazioni, una `List` a sezioni pensata per
+  **crescere** con molte opzioni future. Oggi: lo switch "Modalità VoiceOver
+  dell'app".
+- **`AppVoiceOverMode`** (`ObservableObject`) — lo stato della **modalità VoiceOver
+  dell'app**, **indipendente da iOS**, persistito in `UserDefaults` (store iniettabile
+  per i test), default OFF. Vive sopra il confine di restart. Quando ON, il
+  `TableViewModel` **attende il canale parlato quieto** (`conductor.isIdle &&
+  announcements.isQuiet`) prima di mostrare l'evento successivo (occhio+orecchio
+  insieme); quando OFF, ritmo umano veloce. Il cambio è a **effetto immediato** (letto
+  per-evento, nessuno stato inconsistente). A iOS VoiceOver spento ma app ON, la coda
+  **simula** le durate (`pacedWhenSilent`) così il ritmo teorico è rispettato.
+
 ## Cosa NON contiene ancora (per scelta)
 
 - **Nessun audio**: arriverà come consumatore parallelo del flusso, in un mattone

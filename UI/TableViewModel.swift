@@ -84,6 +84,9 @@ public final class TableViewModel: ObservableObject {
     private let conductor: SpeechConductor
     /// Decides the bots' occasional action voicelines, ordered before the synthesis.
     private let botChatter: BotChatter
+    /// The app's own VoiceOver mode: when ON the visual timeline paces to the spoken
+    /// channel; when OFF it keeps the fast internal rhythm (D-034).
+    private let mode: AppVoiceOverMode
 
     private var eventQueue: [EventPayload] = []
     private var streamFinished = false
@@ -95,9 +98,11 @@ public final class TableViewModel: ObservableObject {
     private var potAnnounced = false
 
     public init(seed: UInt64 = 20_260_704, fastMode: Bool = false,
-                audio: AudioServicing = NullAudioService()) {
+                audio: AudioServicing = NullAudioService(),
+                mode: AppVoiceOverMode) {
         self.fastMode = fastMode
         self.audio = audio
+        self.mode = mode
         // Seat 0 is the human (bottom of the screen); seats 1–3 are the bots.
         let bots: [(id: Int, personality: Personality, nameKey: String)] = [
             (1, .eagerNovice, "seat.name.novice"),
@@ -194,46 +199,47 @@ public final class TableViewModel: ObservableObject {
             state = TableReducer.reduce(state, payload)
             speak(payload, "hand-start")   // croupier: "new hand"
             speakRole(payload)             // the human's OWN role, or silence (D-031)
-            await pause(Pacing.seconds(for: payload))
+            await pace(payload, human: Pacing.seconds(for: payload))
 
         case let .streetOpened(.flop, cards):
             // The croupier says "flop", then the conductor reads the three cards
             // (D-029). Meanwhile reveal them one at a time.
             speak(payload, "flop")
+            let cardPace = mode.isEnabled ? 0.15 : 0.55
             for card in cards {
                 state = TableReducer.reduce(state, .streetOpened(street: .flop, communityCards: [card]))
-                await pause(0.55)
+                await pause(cardPace)
             }
-            await pause(0.25)
+            await pace(payload, human: 0.25)
 
         case let .privateHoleCards(seatID, _) where seatID == heroSeatID:
             state = TableReducer.reduce(state, payload)
             speak(payload, "hero-cards")   // synthesis: the human's own cards
-            await pause(0.6)
+            await pace(payload, human: 0.6)
 
         case let .playerActed(seatID, action):
             state.activeSeatID = seatID
-            if seatID != heroSeatID { await pause(0.55) } // bot "thinking"
+            if seatID != heroSeatID { await pause(mode.isEnabled ? 0.1 : 0.55) } // bot "thinking"
             state = TableReducer.reduce(state, payload)
             speakAction(seatID: seatID, action: action)   // opponent synthesis + vob_ (D-031)
-            await pause(0.4)
+            await pace(payload, human: 0.4)
             if state.activeSeatID == seatID { state.activeSeatID = nil }
 
         case let .handShown(seatID, _, category, _):
             shownCategory[seatID] = category
             state = TableReducer.reduce(state, payload)
             speak(payload, "showdown")     // croupier "showdown" (once) + reveal
-            await pause(Pacing.seconds(for: payload))
+            await pace(payload, human: Pacing.seconds(for: payload))
 
         case .potAwarded:
             state = TableReducer.reduce(state, payload)
             speakPot(payload)              // pot voice once/hand + "you won with …"
-            await pause(1.1)
+            await pace(payload, human: 1.1)
 
         case .handEnded:
             state = TableReducer.reduce(state, payload)
             await gate.release() // let the producer deal the next hand
-            await pause(1.2)
+            await pace(payload, human: 1.2)
 
         case .sessionEnded:
             state = TableReducer.reduce(state, payload)
@@ -244,7 +250,46 @@ public final class TableViewModel: ObservableObject {
             // the map decides (mostly silent for the spoken layer).
             state = TableReducer.reduce(state, payload)
             speak(payload, "other")
-            await pause(Pacing.seconds(for: payload))
+            await pace(payload, human: Pacing.seconds(for: payload))
+        }
+    }
+
+    /// Advances the visual timeline after an event. App VoiceOver mode ON → wait for
+    /// the spoken channel (croupier + announcement queue) to go quiet, so eye and ear
+    /// walk together (D-034); OFF → keep the fast internal human rhythm.
+    private func pace(_ payload: EventPayload, human: Double) async {
+        announcements.pacedWhenSilent = mode.isEnabled
+        SpokenLog.log("visual \(eventLabel(payload)) mode=\(mode.isEnabled ? "ON" : "OFF")")
+        if mode.isEnabled {
+            await awaitSpokenChannelQuiet()
+        } else {
+            await pause(human)
+        }
+    }
+
+    /// Blocks until the spoken channel is idle: the conductor has nothing left to
+    /// play/hand off, and the announcement queue is not speaking or holding (D-034).
+    /// Events that produced no announcement leave it idle, so they show at once.
+    private func awaitSpokenChannelQuiet() async {
+        while !(conductor.isIdle && announcements.isQuiet) {
+            if Task.isCancelled { return }
+            try? await Task.sleep(nanoseconds: 25_000_000)
+        }
+    }
+
+    private func eventLabel(_ payload: EventPayload) -> String {
+        switch payload {
+        case .handBegan: return "handBegan"
+        case .blindPosted: return "blindPosted"
+        case .holeCardsDealt: return "holeCardsDealt"
+        case .privateHoleCards: return "privateHoleCards"
+        case .playerActed: return "playerActed"
+        case .streetOpened: return "streetOpened"
+        case .handShown: return "handShown"
+        case .potAwarded: return "potAwarded"
+        case .handEnded: return "handEnded"
+        case .playerBusted: return "playerBusted"
+        default: return "other"
         }
     }
 

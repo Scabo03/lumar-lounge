@@ -47,6 +47,11 @@ public final class SpeechConductor {
         self.queue = queue
     }
 
+    /// Whether the conductor has nothing left to play or hand to the queue. Combined
+    /// with `AnnouncementQueue.isQuiet` it tells the UI the spoken channel is idle,
+    /// so the visual timeline can advance in step with the ear (D-034).
+    public var isIdle: Bool { !isBusy && pending.isEmpty }
+
     /// Resets the per-hand de-dup at the start of each hand.
     public func handBegan() { oncePerHandPlayed.removeAll() }
 

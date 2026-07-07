@@ -183,3 +183,15 @@
 "endgame.lost" = "You lost";
 "endgame.continue" = "Continue";
 "endgame.restart" = "Restart";
+
+/* ------------------------------------------------------------------ */
+/* Settings screen and permanent chrome (D-033/D-034) */
+"settings.button.a11y" = "Settings";
+"settings.button.hint" = "Opens the game settings";
+"settings.title" = "Settings";
+"settings.done" = "Done";
+"settings.vomode.label" = "App VoiceOver mode";
+"settings.vomode.desc" = "Paces the game to the spoken announcements";
+"settings.vomode.a11y" = "App VoiceOver mode";
+"settings.vomode.hint" = "When on, the game advances at the pace of the spoken announcements";
+"settings.vomode.footer" = "Independent of iOS VoiceOver: keep it on with system VoiceOver off, or off even when it is on.";

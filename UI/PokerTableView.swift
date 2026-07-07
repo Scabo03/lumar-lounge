@@ -24,14 +24,21 @@ import Audio
 public struct PokerTableView: View {
     /// Bumping this restarts the whole session (fresh view + view model).
     @State private var restartToken = 0
+    /// The app's own VoiceOver mode lives ABOVE the restart boundary so it (and its
+    /// persisted value) survive a new game (D-034).
+    @StateObject private var voMode = AppVoiceOverMode()
 
     public init() {}
 
     public var body: some View {
-        TableScreen(seed: 20_260_704 &+ UInt64(restartToken),
-                    fastMode: ProcessInfo.processInfo.arguments.contains("-uiTesting"),
-                    onRestart: { restartToken += 1 })
-            .id(restartToken)
+        // The persistent chrome (Settings button) wraps every screen (D-033).
+        GameChrome(voMode: voMode) {
+            TableScreen(seed: 20_260_704 &+ UInt64(restartToken),
+                        fastMode: ProcessInfo.processInfo.arguments.contains("-uiTesting"),
+                        mode: voMode,
+                        onRestart: { restartToken += 1 })
+                .id(restartToken)
+        }
     }
 }
 
@@ -39,19 +46,17 @@ struct TableScreen: View {
     @StateObject private var model: TableViewModel
     let onRestart: () -> Void
 
-    init(seed: UInt64, fastMode: Bool, onRestart: @escaping () -> Void) {
+    init(seed: UInt64, fastMode: Bool, mode: AppVoiceOverMode, onRestart: @escaping () -> Void) {
         // The real audio engine on the app; missing sound files degrade to
         // silence (D-024) with a startup log.
         _model = StateObject(wrappedValue: TableViewModel(seed: seed, fastMode: fastMode,
-                                                          audio: AudioEngine()))
+                                                          audio: AudioEngine(), mode: mode))
         self.onRestart = onRestart
     }
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                TablePalette.background.ignoresSafeArea()
-
                 VStack(spacing: 6) {
                     OpponentBadgesView(state: model.state, names: model.names)
                         .frame(height: geometry.size.height * 0.20)
