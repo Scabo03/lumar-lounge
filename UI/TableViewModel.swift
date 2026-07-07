@@ -178,34 +178,35 @@ public final class TableViewModel: ObservableObject {
     private func present(_ payload: EventPayload) async {
         switch payload {
         case let .streetOpened(.flop, cards):
-            announce(uiLocalized("announce.street.flop.header"))
+            // Reveal the flop one card at a time. The croupier says "flop" (D-028),
+            // so VoiceOver stays silent here — the board element speaks the cards on
+            // demand if the reader swipes to it.
             for card in cards {
                 state = TableReducer.reduce(state, .streetOpened(street: .flop, communityCards: [card]))
-                announce(CardText.spoken(card))
                 await pause(0.55)
             }
             await pause(0.25)
 
-        case let .privateHoleCards(seatID, cards) where seatID == heroSeatID:
+        case let .privateHoleCards(seatID, _) where seatID == heroSeatID:
             state = TableReducer.reduce(state, payload)
-            announce(uiLocalized("announce.hero.cards", CardText.spoken(cards)))
+            announceIfPersonal(payload)
             await pause(0.6)
 
         case let .playerActed(seatID, _):
             state.activeSeatID = seatID
             if seatID != heroSeatID { await pause(0.55) } // bot "thinking"
             state = TableReducer.reduce(state, payload)
-            if seatID != heroSeatID, let message = narration(for: payload) { announce(message) }
+            // Only the human's own action is spoken, as confirmation (D-028);
+            // opponents' actions are silent for VoiceOver.
+            announceIfPersonal(payload, interrupting: seatID == heroSeatID)
             await pause(0.4)
             if state.activeSeatID == seatID { state.activeSeatID = nil }
 
-        case let .potAwarded(_, amount, winnerSeatIDs):
+        case .potAwarded:
             state = TableReducer.reduce(state, payload)
-            if winnerSeatIDs.contains(heroSeatID) {
-                announce(uiLocalized("announce.pot.you", amount))
-            } else if let message = narration(for: payload) {
-                announce(message)
-            }
+            // Speaks only if the human is among the winners; the croupier's voice
+            // covers the institutional pot award for everyone (D-028).
+            announceIfPersonal(payload)
             await pause(1.1)
 
         case .handEnded:
@@ -218,10 +219,18 @@ public final class TableViewModel: ObservableObject {
             finishSession()
 
         default:
+            // Institutional moments (hand start, blinds, turn/river, showdown,
+            // busts) are the croupier's domain — VoiceOver stays silent (D-028).
             state = TableReducer.reduce(state, payload)
-            if let message = narration(for: payload) { announce(message) }
             await pause(Pacing.seconds(for: payload))
         }
+    }
+
+    /// Speaks a payload only if it is personal to the human player (D-028);
+    /// everything else is the croupier's job or intentionally silent.
+    private func announceIfPersonal(_ payload: EventPayload, interrupting: Bool = false) {
+        guard let spoken = TableAnnouncer.spoken(for: payload, heroSeatID: heroSeatID) else { return }
+        announce(TableAnnouncer.text(for: spoken), interrupting: interrupting)
     }
 
     // MARK: - The human's turn
@@ -264,7 +273,8 @@ public final class TableViewModel: ObservableObject {
         playUI(SoundCatalog.uiBoxOpen)
         let box = RaiseBoxState(minTo: turn.minTo, maxTo: turn.maxTo, isBet: turn.isBet)
         raiseBox = box
-        announce(uiLocalized("announce.raise.value", box.value))
+        // No announcement here: opening moves VoiceOver focus onto the box title,
+        // which already speaks the dialog name and the starting amount (D-027).
     }
 
     public func raisePlus() {
@@ -313,11 +323,6 @@ public final class TableViewModel: ObservableObject {
 
     // MARK: - Narration helpers
 
-    private func narration(for payload: EventPayload) -> String? {
-        guard let spoken = TableAnnouncer.spoken(for: payload, names: names) else { return nil }
-        return TableAnnouncer.text(for: spoken)
-    }
-
     private func announceHumanTurn(_ info: HumanTurnInfo) {
         let message = info.toCall > 0
             ? uiLocalized("announce.your.turn.call", info.potSize, info.toCall)
@@ -326,7 +331,10 @@ public final class TableViewModel: ObservableObject {
     }
 
     private func announce(_ message: String, interrupting: Bool = false) {
-        announcer.announce(message, interrupting: interrupting)
+        // Wait out any croupier/bot voice still playing so the two speaking systems
+        // never overlap (D-028). Usually 0 (nothing spoken is playing).
+        let delay = SpeechCoordinator.voiceOverDelay(spokenRemaining: audio.spokenAudioRemaining())
+        announcer.announce(message, interrupting: interrupting, after: delay)
     }
 
     // MARK: - UI input sounds (played by the UI itself, not from the stream)

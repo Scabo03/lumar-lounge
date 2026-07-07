@@ -2,11 +2,16 @@
 // =====================================================================
 // Cross-cutting sound system. Transversal and GAME-AGNOSTIC (D-023): it knows
 // nothing about poker, events, seats or rules. It plays opaque, caller-defined
-// sounds grouped into categories, and it owns the one piece of accessibility
-// policy that belongs to the audio layer itself: never talk over VoiceOver.
+// sounds grouped into categories.
 //
-// It may import AVFoundation (its raison d'être) and, only for VoiceOver
-// detection, UIKit under `#if canImport(UIKit)`. It must NOT import GameEngine,
+// Audio-VoiceOver coordination (D-028): spoken sounds (croupier/bot voices) now
+// ALWAYS play — they are part of the game's audio, not an optional extra. The
+// layer no longer silences them under VoiceOver (the old D-024 rule, which made
+// the croupier vanish mid-session). Instead it merely reports how much spoken
+// audio is still playing (`spokenAudioRemaining`) so the VoiceOver layer can wait
+// its turn and the two voices never overlap.
+//
+// It may import AVFoundation (its raison d'être). It must NOT import GameEngine,
 // GameWorld or UI: whoever knows the game (UI) maps events to these opaque
 // sounds and drives this module.
 
@@ -35,7 +40,8 @@ public enum SoundCategory: String, CaseIterable, Sendable {
     /// UI feedback for direct user input (taps). Non-spoken.
     case ui
 
-    /// Spoken categories would collide with VoiceOver's own speech.
+    /// Spoken categories (croupier/bot voices). They always play, but the engine
+    /// tracks them so VoiceOver can wait for them to finish (D-028).
     public var isSpoken: Bool { self == .croupier || self == .botVoice }
 
     /// Default gain 0…1 for the category (tuned to be present but not invasive).
@@ -48,16 +54,6 @@ public enum SoundCategory: String, CaseIterable, Sendable {
         case .effect: return 0.95
         case .ui: return 0.7
         }
-    }
-}
-
-/// The single accessibility rule the audio layer enforces (D-024): when
-/// VoiceOver is speaking, spoken sounds (croupier/bot voices) stay silent so the
-/// two voices never overlap. Everything non-spoken keeps playing.
-public enum AudioPolicy {
-    public static func shouldPlay(_ category: SoundCategory, voiceOverRunning: Bool) -> Bool {
-        if voiceOverRunning && category.isSpoken { return false }
-        return true
     }
 }
 
@@ -76,6 +72,16 @@ public protocol AudioServicing: AnyObject {
     func setMasterVolume(_ volume: Float)
     /// Mutes/unmutes everything.
     func setMuted(_ muted: Bool)
+    /// Seconds of SPOKEN audio (croupier/bot voices) still playing, else 0. Lets
+    /// the VoiceOver layer wait for a spoken cue to finish before announcing, so
+    /// the two speaking systems never overlap (D-028).
+    func spokenAudioRemaining() -> TimeInterval
+}
+
+public extension AudioServicing {
+    /// Default: silent implementations (tests, previews, `NullAudioService`) have
+    /// nothing playing, so nothing to wait for.
+    func spokenAudioRemaining() -> TimeInterval { 0 }
 }
 
 /// A do-nothing implementation for tests, previews, and platforms without audio.

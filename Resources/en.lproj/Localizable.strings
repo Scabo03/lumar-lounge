@@ -150,6 +150,16 @@
 "announce.you.won" = "you won the game";
 "announce.you.lost" = "you lost the game";
 
+/* Confirmation of the human's own action (D-028) */
+"announce.you.folded" = "you fold";
+"announce.you.checked" = "you check";
+"announce.you.called" = "you call %d";
+"announce.you.called.allin" = "you call all-in for %d";
+"announce.you.bet" = "you bet %d";
+"announce.you.bet.allin" = "you bet all-in %d";
+"announce.you.raised" = "you raise to %d";
+"announce.you.raised.allin" = "you raise all-in to %d";
+
 /* End of game */
 "endgame.won" = "You won!";
 "endgame.lost" = "You lost";

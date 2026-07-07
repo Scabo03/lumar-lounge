@@ -123,15 +123,29 @@ feedback di esito — restando **neutro** (suoni opachi + categorie, nessuna
 conoscenza del poker). La **mappatura evento→suoni** (`AudioScore`, pura) e il
 **consumatore parallelo** del flusso (`AudioDirector`) vivono in `UI`, unico
 strato che vede sia `SessionEvent` sia `Audio` (D-023). **Coordinamento con
-VoiceOver** (D-024): i suoni parlati (croupier/bot) tacciono quando VoiceOver è
-attivo, tutto il resto suona — l'accessibilità non è mai ridotta. Voci dei bot
-**probabilistiche** e deterministiche via seed. Degradazione con grazia: file
-mancanti → silenzio + log (D-025). 16 unit test.
+VoiceOver:** originariamente D-024 (silenziamento dei parlati), poi **ripensato in
+D-028** (vedi sotto). Voci dei bot **probabilistiche** e deterministiche via seed.
+Degradazione con grazia: file mancanti → silenzio + log (D-025).
 **Dipendenze:** M1.5, M1.7. **Note di design:** D-023…D-025 in `CLAUDE.md`.
 **Asset:** i 48 mp3 consegnati sono stati verificati contro il catalogo e
 **integrati** (47 in `Resources/Audio/`, rinominati alla forma del catalogo su
 scelta dell'utente; poi i 4 `tbl_chips_*` → **51/53**); 2 suoni non ancora
 consegnati restano silenziosi. 126 unit test.
+
+### ✅ Fix post-M1.8 — Coordinamento audio↔VoiceOver ripensato dopo il primo test reale (D-028)
+Non un mattone nuovo, ma un **fix architetturale importante** emerso al primo test
+su iPhone reale con VoiceOver dopo l'upload TestFlight di M1.8. Due sintomi legati:
+gli annunci VoiceOver si accavallavano in cascata, e le voci del croupier
+**sparivano** dopo i primi eventi. Cause reali (verificate nel codice): la strategia
+D-024 **silenziava** i parlati con VoiceOver attivo (e la latenza di
+`isVoiceOverRunning` all'avvio lasciava passare solo i primissimi), mentre `present()`
+annunciava **ogni** evento del flusso. Sostituita dalla **"strategia C" (D-028):
+domini separati, mai concorrenti** — il croupier suona sempre per gli eventi
+istituzionali, VoiceOver solo per l'informazione personale del giocatore, le azioni
+degli avversari non annunciate, e un coordinamento temporale a una direzione
+(VoiceOver aspetta la voce in corso via `spokenAudioRemaining()`/`SpeechCoordinator`).
+Cambi solo in `UI` e `Audio`, nessuna modifica a `GameEngine`/`SessionDriver`/flusso.
+131 unit test verdi. **Note di design:** D-028 in `CLAUDE.md`.
 
 ---
 

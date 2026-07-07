@@ -84,17 +84,45 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
   - Gli **annunci VoiceOver dinamici** usano `UIAccessibility.post(.announcement)`
     avvolto in `#if canImport(UIKit)` (no-op sul host macOS, così il modulo `UI`
     compila per `swift test`).
+  - **Annuncio con priorità: passare `NSAttributedString`, non `AttributedString`
+    (lezione M-testing, D-027).** Per un annuncio interrompente si imposta
+    `accessibilitySpeechAnnouncementPriority = .high` su un `AttributedString`, **ma
+    l'argomento di `.announcement` va convertito con `NSAttributedString(...)`**:
+    passando l'`AttributedString` Swift grezzo iOS lo **scarta in silenzio** e non
+    si sente nulla (il bug che faceva pronunciare solo l'etichetta del bottone al
+    tap). Utile anche differire il post di un runloop (`asyncAfter +0.1s`) quando
+    parte dall'handler di un tap, mentre VoiceOver sta ancora processando
+    l'attivazione.
   - **Non** applicare modificatori di accessibilità al contenitore più esterno di
     una schermata (`.accessibilityElement`/`.accessibilityIdentifier` su una
     ZStack/GeometryReader di root): collassa il sottoalbero in un solo elemento e
     nasconde gli identifier dei figli. Gli **identifier vanno sui leaf**.
+  - **Un overlay modale deve intrappolare l'accessibilità (D-027).** Quando una
+    finestra sovrapposta è aperta (box Raise, overlay di fine partita), il contenuto
+    dietro va reso `.accessibilityHidden(true)`: altrimenti VoiceOver ci naviga
+    sopra e confonde gli elementi di sfondo con quelli della finestra. Portare il
+    **focus dentro** la finestra all'apertura (`@AccessibilityFocusState` +
+    `onAppear`, deferito un runloop). Corollario: **non** risolvere un problema di
+    annuncio *nascondendo controlli interattivi* a VoiceOver — un pulsante che serve
+    all'utente deve restare agganciabile; si sistema l'annuncio, non si toglie il
+    controllo.
   - La logica di presentazione (riduzione evento→stato, formattazione testo) va
     tenuta **pura** e fuori dalle viste SwiftUI, per essere unit-testabile.
-  - **Audio mai sopra VoiceOver (emerso in M1.8, D-024).** L'audio arricchisce ma
-    **non è mai indispensabile**: VoiceOver da solo deve sempre bastare per
-    giocare. Quando VoiceOver è attivo, i suoni **parlati** (voci di croupier e
-    bot) tacciono, mentre quelli **non parlati** (ambient, effetti, feedback UI)
-    restano. Come per il parlato (M1.6), la **mappatura evento→suoni è una
+  - **Due sistemi audio parlanti → domini separati, mai concorrenti (D-028,
+    supera D-024).** Quando VoiceOver e voci pre-registrate (croupier/bot)
+    coesistono, **non farli competere sullo stesso evento** e **non risolvere
+    silenziandone uno** (fragile: `UIAccessibility.isVoiceOverRunning` all'avvio è
+    `false` per qualche ms, poi scatta e zittisce definitivamente — così il
+    croupier spariva a metà sessione). Assegna invece **domini di competenza
+    disgiunti**: le voci pre-registrate coprono gli eventi **istituzionali** (e
+    suonano sempre); VoiceOver copre il **personale del giocatore** e ciò che le
+    prime non dicono. Nessun evento è annunciato da entrambi. Se possono cadere
+    vicini nel tempo, **non sovrapporli**: una direzione sola (VoiceOver aspetta la
+    fine della voce in corso), con un residuo tempo esposto dallo strato audio
+    (`spokenAudioRemaining()`) e un ritardo puro/testabile (`SpeechCoordinator`).
+    L'audio **non è mai indispensabile**: VoiceOver da solo deve sempre bastare per
+    giocare (info coperte dal croupier restano leggibili on-demand dagli elementi
+    accessibili). Come per il parlato (M1.6), la **mappatura evento→suoni è una
     funzione pura** separata dalla riproduzione; il modulo `Audio` resta neutro
     (suoni opachi + categorie), e la mappatura vive dove si vedono sia gli eventi
     sia `Audio` (cioè in `UI`), mai dentro `Audio`.
@@ -104,9 +132,10 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     futuro): (a) la **curva di incremento è una funzione pura** separata e
     testabile; (b) lo stato tiene un **conteggio di step** come sorgente di
     verità, col valore derivato e clampato a un intervallo legale; (c) ogni
-    pressione posta **subito** un annuncio VoiceOver del nuovo valore con
-    **priorità alta interrompente**, così una raffica di clic annuncia solo
-    l'ultimo valore senza accodarsi; (d) ordine di swipe esplicito
+    pressione posta un annuncio VoiceOver del nuovo valore con **priorità alta
+    interrompente** (via `NSAttributedString`, vedi la lezione sopra e D-027), così
+    una raffica di clic annuncia solo l'ultimo valore senza accodarsi; (d) ordine di
+    swipe esplicito
     (`−`, valore, `+`, all-in, poi conferma/annulla) e ogni elemento con
     identifier e label fonetica. Riusare questa forma per input analoghi.
 

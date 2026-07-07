@@ -66,6 +66,12 @@ struct TableScreen: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
+                // Trap accessibility inside a modal overlay: when the Raise box
+                // (or the end-of-game overlay) is up, the whole table behind it is
+                // removed from the VoiceOver tree, so swiping can't wander onto
+                // background elements and the overlay's own controls are the only
+                // things reachable (D-027).
+                .accessibilityHidden(model.raiseBox != nil || model.outcome != nil)
 
                 if let box = model.raiseBox {
                     ZStack {

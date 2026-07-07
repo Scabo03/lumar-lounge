@@ -63,9 +63,10 @@ del driver e mostra una sessione tra tre bot svolgersi dall'inizio alla fine. Qu
 il tempo umano incontra la velocità di codice del flusso: la schermata lo consuma
 a **ritmo umano** (le carte del flop escono una alla volta, le azioni scorrono,
 la fine mano respira), mentre il driver resta a velocità di codice. Soprattutto,
-la partita è **interamente accessibile**: ogni evento genera un annuncio VoiceOver
-con pronuncia italiana curata dei termini del poker, così un non vedente segue
-tutto senza perdere nulla rispetto a un vedente.
+la partita è **interamente accessibile**, con pronuncia italiana curata dei termini
+del poker. La divisione dei ruoli tra croupier e VoiceOver è stata poi affinata nel
+fix post-M1.8 (vedi sotto, D-028), ma il principio resta: un non vedente segue tutto
+senza perdere nulla rispetto a un vedente.
 
 Il settimo mattone rende il tavolo **giocabile da una persona**. Il giocatore
 umano entra al tavolo insieme a tre bot, in un layout stratificato dove è
@@ -85,10 +86,15 @@ sottofondo, gli effetti di carte e fiches, le battute del croupier e dei bot, i
 jingle di vittoria e sconfitta. Ascolta lo **stesso flusso di eventi** in
 parallelo alla UI, senza che il driver sappia nulla, e resta neutro: non conosce
 il poker, riproduce solo suoni per categoria. Il coordinamento con VoiceOver è la
-cura chiave: quando lo screen reader parla, le voci registrate tacciono, così le
-due voci non si accavallano mai — l'audio arricchisce, ma VoiceOver da solo
-basta sempre. Il gioco **degrada con grazia** se un suono manca: gira lo stesso e
-segnala all'avvio cosa manca.
+cura chiave, **ripensato dopo il primo test reale** (D-028): non più
+silenziamento, ma **domini separati** — il croupier suona sempre per i momenti
+istituzionali (blind, flop/turn/river, showdown, pot), VoiceOver parla solo di ciò
+che è **personale** al giocatore (le sue carte, il suo turno, la sua azione, il suo
+esito), e le azioni degli avversari non le annuncia nessuno dei due. Se le due voci
+cadono vicine, VoiceOver **aspetta** la fine di quella registrata, così non si
+accavallano mai — l'audio arricchisce, ma VoiceOver da solo basta sempre. Il gioco
+**degrada con grazia** se un suono manca: gira lo stesso e segnala all'avvio cosa
+manca.
 
 > **🏁 La prima fase è completa.** Il gioco base è funzionante end-to-end — motore
 > completo, bot credibili, sessione multi-mano, flusso di eventi, UI giocabile e

@@ -150,6 +150,16 @@
 "announce.you.won" = "hai vinto la partita";
 "announce.you.lost" = "hai perso la partita";
 
+/* Confirmation of the human's own action (D-028), phonetic poker terms */
+"announce.you.folded" = "fai fold";
+"announce.you.checked" = "fai cek";
+"announce.you.called" = "fai col di %d";
+"announce.you.called.allin" = "fai col e vai ol-in con %d";
+"announce.you.bet" = "fai bett a %d";
+"announce.you.bet.allin" = "fai bett ol-in a %d";
+"announce.you.raised" = "fai reis a %d";
+"announce.you.raised.allin" = "fai reis ol-in a %d";
+
 /* End of game */
 "endgame.won" = "Hai vinto!";
 "endgame.lost" = "Hai perso";

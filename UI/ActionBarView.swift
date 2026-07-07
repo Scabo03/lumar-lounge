@@ -103,13 +103,24 @@ struct RaiseBoxView: View {
     @ObservedObject var model: TableViewModel
     let box: RaiseBoxState
 
+    /// Pulls VoiceOver focus onto the adjustable amount the moment the box opens,
+    /// so the reader immediately hears "Rilancio, N fiche, regolabile" instead of
+    /// staying on the now-hidden table behind it (D-027).
+    @AccessibilityFocusState private var focused: Bool
+
     var body: some View {
         VStack(spacing: 16) {
             Text(verbatim: box.isBet ? uiLocalized("raise.title.bet") : uiLocalized("raise.title.raise"))
                 .font(.headline)
                 .foregroundStyle(TablePalette.primaryText)
+                // Hidden from VoiceOver: the adjustable value below already carries
+                // the dialog name, so the reader isn't told "Rilancio" twice (D-027).
+                .accessibilityHidden(true)
 
             HStack(spacing: 12) {
+                // +/- are ordinary VoiceOver buttons (double-tap): each changes the
+                // value and then announces the new amount (D-027). The value in the
+                // middle is a readable element so swiping onto it also reads "N fiche".
                 stepButton("−", identifier: "raise.minus",
                            a11yLabel: uiLocalized("raise.minus.a11y"),
                            enabled: !box.isAtMin) { model.raiseMinus() }
@@ -118,8 +129,11 @@ struct RaiseBoxView: View {
                     .font(.title.weight(.bold).monospacedDigit())
                     .foregroundStyle(TablePalette.accent)
                     .frame(minWidth: 90)
+                    .accessibilityElement()
                     .accessibilityIdentifier("raise.value")
-                    .accessibilityLabel(Text(verbatim: uiLocalized("raise.value.a11y", box.value)))
+                    .accessibilityLabel(Text(verbatim: box.isBet ? uiLocalized("raise.title.bet") : uiLocalized("raise.title.raise")))
+                    .accessibilityValue(Text(verbatim: uiLocalized("announce.raise.value", box.value)))
+                    .accessibilityFocused($focused)
 
                 stepButton("+", identifier: "raise.plus",
                            a11yLabel: uiLocalized("raise.plus.a11y"),
@@ -160,6 +174,8 @@ struct RaiseBoxView: View {
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("raisebox")
+        // Defer one runloop so the element exists in the tree before we focus it.
+        .onAppear { DispatchQueue.main.async { focused = true } }
     }
 
     private var confirmTitle: String {

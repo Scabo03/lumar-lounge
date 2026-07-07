@@ -2,21 +2,18 @@
 // =====================================================================
 // The real AVFoundation implementation of `AudioServicing`: one looping ambient
 // player plus overlapping one-shots, per-category volumes, a master volume and
-// mute, and the VoiceOver rule (spoken sounds stay silent while VoiceOver runs,
-// D-024).
+// mute. Spoken cues (croupier/bot) always play; the engine tracks them so the
+// VoiceOver layer can wait for them via `spokenAudioRemaining()` (D-028).
 //
 // Degrades gracefully: a sound whose file is missing from the bundle simply
 // doesn't play (the app is fully usable with partial or no audio), and the set
 // of missing files is logged once at startup.
 //
 // AVFoundation is available on macOS too, so this compiles for `swift test`;
-// `AVAudioSession` (iOS-only) and `UIAccessibility` (VoiceOver) are guarded.
+// `AVAudioSession` (iOS-only) is guarded.
 
 import Foundation
 import AVFoundation
-#if canImport(UIKit)
-import UIKit
-#endif
 
 public final class AudioEngine: AudioServicing {
 
@@ -29,6 +26,9 @@ public final class AudioEngine: AudioServicing {
     private let fileExtension: String
     private var ambientPlayer: AVAudioPlayer?
     private var oneShots: [AVAudioPlayer] = []
+    /// The most recent spoken (croupier/bot) players, kept so we can report how
+    /// much spoken audio is still playing to the VoiceOver layer (D-028).
+    private var spokenPlayers: [AVAudioPlayer] = []
     private var masterVolume: Float = 1.0
     private var muted: Bool = false
 
@@ -54,13 +54,25 @@ public final class AudioEngine: AudioServicing {
     }
 
     public func play(_ id: SoundID, category: SoundCategory) {
-        guard AudioPolicy.shouldPlay(category, voiceOverRunning: isVoiceOverRunning) else { return }
+        // Spoken cues are no longer gated by VoiceOver (D-028): they always play.
         guard !muted, let player = makePlayer(id) else { return }
         player.volume = gain(for: category)
         player.prepareToPlay()
         player.play()
         oneShots.append(player)
         if oneShots.count > maxOverlap { oneShots.removeFirst() }
+        if category.isSpoken {
+            spokenPlayers.append(player)
+            if spokenPlayers.count > 4 { spokenPlayers.removeFirst() }
+        }
+    }
+
+    /// Seconds of spoken audio still playing (the longest remaining voice), else 0.
+    public func spokenAudioRemaining() -> TimeInterval {
+        spokenPlayers.reduce(0) { longest, player in
+            guard player.isPlaying else { return longest }
+            return max(longest, player.duration - player.currentTime)
+        }
     }
 
     public func stopAll() {
@@ -68,6 +80,7 @@ public final class AudioEngine: AudioServicing {
         ambientPlayer = nil
         oneShots.forEach { $0.stop() }
         oneShots.removeAll()
+        spokenPlayers.removeAll()
     }
 
     public func setMasterVolume(_ volume: Float) {
@@ -110,14 +123,6 @@ public final class AudioEngine: AudioServicing {
 
     private func gain(for category: SoundCategory) -> Float {
         muted ? 0 : category.defaultVolume * masterVolume
-    }
-
-    private var isVoiceOverRunning: Bool {
-        #if canImport(UIKit)
-        return UIAccessibility.isVoiceOverRunning
-        #else
-        return false
-        #endif
     }
 
     #if os(iOS)

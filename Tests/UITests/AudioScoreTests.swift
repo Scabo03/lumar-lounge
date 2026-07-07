@@ -60,20 +60,43 @@ final class AudioScoreTests: XCTestCase {
                        [.play(SoundCatalog.tblCardFlipSingle, .table), .play(SoundCatalog.voRiver, .croupier)])
     }
 
-    func testActionsAnnouncedByCroupier() {
+    // Strategy C (D-028): player actions carry no croupier voice — only physical
+    // table sounds (and, occasionally, a bot's own voice, tested separately).
+    func testActionsCarryNoCroupierVoice() {
         XCTAssertEqual(cues(.playerActed(seatID: 1, action: .folded)),
-                       [.play(SoundCatalog.tblMuck, .table), .play(SoundCatalog.voActionFold, .croupier)])
-        XCTAssertEqual(cues(.playerActed(seatID: 1, action: .checked)),
-                       [.play(SoundCatalog.voActionCheck, .croupier)])
+                       [.play(SoundCatalog.tblMuck, .table)])
+        XCTAssertEqual(cues(.playerActed(seatID: 1, action: .checked)), [])
         XCTAssertEqual(cues(.playerActed(seatID: 1, action: .called(amount: 20, isAllIn: false))),
-                       [.play(SoundCatalog.tblChipsStack, .table), .play(SoundCatalog.voActionCall, .croupier)])
+                       [.play(SoundCatalog.tblChipsStack, .table)])
+        let actions: [ActedAction] = [.folded, .checked, .called(amount: 20, isAllIn: false),
+                                      .bet(to: 40, amount: 40, isAllIn: false),
+                                      .raised(to: 60, amount: 60, isAllIn: false)]
+        for action in actions {
+            XCTAssertFalse(hasCroupier(cues(.playerActed(seatID: 1, action: action))),
+                           "action \(action) must not trigger a croupier voice")
+        }
     }
 
-    func testAllInPlaysBigChipsCroupierAndDramaticEffect() {
+    func testAllInPlaysBigChipsAndDramaticEffectWithoutCroupier() {
         let result = cues(.playerActed(seatID: 1, action: .raised(to: 200, amount: 200, isAllIn: true)))
         XCTAssertTrue(result.contains(.play(SoundCatalog.tblChipsBetLarge, .table)))
-        XCTAssertTrue(result.contains(.play(SoundCatalog.voActionAllIn, .croupier)))
         XCTAssertTrue(result.contains(.play(SoundCatalog.fxAllInDramatic, .effect)))
+        XCTAssertFalse(hasCroupier(result))
+    }
+
+    // The croupier always voices the institutional moments — the mapping has no
+    // VoiceOver input at all, so it is unconditional (D-028: croupier always plays).
+    func testInstitutionalEventsAlwaysCarryCroupierVoice() {
+        XCTAssertTrue(hasCroupier(cues(handBegan())))
+        XCTAssertTrue(hasCroupier(cues(.blindPosted(seatID: 1, blind: .small, amount: 10, isAllIn: false))))
+        XCTAssertTrue(hasCroupier(cues(.streetOpened(street: .flop, communityCards: []))))
+        XCTAssertTrue(hasCroupier(cues(.streetOpened(street: .turn, communityCards: []))))
+        XCTAssertTrue(hasCroupier(cues(.streetOpened(street: .river, communityCards: []))))
+        XCTAssertTrue(hasCroupier(cues(.potAwarded(potIndex: 0, amount: 100, winnerSeatIDs: [1]))))
+    }
+
+    private func hasCroupier(_ cues: [SoundCue]) -> Bool {
+        cues.contains { if case .play(_, .croupier) = $0 { return true }; return false }
     }
 
     func testPotAwardedAndSplit() {

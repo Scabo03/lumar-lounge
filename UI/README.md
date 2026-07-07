@@ -47,11 +47,13 @@ progressiva** (D-020) sono le novità di M1.7.
 | `RaiseCurve` / `RaiseBoxState` | La **curva progressiva** del rilancio (pura, testabile): fine vicino al minimo, accelerazione verso l'all-in. |
 | `TableViewModel` | `@MainActor ObservableObject`: possiede la sessione (umano + 3 bot), consuma il flusso a ritmo umano, gestisce il turno umano e il box Raise, e l'esito (`won`/`lost`). |
 | `TableState` / `TableReducer` | Stato di presentazione (valore) + riduzione **pura** `evento → stato` (ora anche le carte private dell'umano). Testabile. |
-| `TableAnnouncer`, `Announcer`, `HandGate`, `SeatView`, `CardView`, `TablePalette`, `Localization` | Narrazione fonetica, annunci (con priorità interrompente per il box Raise), gate produttore/consumatore, sottoviste e helper. |
+| `TableAnnouncer`, `Announcer`, `HandGate`, `SeatView`, `CardView`, `TablePalette`, `Localization` | Narrazione fonetica, annunci (interrompenti via `NSAttributedString`, D-027), gate produttore/consumatore, sottoviste e helper. |
 
 Punti fermi: **ritmo umano nella UI**; **Dynamic Type** e **alto contrasto**
 ovunque; annunci VoiceOver affidabili (proprio turno, proprie carte, ogni
-`+/−` del box Raise con priorità interrompente); accessibilità di prima classe
+`+/−` del box Raise con priorità interrompente); il box Raise è una **vera
+modale d'accessibilità** — sfondo intrappolato, focus dentro, +/− pulsanti
+navigabili che annunciano l'importo (D-027); accessibilità di prima classe
 su **ogni** nuovo controllo (identifier, label fonetica, stato attivo/disattivo
 riflesso anche per VoiceOver).
 

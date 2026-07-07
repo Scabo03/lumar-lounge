@@ -20,29 +20,28 @@ final class AudioCatalogTests: XCTestCase {
         }
     }
 
-    // MARK: - VoiceOver coordination policy (D-024)
-
-    func testSpokenCategoriesAreSilencedUnderVoiceOver() {
-        XCTAssertFalse(AudioPolicy.shouldPlay(.croupier, voiceOverRunning: true))
-        XCTAssertFalse(AudioPolicy.shouldPlay(.botVoice, voiceOverRunning: true))
-        // Non-spoken sounds keep playing under VoiceOver.
-        XCTAssertTrue(AudioPolicy.shouldPlay(.ambient, voiceOverRunning: true))
-        XCTAssertTrue(AudioPolicy.shouldPlay(.table, voiceOverRunning: true))
-        XCTAssertTrue(AudioPolicy.shouldPlay(.effect, voiceOverRunning: true))
-        XCTAssertTrue(AudioPolicy.shouldPlay(.ui, voiceOverRunning: true))
-    }
-
-    func testEverythingPlaysWhenVoiceOverIsOff() {
-        for category in SoundCategory.allCases {
-            XCTAssertTrue(AudioPolicy.shouldPlay(category, voiceOverRunning: false))
-        }
-    }
+    // MARK: - Audio-VoiceOver coordination (D-028)
 
     func testSpokenCategorisation() {
         XCTAssertTrue(SoundCategory.croupier.isSpoken)
         XCTAssertTrue(SoundCategory.botVoice.isSpoken)
         XCTAssertFalse(SoundCategory.ambient.isSpoken)
         XCTAssertFalse(SoundCategory.effect.isSpoken)
+    }
+
+    /// Strategy C (D-028): spoken cues are no longer gated by VoiceOver — the old
+    /// silencing policy is gone, so there is nothing to silence them. The engine
+    /// only reports how much spoken audio is still playing, for coordination. A
+    /// fresh engine reports none, and driving it (files missing in the test bundle,
+    /// so no player is created) never invents phantom remaining time.
+    func testEngineReportsNoSpokenAudioWhenIdle() {
+        let engine = AudioEngine(configureSession: false)
+        XCTAssertEqual(engine.spokenAudioRemaining(), 0)
+        engine.play(SoundCatalog.voHandStart, category: .croupier)
+        engine.play(SoundCatalog.vobNoviceExcited, category: .botVoice)
+        XCTAssertEqual(engine.spokenAudioRemaining(), 0)
+        engine.stopAll()
+        XCTAssertEqual(engine.spokenAudioRemaining(), 0)
     }
 
     // MARK: - Engine: bundled files are loadable; missing ones degrade gracefully

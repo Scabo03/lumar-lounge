@@ -42,9 +42,10 @@ nei file collegati.
   display via coda MainActor (D-021).
 - **`Audio` M1.8:** modulo audio pieno (`AudioEngine`/AVFoundation), **neutro**;
   mappatura evento→suoni (`AudioScore`) + consumatore parallelo (`AudioDirector`)
-  in `UI` (D-023); coordinamento VoiceOver (D-024). **51 mp3 integrati** in
+  in `UI` (D-023); coordinamento audio↔VoiceOver a **domini separati** (D-028, che
+  supera la strategia di silenziamento D-024 dopo il primo test reale). **51 mp3 integrati** in
   `Resources/Audio/` (2 del catalogo non ancora consegnati → silenziosi, D-025).
-  126 unit test verdi + 1 XCUITest.
+  131 unit test verdi + 1 XCUITest.
 
 **🏁 Fase 1 (M1) completa — il gioco base gira end-to-end con audio ed è pronto
 per un primo TestFlight** (motore + bot + sessione + flusso + UI accessibile +
@@ -430,3 +431,95 @@ Primo upload TestFlight riuscito (**Lumar Lounge 1.0**). Tre note operative emer
 - **Export compliance:** `ITSAppUsesNonExemptEncryption = false` nell'`Info.plist`
   (l'app non usa crittografia non esente) → niente domanda di conformità a ogni
   build su TestFlight.
+
+### D-027 — Il box Raise è una vera modale d'accessibilità (fix post primo test su device)
+Al primo test su iPhone reale è emerso che il box Raise, pur essendo un overlay
+visivo, **non isolava VoiceOver**: solo lo sfondo scurito era `accessibilityHidden`,
+mentre l'intero tavolo dietro (avversari/board/pot/action bar/hero) restava nell'
+albero d'accessibilità. Il lettore poteva quindi navigare fuori dalla finestra e
+confondere gli elementi di sfondo con i controlli del box (che ha i suoi
+Conferma/Annulla), e gli annunci interrompenti di +/− si perdevano perché il
+focus non era mai entrato nella finestra. Correzione, **tutta in `UI`**:
+- **Trapping modale** (`PokerTableView`): il contenuto di fondo diventa
+  `.accessibilityHidden(true)` quando `raiseBox != nil` **o** `outcome != nil`
+  (stesso difetto latente sull'overlay di fine partita, corretto insieme), così i
+  soli elementi raggiungibili sono quelli dell'overlay in primo piano.
+- **Focus dentro il box** (`RaiseBoxView`): `@AccessibilityFocusState` sul titolo,
+  attivato in `onAppear` (deferito un runloop con `DispatchQueue.main.async`
+  perché l'elemento esista già nell'albero). All'apertura VoiceOver atterra sul
+  titolo, la cui label combina nome della finestra + cifra iniziale ("Rilancio.
+  cifra N fiche"), così **la cifra si sente subito senza swipe**. L'annuncio
+  separato in `openRaiseBox` è stato rimosso (ridondante). Da lì gli annunci
+  interrompenti a priorità alta di +/− (D-020, già presenti) vengono uditi perché
+  il focus è ora confinato nel box. Nessuna nuova stringa: `titleA11y` compone le
+  chiavi esistenti `raise.title.*` + `raise.value.a11y`.
+- **La cifra dei +/− non si sentiva: causa vera = argomento sbagliato**
+  (`Announcer`). L'annuncio interrompente costruiva un `AttributedString` **Swift
+  grezzo** e lo passava come argomento di `UIAccessibility.post(.announcement)`, che
+  invece si aspetta un `NSAttributedString`: iOS non lo riconosceva e lo
+  **scartava silenziosamente**, così sull'attivazione del bottone si sentiva solo la
+  sua etichetta ("più"/"meno"). Non era timing. Fix: **bridge esplicito**
+  `NSAttributedString(attributed)` prima del post; la priorità `.high` sopravvive e
+  fa collassare una raffica di tap all'ultimo valore (differimento +0.1s mantenuto
+  come rete contro il drop da attivazione).
+- **I +/− restano pulsanti VoiceOver "veri"** (`RaiseBoxView`): un tentativo
+  intermedio li aveva resi `accessibilityHidden` sostituendoli con un solo elemento
+  *adjustable* (swipe su/giù) — **regressione**: VoiceOver non li agganciava più e
+  cambiava il gesto. Scartato. Ora −, cifra, +, All-in, Annulla, Conferma sono tutti
+  elementi navigabili; **doppio-tap** su +/− cambia il valore e (con il bridging
+  sopra) **annuncia il nuovo importo**. La cifra centrale è un `accessibilityElement`
+  **leggibile**: label = nome finestra ("Rilancio"/"Punta"), value =
+  `announce.raise.value` ("N fiche", **senza** il prefisso "cifra:" che l'utente ha
+  chiesto di togliere); il focus all'apertura ci atterra → si sente subito "Rilancio,
+  N fiche". Il titolo è `accessibilityHidden` per non ripetere "Rilancio".
+
+### D-028 — Coordinamento audio↔VoiceOver "strategia C": domini separati, mai concorrenti (fix post-M1.8, primo test reale con VoiceOver)
+Al primo test su iPhone reale con VoiceOver attivo dall'inizio sono emersi due
+sintomi legati: (1) gli annunci VoiceOver si accavallavano in una cascata
+incomprensibile; (2) le voci del croupier (`vo_it_`) si sentivano solo sui
+primissimi eventi (blind) poi **sparivano** per tutta la sessione, con loro le
+voci dei bot.
+**Causa reale, verificata nel codice (non solo l'ipotesi):**
+- *Croupier che sparisce:* `AudioEngine.play` aveva
+  `guard AudioPolicy.shouldPlay(category, voiceOverRunning: isVoiceOverRunning)`
+  che, con la strategia **D-024**, **silenziava** croupier e bot ogni volta che
+  `UIAccessibility.isVoiceOverRunning` era `true`. I primissimi passavano perché
+  quel flag all'avvio ritorna `false` per qualche centinaio di ms (il server
+  accessibilità non è ancora agganciato); appena scatta a `true`, tutto il parlato
+  taceva **definitivamente**. Non era uno stato inconsistente del player: era la
+  policy stessa, per costruzione.
+- *Cascata VoiceOver:* `TableViewModel.present()` annunciava **ogni** evento del
+  flusso M1.5 (blind, ogni carta del flop una per una, azioni di ogni bot, street,
+  showdown, pot…). Senza il metronomo del croupier (silenziato) gli annunci si
+  accodavano più in fretta di quanto VoiceOver potesse pronunciarli.
+**Perché D-024 era sbagliata:** far *competere* i due sistemi sullo stesso evento
+(croupier vs VoiceOver) e risolvere silenziando uno dei due è fragile e, con la
+latenza di `isVoiceOverRunning`, incoerente. **Strategia C (scelta dall'utente):**
+niente concorrenza, **domini separati**.
+- **Il croupier suona SEMPRE** (a prescindere da VoiceOver) per i soli **eventi
+  istituzionali**: hand start, blind, flop/turn/river, showdown, assegnazione pot.
+  Ben distanziati, non affaticano. Rimosso del tutto `AudioPolicy` e il rilevamento
+  VoiceOver da `AudioEngine`.
+- **Le voci dei bot** (`vob_`) restano occasionali e probabilistiche, sempre attive.
+- **Le azioni** (fold/call/raise/check) **non** sono più annunciate né dal croupier
+  (rimosse le `vo_it_action_*` da `AudioScore.actionCues`/`allInCues`) né da
+  VoiceOver: bastano il suono fisico (fiche/muck) e l'eventuale `vob_`. Meno rumore
+  ripetitivo. L'azione resta comunque visibile a schermo.
+- **VoiceOver** si concentra sul **personale**: proprie hole card, proprio turno
+  ("è il tuo turno…"), **conferma della propria azione** (nuovo: "fai reis a N"),
+  esito dal proprio punto di vista (proprio pot vinto, win/lose finale). Le carte
+  comuni non annunciate automaticamente restano leggibili **on-demand** dall'elemento
+  `table.board`, quindi "nessuno perde niente".
+- **Ripulitura mappatura:** `TableAnnouncer.spoken(for:heroSeatID:)` è ora l'autorità
+  pura e testabile: ritorna un `SpokenEvent` **solo** per i tre momenti personali
+  dell'umano (hole card, propria azione, proprio pot), `nil` per tutto il resto.
+- **Coordinamento temporale (semplice, una direzione):** quando croupier e VoiceOver
+  cadono vicini, **VoiceOver aspetta** la fine della voce in corso. `AudioEngine`
+  espone `spokenAudioRemaining()` (max tempo residuo dei player parlati, via
+  `duration - currentTime`); `SpeechCoordinator.voiceOverDelay(spokenRemaining:)`
+  (puro, testabile) aggiunge un piccolo gap; `Announcer.announce(..., after:)`
+  ritarda il post di conseguenza. Il croupier è il metronomo, VoiceOver gli cede il
+  passo — mai il contrario, per semplicità.
+**Vincoli rispettati:** nessuna modifica a `GameEngine`/`SessionDriver`/flusso M1.5;
+cambi solo in `UI` (annunci) e `Audio` (riproduzione/coordinamento); nessuna nuova
+dipendenza. **D-024 è superata da questa voce.**

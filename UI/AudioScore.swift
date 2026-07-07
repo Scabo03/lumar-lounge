@@ -6,11 +6,11 @@
 // so the `Audio` module itself stays game-agnostic. Like `TableAnnouncer`
 // (event → speech), this is pure and unit-testable, separate from playback.
 //
-// The croupier announces each action/street/blind (a `.croupier` voice, so it
-// yields to VoiceOver, D-024); the table gives it physical body (cards, chips);
-// bots occasionally chime in (probabilistic, via a seeded generator). Hero
-// win/lose/bust and session-final sounds are decided by `AudioDirector`, which
-// tracks chip deltas — not here.
+// The croupier voices only the INSTITUTIONAL moments — hand start, blinds,
+// flop/turn/river, showdown, pot award — and always plays (D-028). Player actions
+// get physical body only (cards, chips) plus the occasional probabilistic bot
+// voice, never a croupier line. Hero win/lose/bust and session-final sounds are
+// decided by `AudioDirector`, which tracks chip deltas — not here.
 
 import Foundation
 import GameWorld
@@ -94,23 +94,22 @@ public enum AudioScore {
         }
     }
 
+    /// Player actions get only PHYSICAL sounds (chips, muck) and, occasionally, a
+    /// bot's own voice — never the croupier's institutional voice and never a
+    /// VoiceOver line (D-028, strategy C): the table noise and the optional bot
+    /// voice are enough to suggest a bot acted, without a repetitive announcement.
     private static func actionCues(seatID: Int, action: ActedAction,
                                    heroSeatID: Int, voices: [Int: BotVoiceProfile],
                                    rng: inout SeededGenerator) -> [SoundCue] {
         switch action {
         case .folded:
-            return [.play(SoundCatalog.tblMuck, .table), .play(SoundCatalog.voActionFold, .croupier)]
+            return [.play(SoundCatalog.tblMuck, .table)]
         case .checked:
-            return [.play(SoundCatalog.voActionCheck, .croupier)]
+            return []
         case let .called(_, isAllIn):
-            return isAllIn ? allInCues() : [.play(SoundCatalog.tblChipsStack, .table), .play(SoundCatalog.voActionCall, .croupier)]
+            return isAllIn ? allInCues() : [.play(SoundCatalog.tblChipsStack, .table)]
         case let .bet(_, _, isAllIn), let .raised(_, _, isAllIn):
-            var cues: [SoundCue]
-            if isAllIn {
-                cues = allInCues()
-            } else {
-                cues = [.play(SoundCatalog.tblChipsStack, .table), .play(SoundCatalog.voActionRaise, .croupier)]
-            }
+            var cues: [SoundCue] = isAllIn ? allInCues() : [.play(SoundCatalog.tblChipsStack, .table)]
             // An aggressive bot occasionally talks it up.
             if let profile = voices[seatID], seatID != heroSeatID, roll(&rng) < 0.35 {
                 cues.append(.play(profile.assertive, .botVoice))
@@ -119,10 +118,10 @@ public enum AudioScore {
         }
     }
 
-    /// Any all-in: big chips, the croupier's "all-in", and the dramatic sting.
+    /// Any all-in: big chips and the dramatic sting (a non-spoken effect). No
+    /// croupier voice — the drama is the effect, not an announcement (D-028).
     private static func allInCues() -> [SoundCue] {
         [.play(SoundCatalog.tblChipsBetLarge, .table),
-         .play(SoundCatalog.voActionAllIn, .croupier),
          .play(SoundCatalog.fxAllInDramatic, .effect)]
     }
 
