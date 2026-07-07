@@ -80,12 +80,17 @@ public final class TableViewModel: ObservableObject {
     private let audioDirector: AudioDirector
     /// The serial owner of the croupier voice + VoiceOver synthesis (D-029).
     private let conductor: SpeechConductor
+    /// Decides the bots' occasional action voicelines, ordered before the synthesis.
+    private let botChatter: BotChatter
 
     private var eventQueue: [EventPayload] = []
     private var streamFinished = false
     private var turnContinuation: CheckedContinuation<Void, Never>?
     /// Each seat's hand category revealed at showdown, for the pot conclusion line.
     private var shownCategory: [Int: HandCategory] = [:]
+    /// Guards the pot conclusion to once per hand — a hand can award several pots
+    /// (main + side), and only the croupier mp3 was deduped before (D-029 fix).
+    private var potAnnounced = false
 
     public init(seed: UInt64 = 20_260_704, fastMode: Bool = false,
                 audio: AudioServicing = NullAudioService()) {
@@ -112,11 +117,12 @@ public final class TableViewModel: ObservableObject {
         for bot in bots { names[bot.id] = uiLocalized(bot.nameKey) }
         self.names = names
 
-        // Each bot's CHARACTER, so the audio director picks fitting voicelines.
+        // Each bot's CHARACTER, so the audio layer picks fitting voicelines.
         let characters: [Int: BotCharacter] = [1: .novice, 2: .rock, 3: .aggressor]
         self.audioDirector = AudioDirector(audio: audio, heroSeatID: 0, characters: characters,
                                            seed: seed, fastMode: fastMode)
         self.conductor = SpeechConductor(audio: audio, announcer: Announcer())
+        self.botChatter = BotChatter(heroSeatID: 0, characters: characters, seed: seed &+ 999)
 
         self.state = TableState(
             seats: ([0] + bots.map { $0.id }).map { SeatPresentation(id: $0, position: $0, chips: startingChips) },
@@ -178,17 +184,20 @@ public final class TableViewModel: ObservableObject {
 
     private func present(_ payload: EventPayload) async {
         switch payload {
-        case .handBegan:
+        case let .handBegan(_, _, _, _, _, _, _, seats):
             conductor.handBegan()          // reset once-per-hand voices (D-029)
+            botChatter.handBegan(seats: seats)
             shownCategory.removeAll()
+            potAnnounced = false
             state = TableReducer.reduce(state, payload)
-            speak(payload)                 // croupier: "new hand"
+            speak(payload, "hand-start")   // croupier: "new hand"
+            speakRole(payload)             // the human's OWN role, or silence (D-031)
             await pause(Pacing.seconds(for: payload))
 
         case let .streetOpened(.flop, cards):
             // The croupier says "flop", then the conductor reads the three cards
             // (D-029). Meanwhile reveal them one at a time.
-            speak(payload)
+            speak(payload, "flop")
             for card in cards {
                 state = TableReducer.reduce(state, .streetOpened(street: .flop, communityCards: [card]))
                 await pause(0.55)
@@ -197,21 +206,21 @@ public final class TableViewModel: ObservableObject {
 
         case let .privateHoleCards(seatID, _) where seatID == heroSeatID:
             state = TableReducer.reduce(state, payload)
-            speak(payload)                 // synthesis: the human's own cards
+            speak(payload, "hero-cards")   // synthesis: the human's own cards
             await pause(0.6)
 
-        case let .playerActed(seatID, _):
+        case let .playerActed(seatID, action):
             state.activeSeatID = seatID
             if seatID != heroSeatID { await pause(0.55) } // bot "thinking"
             state = TableReducer.reduce(state, payload)
-            speak(payload)                 // croupier only if it's an all-in (D-029)
+            speakAction(seatID: seatID, action: action)   // opponent synthesis + vob_ (D-031)
             await pause(0.4)
             if state.activeSeatID == seatID { state.activeSeatID = nil }
 
         case let .handShown(seatID, _, category, _):
             shownCategory[seatID] = category
             state = TableReducer.reduce(state, payload)
-            speak(payload)                 // croupier "showdown" (once) + reveal
+            speak(payload, "showdown")     // croupier "showdown" (once) + reveal
             await pause(Pacing.seconds(for: payload))
 
         case .potAwarded:
@@ -229,24 +238,50 @@ public final class TableViewModel: ObservableObject {
             finishSession()
 
         default:
-            // Blinds (croupier), turn/river handled above; public hole-cards-dealt,
-            // busts, joins → the map decides (mostly silent for the spoken layer).
+            // turn/river handled above; public hole-cards-dealt, busts, joins →
+            // the map decides (mostly silent for the spoken layer).
             state = TableReducer.reduce(state, payload)
-            speak(payload)
+            speak(payload, "other")
             await pause(Pacing.seconds(for: payload))
         }
     }
 
-    /// Sends an event's spoken plan (croupier and/or synthesis) to the conductor.
-    private func speak(_ payload: EventPayload) {
+    /// Sends an event's spoken plan (croupier lead and/or synthesis, with fallback)
+    /// to the conductor.
+    private func speak(_ payload: EventPayload, _ reason: String = "") {
         let plan = SpeechMap.plan(for: payload, heroSeatID: heroSeatID, names: names)
-        conductor.say(croupier: plan.croupier, synthesis: plan.synthesis.map(SpeechMap.text))
+        conductor.say(lead: plan.croupier, synthesis: plan.synthesis.map(SpeechMap.text),
+                      fallback: plan.croupierFallback.map(SpeechMap.text), reason: reason)
     }
 
-    /// The pot conclusion: the once-per-hand croupier pot voice plus a synthesis
-    /// naming the winner and — if it went to showdown — the winning hand (D-029).
+    /// The human's OWN role at the start of the hand, or silence (D-031). The
+    /// button mp3 isn't produced yet, so its declared synthesis fallback speaks.
+    private func speakRole(_ payload: EventPayload) {
+        let plan = SpeechMap.roleAnnouncement(for: payload, heroSeatID: heroSeatID)
+        conductor.say(lead: plan.croupier, synthesis: plan.synthesis.map(SpeechMap.text),
+                      fallback: plan.croupierFallback.map(SpeechMap.text), reason: "role")
+    }
+
+    /// An opponent's action: its attribution synthesis, led by the croupier's
+    /// "all-in" or an optional vob_ colour (D-031). The human's own action is
+    /// silent (only physical sounds).
+    private func speakAction(seatID: Int, action: ActedAction) {
+        let plan = SpeechMap.plan(for: .playerActed(seatID: seatID, action: action),
+                                  heroSeatID: heroSeatID, names: names)
+        let synth = plan.synthesis.map(SpeechMap.text)
+        if plan.croupier != nil {                       // all-in (own or opponent)
+            conductor.say(lead: plan.croupier, leadCategory: .croupier, synthesis: synth, reason: "action-allin")
+        } else if seatID != heroSeatID {                // opponent ordinary action
+            let vob = botChatter.actionVoice(seat: seatID, action: action)
+            conductor.say(lead: vob, leadCategory: .botVoice, synthesis: synth, reason: "opp-action")
+        }
+    }
+
+    /// The pot conclusion, ONCE per hand (D-029 fix): the pot voice plus a
+    /// synthesis naming the winner and — if it went to showdown — the winning hand.
     private func speakPot(_ payload: EventPayload) {
-        guard case let .potAwarded(_, _, winners) = payload else { return }
+        guard case let .potAwarded(_, _, winners) = payload, !potAnnounced else { return }
+        potAnnounced = true
         let plan = SpeechMap.plan(for: payload, heroSeatID: heroSeatID, names: names)
         let line: SynthLine?
         if winners.contains(heroSeatID) {
@@ -257,7 +292,7 @@ public final class TableViewModel: ObservableObject {
         } else {
             line = nil
         }
-        conductor.say(croupier: plan.croupier, synthesis: line.map(SpeechMap.text))
+        conductor.say(lead: plan.croupier, synthesis: line.map(SpeechMap.text), reason: "pot")
     }
 
     // MARK: - The human's turn
@@ -271,7 +306,10 @@ public final class TableViewModel: ObservableObject {
         let callContext: String? = info.toCall > 0
             ? SpeechMap.text(for: .yourTurnContext(toCall: info.toCall, pot: info.potSize))
             : nil
-        conductor.say(croupier: SoundCatalog.voYourTurn, synthesis: callContext)
+        // The turn is time-critical: drop any stale narration still queued so the
+        // "your turn" mp3 plays promptly rather than behind a backlog (D-031).
+        conductor.flushPending()
+        conductor.say(lead: SoundCatalog.voYourTurn, synthesis: callContext, reason: "your-turn")
         await withCheckedContinuation { turnContinuation = $0 }
         humanTurn = nil
         raiseBox = nil
@@ -350,7 +388,7 @@ public final class TableViewModel: ObservableObject {
         let heroChips = state.seat(heroSeatID)?.chips ?? 0
         let didWin = heroChips > 0
         outcome = didWin ? .won : .lost
-        conductor.say(croupier: nil, synthesis: SpeechMap.text(for: didWin ? .sessionWon : .sessionLost))
+        conductor.say(lead: nil, synthesis: SpeechMap.text(for: didWin ? .sessionWon : .sessionLost), reason: "session-end")
     }
 
     // MARK: - Narration helpers

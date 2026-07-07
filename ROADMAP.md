@@ -161,6 +161,18 @@ all-in, hush allo showdown) e **voci bot** deterministiche per carattere con
 anti-ripetizione. Solo `UI` + `Audio`, nessuna modifica al motore/flusso. 132 test
 verdi. **Note di design:** D-029 in `CLAUDE.md`.
 
+### ✅ Fix post-M1.8 (3) — Ruolo personale, azioni avversari, fallback mp3→sintesi, pot loop residuo (D-030/D-031)
+Terzo test reale. **Pot ancora sdoppiato:** causa vera = la **sintesi** di conclusione
+non era deduplicata (l'mp3 sì) e `PotMath` genera legittimamente più pot per mano →
+ora la conclusione è once-per-hand. **Turno via sintesi:** l'mp3 c'è ed è richiesto;
+era **timing** (coda seriale occupata) → cue del turno reso time-critical con flush.
+**Blind generici → annuncio del solo ruolo del giocatore umano** (o silenzio, D-031).
+**Vuoto acustico avversari riempito:** sintesi attribuita col numero di seat, con la
+`vob_` (spostata in `BotChatter`) come lead prima della sintesi. Nuovo **pattern
+riusabile fallback mp3-mancante→sintesi** (D-030), per la produzione audio graduale
+(introdotto col ruolo `button`). Aggiunti log DEBUG di riproduzione e self-check
+all'avvio. Solo `UI` + `Audio`. 143 test verdi. **Note di design:** D-030, D-031.
+
 ---
 
 > **🏁 Fase 1 (M1) completata.** Il gioco base è funzionante **end-to-end**:

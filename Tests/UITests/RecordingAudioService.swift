@@ -12,7 +12,10 @@ final class RecordingAudioService: AudioServicing {
     private(set) var log: [Entry] = []
     private(set) var ambient: [SoundID] = []
     private(set) var stoppedAll = 0
+    /// Raw values of sounds to report as NOT in the bundle (for the fallback test).
+    var missing: Set<String> = []
 
+    func isAvailable(_ id: SoundID) -> Bool { !missing.contains(id.rawValue) }
     func startAmbient(_ id: SoundID) { ambient.append(id) }
     func play(_ id: SoundID, category: SoundCategory) { log.append(Entry(id: id, category: category)) }
     func play(_ id: SoundID, category: SoundCategory, completion: (() -> Void)?) {

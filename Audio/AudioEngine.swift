@@ -50,7 +50,15 @@ public final class AudioEngine: NSObject, AudioServicing, AVAudioPlayerDelegate 
         if configureSession { Self.configureAudioSession() }
         #endif
         logMissingSounds()
+        selfCheckCriticalVoices()
     }
+
+    #if DEBUG
+    /// When true, prints one structured line per ACTUAL playback — file, absolute
+    /// timestamp, category. Off in release. Turn on to trace, e.g., a pot that
+    /// plays twice: `AudioEngine.playbackLogging = true` (D-030).
+    public static var playbackLogging = false
+    #endif
 
     // MARK: - Ambient bed
 
@@ -123,6 +131,11 @@ public final class AudioEngine: NSObject, AudioServicing, AVAudioPlayerDelegate 
             completionPlayers[key] = player
         }
         player.prepareToPlay()
+        #if DEBUG
+        if Self.playbackLogging {
+            print("[AudioLog] \(String(format: "%.3f", Date().timeIntervalSince1970)) PLAY \(id.rawValue) [\(category.rawValue)]")
+        }
+        #endif
         player.play()
         oneShots.append(player)
         if oneShots.count > maxOverlap { oneShots.removeFirst() }
@@ -173,10 +186,31 @@ public final class AudioEngine: NSObject, AudioServicing, AVAudioPlayerDelegate 
         done?()
     }
 
+    /// Whether a sound's file is present in the bundle (fast, no decode). Drives
+    /// the mp3→synthesis fallback (D-030) and its automatic switch-back once the
+    /// file is added.
+    public func isAvailable(_ id: SoundID) -> Bool { url(for: id) != nil }
+
     // MARK: - Diagnostics
 
     public func missingSounds() -> [SoundID] {
         SoundCatalog.all.compactMap { url(for: $0.id) == nil ? $0.id : nil }
+    }
+
+    /// At startup, confirms a few time-critical croupier voices are present AND
+    /// actually loadable, logging clearly otherwise — so a build that dropped a
+    /// file (or bundled a corrupt one) is caught immediately (D-030).
+    private func selfCheckCriticalVoices() {
+        let critical = [SoundCatalog.voYourTurn, SoundCatalog.voHandStart, SoundCatalog.voPotAwarded]
+        for id in critical {
+            guard let url = url(for: id) else {
+                print("[Audio] NOTE: critical voice \(id.rawValue).\(fileExtension) is not in the bundle")
+                continue
+            }
+            if (try? AVAudioPlayer(contentsOf: url)) == nil {
+                print("[Audio] WARNING: \(id.rawValue).\(fileExtension) IS in the bundle but failed to load")
+            }
+        }
     }
 
     private func logMissingSounds() {

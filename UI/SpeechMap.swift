@@ -28,9 +28,13 @@ import Audio
 public struct SpeechPlan: Equatable, Sendable {
     public var croupier: SoundID?
     public var synthesis: SynthLine?
-    public init(croupier: SoundID? = nil, synthesis: SynthLine? = nil) {
+    /// The synthesis to speak IF `croupier`'s file is missing from the bundle
+    /// (mp3→speech fallback, D-030). Ignored once the mp3 is present.
+    public var croupierFallback: SynthLine?
+    public init(croupier: SoundID? = nil, synthesis: SynthLine? = nil, croupierFallback: SynthLine? = nil) {
         self.croupier = croupier
         self.synthesis = synthesis
+        self.croupierFallback = croupierFallback
     }
     public static let silent = SpeechPlan()
 }
@@ -52,6 +56,10 @@ public enum SynthLine: Equatable, Sendable {
     case otherWon(who: String, category: HandCategory?)
     case sessionWon
     case sessionLost
+    /// An opponent's action, attributed by their on-screen seat number (D-031).
+    case opponentAction(seat: Int, action: ActedAction)
+    /// Fallback for the (not-yet-produced) button-role mp3: "sei sul bàtton".
+    case roleButton
 }
 
 public enum SpeechMap {
@@ -64,10 +72,9 @@ public enum SpeechMap {
         switch payload {
 
         case .handBegan:
+            // The generic small/big-blind announcements are gone (D-031); the
+            // human's role is announced separately via `roleAnnouncement`.
             return SpeechPlan(croupier: SoundCatalog.voHandStart)
-
-        case let .blindPosted(_, kind, _, _):
-            return SpeechPlan(croupier: kind == .small ? SoundCatalog.voBlindSmall : SoundCatalog.voBlindBig)
 
         case let .privateHoleCards(seatID, cards) where seatID == heroSeatID:
             return SpeechPlan(synthesis: .heroCards(cards))
@@ -80,9 +87,17 @@ public enum SpeechMap {
             case .preflop: return .silent
             }
 
-        case let .playerActed(_, action) where isAllIn(action):
-            // Any declared all-in (own or opponent) → the croupier calls it.
-            return SpeechPlan(croupier: SoundCatalog.voActionAllIn)
+        case let .playerActed(seatID, action):
+            let opponent = seatID != heroSeatID
+            if isAllIn(action) {
+                // The croupier calls the all-in; opponents also get an attribution
+                // synthesis after it (D-031). The hero's own all-in is croupier-only.
+                return SpeechPlan(croupier: SoundCatalog.voActionAllIn,
+                                  synthesis: opponent ? .opponentAction(seat: seatID, action: action) : nil)
+            }
+            // Opponents' ordinary actions fill the acoustic gap with a synthesis
+            // (D-031); the human's own action stays silent (physical sounds only).
+            return opponent ? SpeechPlan(synthesis: .opponentAction(seat: seatID, action: action)) : .silent
 
         case let .handShown(seatID, cards, category, _):
             // voShowdown is a once-per-hand cue: the conductor de-dupes it across
@@ -106,6 +121,20 @@ public enum SpeechMap {
             // actions, hero's own action, busts, joins/leaves → no spoken layer.
             return .silent
         }
+    }
+
+    /// The role announcement at the start of a hand, PERSONAL to the human (D-031):
+    /// their own role if they have one (small blind / big blind / button), else
+    /// silence — never the generic "small blind, big blind" of before. The button
+    /// mp3 isn't produced yet, so it declares a synthesis fallback (D-030).
+    public static func roleAnnouncement(for payload: EventPayload, heroSeatID: Int) -> SpeechPlan {
+        guard case let .handBegan(_, _, buttonSeatID, sbSeatID, bbSeatID, _, _, _) = payload else { return .silent }
+        if heroSeatID == sbSeatID { return SpeechPlan(croupier: SoundCatalog.voBlindSmall) }
+        if heroSeatID == bbSeatID { return SpeechPlan(croupier: SoundCatalog.voBlindBig) }
+        if heroSeatID == buttonSeatID {
+            return SpeechPlan(croupier: SoundCatalog.voRoleButton, croupierFallback: .roleButton)
+        }
+        return .silent
     }
 
     /// True for any all-in action (call/bet/raise that put the seat all-in).
@@ -140,6 +169,23 @@ public enum SpeechMap {
             return uiLocalized("announce.session.won")
         case .sessionLost:
             return uiLocalized("announce.session.lost")
+        case let .opponentAction(seat, action):
+            return opponentActionText(seat: seat, action: action)
+        case .roleButton:
+            return uiLocalized("announce.role.button")
+        }
+    }
+
+    /// "giocatore N …" attributed by the on-screen seat number (D-031). Poker
+    /// verbs stay Italian where natural (passa/chiama/rilancia); fold/all-in are
+    /// rendered phonetically (foulda / ol-in).
+    private static func opponentActionText(seat: Int, action: ActedAction) -> String {
+        if isAllIn(action) { return uiLocalized("announce.opp.allin", seat) }
+        switch action {
+        case .folded:  return uiLocalized("announce.opp.fold", seat)
+        case .checked: return uiLocalized("announce.opp.check", seat)
+        case .called:  return uiLocalized("announce.opp.call", seat)
+        case let .bet(to, _, _), let .raised(to, _, _): return uiLocalized("announce.opp.raise", seat, to)
         }
     }
 

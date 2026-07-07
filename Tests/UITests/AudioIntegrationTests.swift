@@ -57,7 +57,7 @@ final class AudioIntegrationTests: XCTestCase {
         for e in events {
             if case .handBegan = e { conductor.handBegan() }
             let plan = SpeechMap.plan(for: e, heroSeatID: 0, names: [:])
-            conductor.say(croupier: plan.croupier, synthesis: nil)
+            conductor.say(lead: plan.croupier, synthesis: nil)
         }
         try? await Task.sleep(nanoseconds: 400_000_000)
 

@@ -43,10 +43,9 @@ nei file collegati.
 - **`Audio` M1.8:** modulo audio pieno (`AudioEngine`/AVFoundation), **neutro**;
   mappatura evento→suoni (`AudioScore`) + consumatore parallelo (`AudioDirector`)
   in `UI` (D-023); coordinamento audio↔VoiceOver a **domini separati** con mappatura
-  autorevole evento→sorgente vocale e `SpeechConductor` seriale (D-028→**D-029**, che
-  superano il silenziamento D-024 dopo i test reali). **51 mp3 integrati** in
+  autorevole evento→sorgente vocale e `SpeechConductor` seriale (D-028→D-029→**D-030/D-031**, che superano il silenziamento D-024 dopo i test reali). **51 mp3 integrati** in
   `Resources/Audio/` (2 del catalogo non ancora consegnati → silenziosi, D-025).
-  132 unit test verdi + 1 XCUITest.
+  143 unit test verdi + 1 XCUITest.
 
 **🏁 Fase 1 (M1) completa — il gioco base gira end-to-end con audio ed è pronto
 per un primo TestFlight** (motore + bot + sessione + flusso + UI accessibile +
@@ -577,3 +576,60 @@ erano ancora costruite **separatamente**, senza una fonte di verità unica.
 ogni evento **una sola** sorgente responsabile, mai due che dicono la stessa cosa.
 **Vincoli:** solo `UI` + `Audio`, nessuna modifica a `GameEngine`/`SessionDriver`/
 flusso M1.5, nessuna dipendenza nuova. 132 test verdi. **Raffina/estende D-028.**
+
+### D-030 — Pattern generale: fallback mp3-mancante → sintesi VoiceOver (terzo test reale)
+Introdotto col caso del ruolo "button" (mp3 non ancora prodotto) ma pensato come
+**capacità riusabile**: il progetto produrrà voci **gradualmente** (croupier dei
+casinò più sfarzosi, nuove personalità di bot). Regola: quando la mappatura chiede
+di riprodurre un mp3 che **non è nel bundle** (o non caricabile), il sistema **non**
+tace silenziosamente ma cade su un **fallback di sintesi VoiceOver dichiarato nella
+mappatura stessa**. Quando il file verrà depositato, il sistema lo rileva e usa
+l'mp3, silenziando il fallback — **produzione audio incrementale senza rompere
+l'esperienza**. Implementazione: `AudioServicing.isAvailable(_:)` (in `AudioEngine`
+= presenza nel bundle); `SpeechPlan.croupierFallback: SynthLine?` dichiara il testo;
+il `SpeechConductor`, nel processare un lead, se `!isAvailable` e c'è un fallback
+**sintetizza il fallback** invece dell'mp3. Catalogo: aggiunto `vo_it_role_button`
+(non consegnato → compare nel log dei mancanti; coperto dal fallback "sei sul
+bàtton"). Testato in presenza (mp3 suona, fallback tace) e assenza (mp3 tace,
+fallback parla). Diagnostica di supporto: `AudioEngine.playbackLogging` (DEBUG) logga
+ogni riproduzione reale (file+timestamp) e `SpeechConductor.logging` (DEBUG) logga
+enqueue+motivo+verdetto-dedup; un self-check all'avvio verifica che le voci critiche
+(`vo_it_your_turn`/`hand_start`/`pot_awarded`) siano presenti **e caricabili**.
+
+### D-031 — Annuncio di ruolo personale + riempimento acustico degli avversari (terzo test reale)
+Due cambi di mappatura dopo il test su iPhone, più i due bug residui.
+- **Annuncio di ruolo (sostituisce i blind generici):** l'annuncio a inizio mano
+  "small blind, big blind" astratto era inutile e disorientante. Ora, a inizio mano,
+  il croupier annuncia **solo il ruolo del giocatore umano** se ne ha uno
+  (`SpeechMap.roleAnnouncement`): SB→`vo_it_blind_small`, BB→`vo_it_blind_big`,
+  button→`vo_it_role_button` (fallback D-030 "sei sul bàtton"); **nessun ruolo →
+  silenzio**. Principio: il croupier parla solo se ha qualcosa da dire *a chi
+  ascolta*. `plan(.blindPosted)` è ora `.silent`.
+- **Vuoto acustico degli avversari riempito:** le azioni dei bot erano mute (solo
+  fisici). Ora ogni azione avversaria ha una **sintesi** attribuita col **numero di
+  seat visibile** (non il nome caratteriale): "giocatore N foulda/passa/chiama/
+  rilancia a X/va ol-in". L'all-in avversario resta croupier `vo_it_action_all_in`
+  **poi** la sintesi di attribuzione. Le `vob_` restano rare (probabilità invariata):
+  il vuoto si riempie con le sintesi, non con più voci bot. **Ordine vob→sintesi:**
+  la decisione della `vob_` per l'azione è passata da `AudioDirector` a `BotChatter`
+  (deterministico, anti-ripetizione) così present() la dà al conductor come **lead**
+  prima della sintesi → la `vob_` (colore emotivo) suona, poi la sintesi (info
+  precisa). Se la probabilità non sceglie la `vob_`, la sintesi parte subito.
+- **Bug pot sdoppiato — causa reale:** `PotMath.sidePots` crea un pot **per livello
+  di contribuzione**; anche una mano SB/BB non contesa genera **2 pot** (SB 10, BB
+  20). L'mp3 `vo_it_pot_awarded` era già deduplicato (1×), ma la **sintesi di
+  conclusione** era accodata **per ogni `potAwarded`** → si ripeteva. Non è un bug di
+  GameWorld (matematica corretta). Fix: la conclusione del pot è ora **once-per-hand**
+  (guardia `potAnnounced` in present, reset a `handBegan`); l'mp3 lo era già. Test di
+  regressione: 3 `potAwarded` → mp3 **e** sintesi **una volta**.
+- **Bug turno via sintesi — causa reale:** `vo_it_your_turn.mp3` è nel bundle e
+  richiesto correttamente; non esiste alcuna sintesi "è il tuo turno" (le vecchie
+  chiavi `announce.your.turn.call/check` erano morte). Era **timing**: la coda
+  seriale del conductor, occupata dagli mp3 lenti di hand-start + blind generici,
+  faceva partire il turno in ritardo (dopo l'azione umana), lasciando udibile solo la
+  sintesi di contesto. Fix: rimossi i blind generici (coda più corta) + il cue del
+  turno è **time-critical** → `conductor.flushPending()` scarta la narrazione
+  stantia prima di dire il turno. Test: il turno richiede l'mp3 e **non** sintetizza
+  la frase del turno.
+**Vincoli:** solo `UI` + `Audio`, nessuna modifica a `GameEngine`/`SessionDriver`/
+flusso. 143 test verdi. **Estende D-029.**

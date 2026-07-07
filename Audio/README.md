@@ -59,8 +59,29 @@ concorrenti**:
   `amb_silence_tension` allo showdown, ritorno a calm dopo il pot) stanno in `UI`
   (`AudioDirector`), così `Audio` resta neutro (id opachi).
 
+- **Fallback mp3→sintesi (D-030):** `isAvailable(_:)` dice se un file è nel bundle;
+  se la mappatura chiede un mp3 mancante e dichiara un fallback, il conductor
+  **sintetizza il fallback** invece dell'mp3, e passa automaticamente all'mp3 quando
+  il file viene aggiunto. Serve alla **produzione audio graduale** (es.
+  `vo_it_role_button`, non ancora consegnato → "sei sul bàtton").
+- **Mappatura aggiornata (D-031):** a inizio mano si annuncia **solo il ruolo del
+  giocatore umano** (non i blind generici); le **azioni degli avversari** hanno una
+  sintesi attribuita col numero di seat ("giocatore N rilancia a X"), preceduta
+  dalla `vob_` di colore se scelta.
+
 La sessione audio resta `.ambient` + `.mixWithOthers`, così i nostri suoni non
 "abbassano" VoiceOver.
+
+### Debug del layer audio (D-030)
+
+Due log gated su `#if DEBUG`, silenziosi in release ma nel repo per i prossimi giri:
+- `AudioEngine.playbackLogging = true` → una riga per **ogni riproduzione reale**
+  (`[AudioLog] <timestamp> PLAY <file> [categoria]`). Utile per cacciare un suono
+  che parte due volte.
+- `SpeechConductor.logging = true` → una riga per **ogni enqueue** con motivo e
+  verdetto di deduplicazione (`[SpeechLog] say lead=… reason=… [deduped]`).
+All'avvio un **self-check** verifica che le voci critiche siano presenti e
+caricabili, loggando chiaramente in caso contrario.
 
 ## Struttura degli asset audio
 

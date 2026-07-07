@@ -44,11 +44,14 @@ public enum SoundCatalog {
     public static let tblMuck = SoundID("tbl_muck")
     public static let tblShuffle = SoundID("tbl_shuffle")
 
-    // MARK: Croupier voices — Italian (15)
+    // MARK: Croupier voices — Italian (16)
     public static let voYourTurn = SoundID("vo_it_your_turn")
     public static let voHandStart = SoundID("vo_it_hand_start")
     public static let voBlindSmall = SoundID("vo_it_blind_small")
     public static let voBlindBig = SoundID("vo_it_blind_big")
+    /// Human-is-on-the-button role cue. NOT delivered yet → covered by a synthesis
+    /// fallback ("sei sul bàtton") declared in the UI mapping (D-030).
+    public static let voRoleButton = SoundID("vo_it_role_button")
     public static let voFlop = SoundID("vo_it_flop")
     public static let voTurn = SoundID("vo_it_turn")
     public static let voRiver = SoundID("vo_it_river")
@@ -91,6 +94,7 @@ public enum SoundCatalog {
         (tblChipsSingle, .table), (tblChipsStack, .table), (tblChipsBetLarge, .table),
         (tblChipsPotCollect, .table), (tblMuck, .table), (tblShuffle, .table),
         (voYourTurn, .croupier), (voHandStart, .croupier), (voBlindSmall, .croupier), (voBlindBig, .croupier),
+        (voRoleButton, .croupier),
         (voFlop, .croupier), (voTurn, .croupier), (voRiver, .croupier), (voShowdown, .croupier),
         (voActionFold, .croupier), (voActionCheck, .croupier), (voActionCall, .croupier),
         (voActionRaise, .croupier), (voActionAllIn, .croupier), (voPotAwarded, .croupier), (voSplitPot, .croupier),

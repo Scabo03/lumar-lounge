@@ -108,6 +108,17 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     controllo.
   - La logica di presentazione (riduzione evento→stato, formattazione testo) va
     tenuta **pura** e fuori dalle viste SwiftUI, per essere unit-testabile.
+  - **mp3 previsto ma non ancora prodotto → fallback di sintesi dichiarato
+    (D-030).** Quando la mappatura chiede un mp3 non ancora nel bundle, il sistema
+    cade **automaticamente** su un **fallback di sintesi VoiceOver dichiarato nella
+    mappatura stessa**, invece di tacere. Quando il file arriva, viene rilevato e
+    usato, e il fallback si silenzia. Questo permette **produzione audio graduale**
+    (nuove voci di croupier, nuove personalità di bot) senza rompere l'esperienza.
+  - **Annunci di ruolo personalizzati sul giocatore umano, non generici (D-031).**
+    A inizio mano il croupier annuncia **solo il ruolo del giocatore umano** se ne ha
+    uno (small blind / big blind / button), e resta **in silenzio** se non ne ha:
+    parla solo se ha qualcosa da dire *specificamente a chi ascolta*, mai categorie
+    astratte ("small blind, big blind") rivolte a nessuno.
   - **Più sorgenti vocali → per ogni evento UNA sola responsabile (D-029).** Quando
     coesistono più sorgenti che parlano (voci pre-registrate, sintesi VoiceOver,
     voci di caratteri), definisci una **mappatura autorevole** evento→sorgente come

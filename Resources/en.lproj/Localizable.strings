@@ -150,6 +150,15 @@
 "announce.you.won" = "you won the game";
 "announce.you.lost" = "you lost the game";
 
+/* Opponent action attribution by on-screen seat number (D-031) */
+"announce.opp.fold" = "player %d folds";
+"announce.opp.check" = "player %d checks";
+"announce.opp.call" = "player %d calls";
+"announce.opp.raise" = "player %1$d raises to %2$d";
+"announce.opp.allin" = "player %d goes all-in";
+/* Human role fallback when vo_it_role_button.mp3 isn't in the bundle yet (D-030) */
+"announce.role.button" = "you're on the button";
+
 /* Spoken layer that COMPLETES a croupier mp3 or is VoiceOver-only (D-029) */
 "announce.your.turn.context" = "to call %1$d, pot %2$d";
 "announce.hero.won" = "you won the pot";

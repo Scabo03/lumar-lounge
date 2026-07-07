@@ -78,6 +78,10 @@ public protocol AudioServicing: AnyObject {
     func setMuted(_ muted: Bool)
     /// Seconds of SPOKEN audio (croupier/bot voices) still playing, else 0.
     func spokenAudioRemaining() -> TimeInterval
+    /// Whether a sound's file is present and loadable in the bundle. Lets the
+    /// speech layer fall back to a declared VoiceOver synthesis when a mapped mp3
+    /// hasn't been produced yet (D-030), and switch back automatically once it is.
+    func isAvailable(_ id: SoundID) -> Bool
 
     // MARK: Dynamic ambient (opaque ids — the caller decides which bed fits when)
     /// Crossfades the looping ambient bed to a new sound (no-op if already on it).
@@ -93,6 +97,8 @@ public extension AudioServicing {
     /// Default: silent implementations (tests, previews, `NullAudioService`) have
     /// nothing playing, so nothing to wait for.
     func spokenAudioRemaining() -> TimeInterval { 0 }
+    /// Default: assume present (null/preview services don't gate on the bundle).
+    func isAvailable(_ id: SoundID) -> Bool { true }
     /// Default: forward to the plain play and report completion at once.
     func play(_ id: SoundID, category: SoundCategory, completion: (() -> Void)?) {
         play(id, category: category)
