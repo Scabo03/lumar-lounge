@@ -43,9 +43,9 @@ nei file collegati.
 - **`Audio` M1.8:** modulo audio pieno (`AudioEngine`/AVFoundation), **neutro**;
   mappatura evento→suoni (`AudioScore`) + consumatore parallelo (`AudioDirector`)
   in `UI` (D-023); coordinamento audio↔VoiceOver a **domini separati** con mappatura
-  autorevole evento→sorgente vocale e `SpeechConductor` seriale (D-028→D-029→**D-030/D-031**, che superano il silenziamento D-024 dopo i test reali). **51 mp3 integrati** in
+  autorevole evento→sorgente vocale e `SpeechConductor` seriale (D-028→…→**D-032**, che superano il silenziamento D-024 dopo i test reali). **51 mp3 integrati** in
   `Resources/Audio/` (2 del catalogo non ancora consegnati → silenziosi, D-025).
-  143 unit test verdi + 1 XCUITest.
+  146 unit test verdi + 1 XCUITest.
 
 **🏁 Fase 1 (M1) completa — il gioco base gira end-to-end con audio ed è pronto
 per un primo TestFlight** (motore + bot + sessione + flusso + UI accessibile +
@@ -633,3 +633,49 @@ Due cambi di mappatura dopo il test su iPhone, più i due bug residui.
   la frase del turno.
 **Vincoli:** solo `UI` + `Audio`, nessuna modifica a `GameEngine`/`SessionDriver`/
 flusso. 143 test verdi. **Estende D-029.**
+
+### D-032 — Coda seriale degli annunci VoiceOver, trasversale a tutto il progetto (Strategia C, dai dati)
+Al quarto test reale il croupier era ottimo, ma la **sintesi VoiceOver** si
+accavallava: `UIAccessibility.post(.announcement)` di default **interrompe** l'annuncio
+precedente, quindi in raffica (dopo il flop, o azioni rapide dei bot) i primi venivano
+troncati e passava intero solo l'ultimo. Problema **strutturale e generale** (non del
+poker): riguarda ogni parte parlata, presente e futura (blackjack, roulette). Serve
+**infrastruttura riusabile**, non una pezza locale.
+**Decisione A vs C, presa dai numeri.** Prima di implementare ho strumentato una
+**simulazione** di 8 mani (`AnnouncementBurstAnalysisTests`), modellando ogni sintesi
+col suo tempo di parlato e una tassonomia di priorità. Risultati: **80** annunci, di
+cui **high=1, medium=63 (azioni avversari), low=16 (carte)**; **saturazione 147%** —
+154 s di parlato in una sessione di 105 s — mentre l'**high da solo è il 2%**. Sotto
+FIFO stretta (strada A) l'audio andrebbe **fino a ~50 s in ritardo** (profondità coda
+28). → **Scelta: Strategia C.** A è impraticabile (il canale seriale è saturato da
+medium/low); C tiene gli annunci **personali (high) sempre puntuali** droppando
+low/medium quando la coda si accumula.
+**Infrastruttura — `AnnouncementQueue` (UI, `@MainActor`, game-agnostica).** È l'**unico**
+punto che chiama `UIAccessibility.post` in tutto il codice applicativo (guard di test
+statico che scandisce `UI/*.swift`). API: `enqueue(_ text, priority)` (serial),
+`announceLiveValue(_)` (l'unica interruzione deliberata, per il box Raise: i +/-
+rapidi collassano all'ultimo valore), `flushPending()` (per il turno). Regole:
+- **Niente troncamenti:** un annuncio iniziato finisce sempre; i nuovi vanno in coda.
+- **Priorità + drop (C):** high mai droppato e **bumpato** in testa; low poi medium
+  droppati quando il backlog dei soli *in attesa* supera ~2 s (la testa non si droppa
+  mai, così un annuncio singolo, per quanto lungo, parte sempre — bug scoperto e
+  corretto in fase di test).
+- **Completamento reale:** si ascolta `announcementDidFinishNotification` per far
+  partire il successivo; **tetto** = tempo stimato + 1 s di pausa max come fallback se
+  la notifica non arriva (VoiceOver off → avanza subito).
+**Coordinamento col croupier (un unico canale parlato).** La `SpeechConductor` non
+usa più un `announcer` diretto: la sua **sintesi** va sulla coda; il suo **mp3
+croupier** è suonato con `queue.beginExternalSpeech()`/`endExternalSpeech()`, che
+**tengono ferma** la coda mentre l'mp3 suona e la fanno **aspettare** la fine di un
+annuncio in corso prima di partire. Croupier e sintesi si comportano come **un solo
+canale**, mai in parallelo. La sintesi è consegnata alla coda *fire-and-forget*, così
+una raffica (azioni avversari) atterra lì e la coda applica priorità+drop senza mai
+bloccare il conductor.
+**Log:** un unico flag `SpokenLog.enabled` (DEBUG, nel modulo `Audio`) copre engine,
+conductor e coda (post, drop, cap-advance); `AudioEngine.playbackLogging` e
+`SpeechConductor.logging` sono confluiti lì. `Announcer` è stato **rimosso** (assorbito
+dalla coda).
+**Vincoli:** solo `UI` + `Audio`, nessuna modifica a `GameEngine`/`SessionDriver`/
+flusso; nessuna dipendenza nuova. 146 test verdi (nuovi: ordine senza troncamento,
+raffica di 5 con drop di low/medium e high preservati, bump high, tetto 1 s, blocco
+reciproco col croupier, guard statico anti-post-diretto). **Estende D-029..D-031.**

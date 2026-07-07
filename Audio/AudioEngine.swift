@@ -53,13 +53,6 @@ public final class AudioEngine: NSObject, AudioServicing, AVAudioPlayerDelegate 
         selfCheckCriticalVoices()
     }
 
-    #if DEBUG
-    /// When true, prints one structured line per ACTUAL playback — file, absolute
-    /// timestamp, category. Off in release. Turn on to trace, e.g., a pot that
-    /// plays twice: `AudioEngine.playbackLogging = true` (D-030).
-    public static var playbackLogging = false
-    #endif
-
     // MARK: - Ambient bed
 
     public func startAmbient(_ id: SoundID) {
@@ -131,11 +124,7 @@ public final class AudioEngine: NSObject, AudioServicing, AVAudioPlayerDelegate 
             completionPlayers[key] = player
         }
         player.prepareToPlay()
-        #if DEBUG
-        if Self.playbackLogging {
-            print("[AudioLog] \(String(format: "%.3f", Date().timeIntervalSince1970)) PLAY \(id.rawValue) [\(category.rawValue)]")
-        }
-        #endif
+        SpokenLog.log("PLAY \(id.rawValue) [\(category.rawValue)]")
         player.play()
         oneShots.append(player)
         if oneShots.count > maxOverlap { oneShots.removeFirst() }

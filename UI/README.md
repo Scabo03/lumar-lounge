@@ -47,7 +47,9 @@ progressiva** (D-020) sono le novità di M1.7.
 | `RaiseCurve` / `RaiseBoxState` | La **curva progressiva** del rilancio (pura, testabile): fine vicino al minimo, accelerazione verso l'all-in. |
 | `TableViewModel` | `@MainActor ObservableObject`: possiede la sessione (umano + 3 bot), consuma il flusso a ritmo umano, gestisce il turno umano e il box Raise, e l'esito (`won`/`lost`). |
 | `TableState` / `TableReducer` | Stato di presentazione (valore) + riduzione **pura** `evento → stato` (ora anche le carte private dell'umano). Testabile. |
-| `TableAnnouncer`, `Announcer`, `HandGate`, `SeatView`, `CardView`, `TablePalette`, `Localization` | Narrazione fonetica, annunci (interrompenti via `NSAttributedString`, D-027), gate produttore/consumatore, sottoviste e helper. |
+| `SpeechMap` / `SpeechConductor` / `AnnouncementQueue` / `BotChatter` | Il **layer parlato** (D-029..D-032): mappa autorevole evento→sorgente, direttore seriale del croupier, **coda annunci VoiceOver** trasversale, voci-colore dei bot. Vedi sotto. |
+| `AudioScore` / `AudioDirector` | Layer **non parlato** (D-029): suoni fisici/effetti puri + ambient dinamico e reazioni di fine mano dei bot. |
+| `HandGate`, `SeatView`, `CardView`, `TablePalette`, `Localization` | Gate produttore/consumatore, sottoviste e helper (pronuncia fonetica). |
 
 Punti fermi: **ritmo umano nella UI**; **Dynamic Type** e **alto contrasto**
 ovunque; annunci VoiceOver affidabili (proprio turno, proprie carte, ogni
@@ -56,6 +58,29 @@ modale d'accessibilità** — sfondo intrappolato, focus dentro, +/− pulsanti
 navigabili che annunciano l'importo (D-027); accessibilità di prima classe
 su **ogni** nuovo controllo (identifier, label fonetica, stato attivo/disattivo
 riflesso anche per VoiceOver).
+
+## `AnnouncementQueue` — coda annunci VoiceOver (componente trasversale, D-032)
+
+Il **canale seriale unico** per ogni annuncio VoiceOver del progetto (poker e giochi
+futuri). È l'**unico** punto che chiama `UIAccessibility.post` (test statico lo
+verifica). API pubblica (`@MainActor`):
+
+- `enqueue(_ text: String, priority: AnnouncementPriority)` — accoda un annuncio.
+  `.high` (personale/critico: proprie carte, proprio turno, conclusione pot, fine
+  sessione) non viene **mai** droppato ed è **bumpato** in testa; `.medium` (azioni
+  avversari) e `.low` (contenuto carte) vengono droppati sotto backlog.
+- `announceLiveValue(_ text: String)` — l'**unica** interruzione deliberata, per un
+  controllo a valore vivo (box Raise): un nuovo valore sostituisce il precedente.
+- `flushPending()` — scarta gli annunci non ancora partiti (cue time-critical: turno).
+- `beginExternalSpeech() async` / `endExternalSpeech()` — coordinamento col croupier:
+  mentre un mp3 suona la coda **tiene**, e aspetta la fine di un annuncio in corso
+  prima che il croupier parta. Croupier + sintesi = **un unico canale parlato**.
+
+Regole: nessun troncamento (un annuncio iniziato finisce); completamento reale via
+`announcementDidFinishNotification` con **tetto** stima+1 s di fallback; strategia di
+drop scelta dai dati (Strategia C — vedi D-032). Uso tipico: la `SpeechConductor`
+gli passa la sintesi *fire-and-forget* con la priorità della `SpeechMap`; il box Raise
+usa `announceLiveValue`. Debug: `SpokenLog.enabled = true` (DEBUG).
 
 ## Cosa NON contiene ancora (per scelta)
 

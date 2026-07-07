@@ -1,21 +1,18 @@
 // SpeechConductor.swift
 // =====================================================================
-// The serial owner of everything SPOKEN (D-029/D-030/D-031): the pre-recorded
-// voices (croupier and bot colour) and the VoiceOver synthesizer. Each item is a
-// LEAD sound (optional) followed by a SYNTHESIS line (optional), played one at a
-// time so nothing overlaps and the order is guaranteed (e.g. "flop" mp3 → its
-// cards; a bot's vob_ colour → "player 2 raises to 60"; croupier "all-in" → its
-// attribution).
+// The poker-aware narration director (D-029..D-032). It sequences each event's
+// pre-recorded CROUPIER voice (an mp3) and feeds its VoiceOver SYNTHESIS to the
+// shared `AnnouncementQueue`. It owns:
+//  • once-per-hand de-dup of the showdown/pot/split croupier voices;
+//  • the mp3 → synthesis FALLBACK when a file isn't bundled yet (D-030);
+//  • flush of stale narration for the time-critical turn.
 //
-// Three behaviours worth calling out:
-//  • Once-per-hand de-dup of the showdown/pot/split croupier voices — a hand with
-//    side pots emits several events; the voice still plays once (D-029).
-//  • mp3 → synthesis FALLBACK (D-030): if a lead mp3 isn't in the bundle yet, a
-//    declared synthesis speaks instead; when the file is later added, it plays
-//    automatically and the fallback goes quiet. General, for gradual audio
-//    production (new croupiers, new bot personalities).
-//  • flush(): a time-critical cue (the human's turn) drops stale narrative so it
-//    isn't stuck behind a backlog of mp3s.
+// The croupier and the synthesis are ONE spoken channel (D-032): while a croupier
+// mp3 plays, the conductor HOLDS the announcement queue (`beginExternalSpeech`)
+// and waits for any in-progress announcement first; then it resumes the queue.
+// Synthesis is handed to the queue fire-and-forget, so a burst (opponent actions)
+// lands there and the queue applies priority + dropping — the conductor never
+// blocks on speech.
 
 import Foundation
 import Audio
@@ -28,66 +25,47 @@ public final class SpeechConductor {
         let leadCategory: SoundCategory
         let synthesis: String?
         let fallback: String?
+        let priority: AnnouncementPriority
         let reason: String
     }
 
     private let audio: AudioServicing
-    private let announcer: Announcer
+    private let queue: AnnouncementQueue
 
-    private var queue: [Item] = []
-    private var isSpeaking = false
+    private var pending: [Item] = []
+    private var isBusy = false
     private var oncePerHandPlayed: Set<String> = []
 
-    /// Croupier voices that must play at most once per hand.
     private static let oncePerHand: Set<String> = [
         SoundCatalog.voShowdown.rawValue,
         SoundCatalog.voPotAwarded.rawValue,
         SoundCatalog.voSplitPot.rawValue,
     ]
 
-    #if DEBUG
-    /// When true, prints each enqueue with its reason and de-dup verdict (D-030).
-    public static var logging = false
-    #endif
-
-    /// Test seam: observes every synthesis line actually spoken (VoiceOver posting
-    /// is a no-op off-device, so this is how tests verify the spoken layer).
-    public var synthesisObserver: ((String) -> Void)?
-
-    public init(audio: AudioServicing, announcer: Announcer = Announcer()) {
+    public init(audio: AudioServicing, queue: AnnouncementQueue) {
         self.audio = audio
-        self.announcer = announcer
+        self.queue = queue
     }
 
     /// Resets the per-hand de-dup at the start of each hand.
     public func handBegan() { oncePerHandPlayed.removeAll() }
 
-    /// Drops queued-but-not-yet-started narration so a following time-critical cue
-    /// (the human's turn) plays promptly instead of waiting behind a backlog.
-    public func flushPending() { queue.removeAll() }
+    /// Drops queued-but-not-started narration (conductor and queue) so a following
+    /// time-critical cue plays promptly.
+    public func flushPending() { pending.removeAll(); queue.flushPending() }
 
-    /// Enqueues a spoken item: a LEAD sound then a SYNTHESIS line (either optional).
-    /// De-dupes once-per-hand croupier leads; applies the mp3→synthesis fallback.
+    /// Enqueues a spoken item: a LEAD sound (croupier/vob) then a SYNTHESIS line
+    /// (either optional), with an optional mp3-missing fallback and a priority.
     public func say(lead: SoundID?, leadCategory: SoundCategory = .croupier,
-                    synthesis: String? = nil, fallback: String? = nil, reason: String = "") {
+                    synthesis: String? = nil, fallback: String? = nil,
+                    priority: AnnouncementPriority = .medium, reason: String = "") {
         var lead = lead
-        var dedupNote = ""
         if let c = lead, leadCategory == .croupier, Self.oncePerHand.contains(c.rawValue) {
-            if oncePerHandPlayed.contains(c.rawValue) {
-                lead = nil
-                dedupNote = " [deduped]"
-            } else {
-                oncePerHandPlayed.insert(c.rawValue)
-                dedupNote = " [first this hand]"
-            }
+            if oncePerHandPlayed.contains(c.rawValue) { lead = nil } else { oncePerHandPlayed.insert(c.rawValue) }
         }
         guard lead != nil || synthesis != nil || fallback != nil else { return }
-        #if DEBUG
-        if Self.logging {
-            print("[SpeechLog] say lead=\(lead?.rawValue ?? "—") synth=\(synthesis ?? "—") reason=\(reason)\(dedupNote)")
-        }
-        #endif
-        queue.append(Item(lead: lead, leadCategory: leadCategory, synthesis: synthesis, fallback: fallback, reason: reason))
+        pending.append(Item(lead: lead, leadCategory: leadCategory, synthesis: synthesis,
+                            fallback: fallback, priority: priority, reason: reason))
         pump()
     }
 
@@ -97,41 +75,31 @@ public final class SpeechConductor {
     }
 
     private func pump() {
-        guard !isSpeaking, !queue.isEmpty else { return }
-        isSpeaking = true
-        let item = queue.removeFirst()
+        guard !isBusy, !pending.isEmpty else { return }
+        isBusy = true
+        let item = pending.removeFirst()
         Task { await self.process(item) }
     }
 
     private func process(_ item: Item) async {
         if let lead = item.lead {
             if audio.isAvailable(lead) {
+                // Croupier/vob mp3: hold the announcement queue and let any
+                // in-progress announcement finish, then play, then resume (D-032).
+                await queue.beginExternalSpeech()
                 await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
                     audio.play(lead, category: item.leadCategory) { cont.resume() }
                 }
+                queue.endExternalSpeech()
             } else if let fallback = item.fallback {
                 // The mp3 isn't in the bundle yet → speak the declared fallback (D-030).
-                announcer.announce(fallback); synthesisObserver?(fallback)
-                await pause(synthesisDuration(for: fallback))
+                queue.enqueue(fallback, priority: item.priority)
             }
         }
         if let synthesis = item.synthesis {
-            announcer.announce(synthesis); synthesisObserver?(synthesis)
-            await pause(synthesisDuration(for: synthesis))
+            queue.enqueue(synthesis, priority: item.priority)
         }
-        isSpeaking = false
+        isBusy = false
         pump()
-    }
-
-    /// A rough spoken-duration estimate so the next item doesn't start over an
-    /// ongoing VoiceOver line. Zero when VoiceOver is off (nothing is spoken).
-    private func synthesisDuration(for text: String) -> TimeInterval {
-        guard announcer.isVoiceOverRunning else { return 0 }
-        return max(0.8, Double(text.count) * 0.06)
-    }
-
-    private func pause(_ seconds: TimeInterval) async {
-        guard seconds > 0 else { return }
-        try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
     }
 }

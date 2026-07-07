@@ -192,4 +192,17 @@ public enum SpeechMap {
     static func categoryText(_ category: HandCategory) -> String {
         uiLocalized("hand.category.\(category.rawValue)")
     }
+
+    /// The announcement priority of a synthesis line (D-032): personal/critical =
+    /// high (never dropped); opponent info = medium; secondary description = low.
+    public static func priority(for line: SynthLine) -> AnnouncementPriority {
+        switch line {
+        case .heroCards, .yourTurnContext, .heroWon, .sessionWon, .sessionLost, .roleButton:
+            return .high
+        case .otherWon, .opponentAction, .shown:
+            return .medium
+        case .communityCards:
+            return .low
+        }
+    }
 }

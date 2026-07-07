@@ -73,7 +73,9 @@ public final class TableViewModel: ObservableObject {
 
     private let driver: SessionDriver
     private let human = HumanActionProvider()
-    private let announcer = Announcer()
+    /// The project-wide serial announcement channel (D-032). Shared with the
+    /// conductor so croupier voices and synthesis act as one spoken channel.
+    private let announcements = AnnouncementQueue()
     private let gate = HandGate()
     private let fastMode: Bool
     private let audio: AudioServicing
@@ -121,7 +123,7 @@ public final class TableViewModel: ObservableObject {
         let characters: [Int: BotCharacter] = [1: .novice, 2: .rock, 3: .aggressor]
         self.audioDirector = AudioDirector(audio: audio, heroSeatID: 0, characters: characters,
                                            seed: seed, fastMode: fastMode)
-        self.conductor = SpeechConductor(audio: audio, announcer: Announcer())
+        self.conductor = SpeechConductor(audio: audio, queue: announcements)
         self.botChatter = BotChatter(heroSeatID: 0, characters: characters, seed: seed &+ 999)
 
         self.state = TableState(
@@ -251,7 +253,8 @@ public final class TableViewModel: ObservableObject {
     private func speak(_ payload: EventPayload, _ reason: String = "") {
         let plan = SpeechMap.plan(for: payload, heroSeatID: heroSeatID, names: names)
         conductor.say(lead: plan.croupier, synthesis: plan.synthesis.map(SpeechMap.text),
-                      fallback: plan.croupierFallback.map(SpeechMap.text), reason: reason)
+                      fallback: plan.croupierFallback.map(SpeechMap.text),
+                      priority: priority(of: plan), reason: reason)
     }
 
     /// The human's OWN role at the start of the hand, or silence (D-031). The
@@ -259,22 +262,32 @@ public final class TableViewModel: ObservableObject {
     private func speakRole(_ payload: EventPayload) {
         let plan = SpeechMap.roleAnnouncement(for: payload, heroSeatID: heroSeatID)
         conductor.say(lead: plan.croupier, synthesis: plan.synthesis.map(SpeechMap.text),
-                      fallback: plan.croupierFallback.map(SpeechMap.text), reason: "role")
+                      fallback: plan.croupierFallback.map(SpeechMap.text),
+                      priority: priority(of: plan), reason: "role")
     }
 
-    /// An opponent's action: its attribution synthesis, led by the croupier's
-    /// "all-in" or an optional vob_ colour (D-031). The human's own action is
-    /// silent (only physical sounds).
+    /// An opponent's action: its attribution synthesis (medium priority — D-032),
+    /// led by the croupier's "all-in" or an optional vob_ colour (D-031). The
+    /// human's own action is silent (only physical sounds).
     private func speakAction(seatID: Int, action: ActedAction) {
         let plan = SpeechMap.plan(for: .playerActed(seatID: seatID, action: action),
                                   heroSeatID: heroSeatID, names: names)
         let synth = plan.synthesis.map(SpeechMap.text)
         if plan.croupier != nil {                       // all-in (own or opponent)
-            conductor.say(lead: plan.croupier, leadCategory: .croupier, synthesis: synth, reason: "action-allin")
+            conductor.say(lead: plan.croupier, leadCategory: .croupier, synthesis: synth,
+                          priority: .medium, reason: "action-allin")
         } else if seatID != heroSeatID {                // opponent ordinary action
             let vob = botChatter.actionVoice(seat: seatID, action: action)
-            conductor.say(lead: vob, leadCategory: .botVoice, synthesis: synth, reason: "opp-action")
+            conductor.say(lead: vob, leadCategory: .botVoice, synthesis: synth,
+                          priority: .medium, reason: "opp-action")
         }
+    }
+
+    /// The announcement priority carried by a plan's synthesis (or fallback).
+    private func priority(of plan: SpeechPlan) -> AnnouncementPriority {
+        if let s = plan.synthesis { return SpeechMap.priority(for: s) }
+        if let f = plan.croupierFallback { return SpeechMap.priority(for: f) }
+        return .medium
     }
 
     /// The pot conclusion, ONCE per hand (D-029 fix): the pot voice plus a
@@ -292,7 +305,8 @@ public final class TableViewModel: ObservableObject {
         } else {
             line = nil
         }
-        conductor.say(lead: plan.croupier, synthesis: line.map(SpeechMap.text), reason: "pot")
+        let prio = line.map(SpeechMap.priority) ?? .high
+        conductor.say(lead: plan.croupier, synthesis: line.map(SpeechMap.text), priority: prio, reason: "pot")
     }
 
     // MARK: - The human's turn
@@ -309,7 +323,7 @@ public final class TableViewModel: ObservableObject {
         // The turn is time-critical: drop any stale narration still queued so the
         // "your turn" mp3 plays promptly rather than behind a backlog (D-031).
         conductor.flushPending()
-        conductor.say(lead: SoundCatalog.voYourTurn, synthesis: callContext, reason: "your-turn")
+        conductor.say(lead: SoundCatalog.voYourTurn, synthesis: callContext, priority: .high, reason: "your-turn")
         await withCheckedContinuation { turnContinuation = $0 }
         humanTurn = nil
         raiseBox = nil
@@ -351,21 +365,21 @@ public final class TableViewModel: ObservableObject {
         guard var box = raiseBox else { return }
         playUI(SoundCatalog.uiRaisePlus)
         box.increase(); raiseBox = box
-        announce(uiLocalized("announce.raise.value", box.value), interrupting: true)
+        announcements.announceLiveValue(uiLocalized("announce.raise.value", box.value))
     }
 
     public func raiseMinus() {
         guard var box = raiseBox else { return }
         playUI(SoundCatalog.uiRaiseMinus)
         box.decrease(); raiseBox = box
-        announce(uiLocalized("announce.raise.value", box.value), interrupting: true)
+        announcements.announceLiveValue(uiLocalized("announce.raise.value", box.value))
     }
 
     public func raiseAllIn() {
         guard var box = raiseBox else { return }
         playUI(SoundCatalog.uiAllInTrigger)
         box.toMax(); raiseBox = box
-        announce(uiLocalized("announce.raise.allin", box.value), interrupting: true)
+        announcements.announceLiveValue(uiLocalized("announce.raise.allin", box.value))
     }
 
     public func confirmRaise() {
@@ -388,17 +402,8 @@ public final class TableViewModel: ObservableObject {
         let heroChips = state.seat(heroSeatID)?.chips ?? 0
         let didWin = heroChips > 0
         outcome = didWin ? .won : .lost
-        conductor.say(lead: nil, synthesis: SpeechMap.text(for: didWin ? .sessionWon : .sessionLost), reason: "session-end")
-    }
-
-    // MARK: - Narration helpers
-
-    /// Immediate VoiceOver feedback for the Raise box (D-027): interrupting so a
-    /// burst of +/- taps collapses to the latest value. Not routed through the
-    /// conductor — it's rapid UI feedback, not narrative, and no croupier voice
-    /// plays while the box is open.
-    private func announce(_ message: String, interrupting: Bool = false) {
-        announcer.announce(message, interrupting: interrupting)
+        conductor.say(lead: nil, synthesis: SpeechMap.text(for: didWin ? .sessionWon : .sessionLost),
+                      priority: .high, reason: "session-end")
     }
 
     // MARK: - UI input sounds (played by the UI itself, not from the stream)

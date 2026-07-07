@@ -108,6 +108,17 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     controllo.
   - La logica di presentazione (riduzione evento→stato, formattazione testo) va
     tenuta **pura** e fuori dalle viste SwiftUI, per essere unit-testabile.
+  - **Tutti gli annunci VoiceOver passano da una coda seriale con priorità e
+    coordinamento (D-032).** Nel codice applicativo **nessuna chiamata diretta a
+    `UIAccessibility.post`**: ogni annuncio passa dall'`AnnouncementQueue` (unico
+    punto che posta, verificato da un test statico che scandisce i sorgenti). La
+    coda **serializza senza troncare** (un annuncio iniziato finisce), assegna
+    **priorità** (alta = personale/critico, mai droppato; media = info avversari;
+    bassa = descrizione secondaria) e **droppa low/medium sotto backlog** per tenere
+    l'alta puntuale, e si **coordina** con le sorgenti audio pre-registrate
+    (`SpeechConductor`) come **un unico canale parlato** (la sintesi non parte mentre
+    suona il croupier e viceversa). È **trasversale**: riusabile da ogni gioco e ogni
+    parte parlata futura.
   - **mp3 previsto ma non ancora prodotto → fallback di sintesi dichiarato
     (D-030).** Quando la mappatura chiede un mp3 non ancora nel bundle, il sistema
     cade **automaticamente** su un **fallback di sintesi VoiceOver dichiarato nella

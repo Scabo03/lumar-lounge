@@ -53,7 +53,9 @@ final class AudioIntegrationTests: XCTestCase {
     func testCroupierVoicesAreAllInstitutionalAndPotIsOncePerHand() async throws {
         let events = try await runSession()
         let audio = RecordingAudioService()
-        let conductor = SpeechConductor(audio: audio, announcer: Announcer())
+        let queue = AnnouncementQueue()
+        queue.voiceOverOverride = false
+        let conductor = SpeechConductor(audio: audio, queue: queue)
         for e in events {
             if case .handBegan = e { conductor.handBegan() }
             let plan = SpeechMap.plan(for: e, heroSeatID: 0, names: [:])

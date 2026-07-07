@@ -173,6 +173,19 @@ riusabile fallback mp3-mancante→sintesi** (D-030), per la produzione audio gra
 (introdotto col ruolo `button`). Aggiunti log DEBUG di riproduzione e self-check
 all'avvio. Solo `UI` + `Audio`. 143 test verdi. **Note di design:** D-030, D-031.
 
+### ✅ Fix post-M1.8 (4) — Coda seriale degli annunci VoiceOver (Strategia C, D-032)
+Quarto test reale: il croupier ottimo, ma la **sintesi VoiceOver** si accavallava
+(il `.announcement` di default interrompe → annunci troncati in raffica). Problema
+**strutturale e trasversale** a tutto il progetto. Decisione A vs C presa **dai dati**:
+una simulazione di 8 mani ha misurato **saturazione 147%** del canale seriale (medium/
+low dominano) e fino a **~50 s di ritardo** sotto FIFO stretta, mentre l'high è il
+**2%** → **Strategia C**. Costruita l'`AnnouncementQueue` (UI, `@MainActor`,
+game-agnostica): unico punto che posta a VoiceOver (guard statico), serializza senza
+troncare, priorità+drop di low/medium, completamento via
+`announcementDidFinishNotification` + tetto 1 s, e **coordinamento come unico canale**
+col `SpeechConductor` (blocco reciproco croupier↔sintesi). `Announcer` rimosso, log
+unificato in `SpokenLog`. Solo `UI` + `Audio`. 146 test verdi. **Note di design:** D-032.
+
 ---
 
 > **🏁 Fase 1 (M1) completata.** Il gioco base è funzionante **end-to-end**:
