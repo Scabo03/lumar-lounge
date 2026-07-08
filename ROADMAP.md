@@ -212,24 +212,28 @@ toccato** (sincronia solo lato consumatore). Solo `UI`. 157 test + XCUITest impo
 
 ## Fase 2 — Mondo attorno al tavolo (`GameWorld`)
 
-### 🔭 M2.1 — Giocatore, fiches e sessione al tavolo
-Il **cuore di orchestrazione** (setup del tavolo, sessione multi-mano, fiches,
-bust, rotazione, ingressi/uscite) è già stato consegnato da **M1.4**
-(`SessionDriver`). Qui resta da costruire ciò che sta *attorno*: il **giocatore
-come entità del mondo** (identità, profilo), i blind level che salgono, il
-rebuy dopo bust, e l'aggancio verso la progressione. Si appoggia a M1.4.
-**Dipendenze:** M1.4.
+### ✅ M2.1 — Struttura del mondo: Home, Riverwood Casinò, gettoni, tavolo Rapido
+Il primo mattone di M2. L'app apre su **Home** e ha una **navigazione a tre livelli**
+Home → Riverwood Casinò → Tavolo (D-035, `AppState`+`AppRootView`, `GameChrome`
+trasversale). **Gettoni persistenti** del giocatore in GameWorld (`PlayerAccount`),
+distinti dalle **fiches** al tavolo: buy-in, cash-out, bust, saldo mostrato in Home/
+Casinò (D-036). **Lascia il tavolo** a fine mano. Il **Riverwood** (estetica rustica,
+SwiftUI+serif, nessuna texture ancora) elenca tre tavoli: Hold'em **Classico** (=M1),
+Hold'em **Rapido** (bot più aggressivi + **boost mano decisiva**: 3 mani senza fold
+pre-flop → blind raddoppiate + annuncio croupier + ambient teso, D-037), e Five-Card
+Draw **visibile ma non entrabile**. `SessionDriver` non modificato strutturalmente
+(override blind additivo). Solo `GameWorld`+`UI`+`Audio`(catalogo). 174 test + 3 XCUITest.
+**Note di design:** D-035, D-036, D-037. **Slot audio M2 predisposti** (fallback):
+`amb_home_neutral`, `amb_riverwood_calm_01/02`, `vo_it_high_stakes`, `ui_navigation`.
 
-### 🔭 M2.2 — Avversari con caratteri
-Gli NPC come entità del mondo: nome, personalità, stile di gioco, che mappano i
-parametri della IA M1.3 su avversari riconoscibili e ricorrenti.
-**Dipendenze:** M1.3, M2.1.
-
-### 🔭 M2.3 — Progressione tra casinò
-Gettoni, avanzamento e sblocco progressivo dei casinò; struttura pensata per
-accogliere in seguito gli altri giochi. Per il primo TestFlight può essere
-minimale (un solo casinò, un solo tavolo).
-**Dipendenze:** M2.1.
+### ⏭️ Prossimi sotto-mattoni M2 (proposti)
+- **M2.2 — Cassa / DLC:** ricarica dei gettoni quando finiscono (acquisti, bonus).
+- **M2.3 — Ambient Riverwood:** produzione e integrazione dei file audio dedicati
+  (chitarra/piano rustici) al posto dei fallback.
+- **M2.4 — Motore Five-Card Draw:** il secondo gioco, per rendere entrabile la Sala
+  Whiskey del Riverwood.
+- **M2.5 — Secondo casinò lussuoso** (es. Velvet Palace) con estetica opposta.
+- **M2.6 — NPC narrativi:** avversari ricorrenti con nome/carattere/storia.
 
 ---
 

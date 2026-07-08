@@ -186,8 +186,14 @@ public final class SessionDriver {
     ///
     /// Afterwards, chips are updated, newly-busted players are marked, and the
     /// button advances one physical position (ready for the next hand).
+    /// - Parameters:
+    ///   - overrideSmallBlind/overrideBigBlind: optional per-hand blind overrides
+    ///     (additive; default = the session's configured blinds). Used by GameWorld's
+    ///     decisive-hand boost to double the blinds for a single hand (D-037), without
+    ///     changing the driver's structure.
     @discardableResult
-    public func playHand() async throws -> HandOutcome {
+    public func playHand(overrideSmallBlind: Int? = nil,
+                         overrideBigBlind: Int? = nil) async throws -> HandOutcome {
         guard !hasEnded else { throw SessionError.sessionEnded }
         guard !isHandInProgress else { throw SessionError.handInProgress }
         let participants = eligibleParticipants()
@@ -206,10 +212,12 @@ public final class SessionDriver {
         let buttonID = engineButtonPlayerID()
         let engineButtonIndex = participants.firstIndex { $0.id == buttonID }!
 
+        let sb = overrideSmallBlind ?? smallBlind
+        let bb = overrideBigBlind ?? bigBlind
         var hand = HoldemHand(seats: engineSeats,
                               buttonIndex: engineButtonIndex,
-                              smallBlind: smallBlind,
-                              bigBlind: bigBlind,
+                              smallBlind: sb,
+                              bigBlind: bb,
                               seed: handSeed(handNumber))
 
         // The engine's blind positions (mirrors HoldemHand's own rule).
@@ -224,8 +232,8 @@ public final class SessionDriver {
             buttonSeatID: buttonID,
             smallBlindSeatID: hand.seats[smallBlindIndex].id,
             bigBlindSeatID: hand.seats[bigBlindIndex].id,
-            smallBlind: smallBlind,
-            bigBlind: bigBlind,
+            smallBlind: sb,
+            bigBlind: bb,
             seats: participants.map { SeatSnapshot(seatID: $0.id, position: $0.position, chips: $0.chips) }
         ))
         await emit(.blindPosted(seatID: hand.seats[smallBlindIndex].id, blind: .small,

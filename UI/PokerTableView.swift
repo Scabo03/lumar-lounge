@@ -19,45 +19,26 @@
 
 import SwiftUI
 import GameEngine
+import GameWorld
 import Audio
 
-public struct PokerTableView: View {
-    /// Bumping this restarts the whole session (fresh view + view model).
-    @State private var restartToken = 0
-    /// The app's own VoiceOver mode lives ABOVE the restart boundary so it (and its
-    /// persisted value) survive a new game (D-034).
-    @StateObject private var voMode = AppVoiceOverMode()
-
-    public init() {}
-
-    public var body: some View {
-        // The persistent chrome (Settings button) wraps every screen (D-033).
-        GameChrome(voMode: voMode) {
-            TableScreen(seed: 20_260_704 &+ UInt64(restartToken),
-                        fastMode: ProcessInfo.processInfo.arguments.contains("-uiTesting"),
-                        mode: voMode,
-                        onRestart: { restartToken += 1 })
-                .id(restartToken)
-        }
-    }
-}
-
+/// The playable table screen (M1.7), now opened from the Riverwood with a table's
+/// rules and a cash-out callback (M2.1). The persistent chrome is applied by the
+/// app root; here the table also offers a "Leave table" control (D-036).
 struct TableScreen: View {
     @StateObject private var model: TableViewModel
-    let onRestart: () -> Void
 
-    init(seed: UInt64, fastMode: Bool, mode: AppVoiceOverMode, onRestart: @escaping () -> Void) {
-        // The real audio engine on the app; missing sound files degrade to
-        // silence (D-024) with a startup log.
-        _model = StateObject(wrappedValue: TableViewModel(seed: seed, fastMode: fastMode,
-                                                          audio: AudioEngine(), mode: mode))
-        self.onRestart = onRestart
+    init(rules: TableRules, audio: AudioEngine, mode: AppVoiceOverMode, onLeave: @escaping (Int) -> Void) {
+        let fastMode = ProcessInfo.processInfo.arguments.contains("-uiTesting")
+        _model = StateObject(wrappedValue: TableViewModel(seed: 20_260_704, fastMode: fastMode,
+                                                          audio: audio, mode: mode, rules: rules, onLeave: onLeave))
     }
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 VStack(spacing: 6) {
+                    leaveBar
                     OpponentBadgesView(state: model.state, names: model.names)
                         .frame(height: geometry.size.height * 0.20)
 
@@ -88,11 +69,34 @@ struct TableScreen: View {
                 }
 
                 if let outcome = model.outcome {
-                    EndOverlay(outcome: outcome, onRestart: onRestart)
+                    EndOverlay(outcome: outcome, onReturn: { model.returnToCasino() })
                 }
             }
         }
         .task { await model.run() }
+    }
+
+    /// The "Leave table" control (D-036): stand up at the end of the current hand.
+    private var leaveBar: some View {
+        HStack {
+            Button { model.requestLeave() } label: {
+                Label(uiLocalized("table.leave"), systemImage: "arrow.left.circle")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(TablePalette.primaryText)
+                    .padding(.horizontal, 10).frame(height: 36)
+                    .background(Capsule().fill(Color.white.opacity(0.10)))
+            }
+            .disabled(model.pendingLeave)
+            .accessibilityIdentifier("table.leave")
+            .accessibilityHint(Text(uiLocalized("table.leave.hint")))
+            Spacer()
+            if model.pendingLeave {
+                Text(verbatim: uiLocalized("table.leave.pending"))
+                    .font(.caption).foregroundStyle(TablePalette.accent)
+                    .accessibilityIdentifier("table.leave.pending")
+            }
+        }
+        .padding(.horizontal, 2)
     }
 }
 
@@ -173,6 +177,6 @@ struct TableCenterView: View {
 
 #if DEBUG
 #Preview {
-    PokerTableView()
+    AppRootView()
 }
 #endif

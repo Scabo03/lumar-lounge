@@ -124,3 +124,18 @@ usa `announceLiveValue`. Debug: `SpokenLog.enabled = true` (DEBUG).
   i tasti sono attivi al turno dell'umano e disabilitati al turno di un bot; il
   box Raise si apre coi quattro controlli (minus, value, plus, all-in) + conferma
   e annulla e si chiude; e una sequenza minima di gioco prosegue end-to-end.
+
+## M2.1 — Navigazione a tre livelli e mondo (D-035/036/037)
+
+| Componente | A cosa serve |
+|---|---|
+| `AppRootView` | Nuovo **entry point** dell'app: possiede `AppState` (navigazione + gettoni) e la modalità VoiceOver, avvolge ogni schermata in `GameChrome`, e guida l'**ambient per schermata** (Home/Riverwood con fallback lounge; il tavolo lo gestisce l'`AudioDirector`). L'app non apre più su `PokerTableView` (rimosso). |
+| `AppState` | `ObservableObject` di livello app: `screen` (`.home`/`.riverwood`/`.table(TableFormat)`) e `chips` (specchio del `PlayerAccount`). `sitDown`/`leaveTable`/`canAfford`. Navigazione **guidata da stato** (non `NavigationStack`) per pieno controllo del chrome e testabilità. |
+| `HomeView` | Prima schermata: titolo serif, tagline, lista casinò (Riverwood entrabile + placeholder "In arrivo"). |
+| `RiverwoodView` | Lista tavoli del Riverwood: Classico, Rapido, e Five-Card Draw **visibile ma non entrabile** ("In arrivo"). Ogni riga è un blocco VoiceOver unico; disabilitata se gettoni insufficienti. |
+| `GameChrome` (esteso) | Ora con azione **leading** opzionale (indietro / lascia tavolo) e riga **saldo gettoni**, oltre al pulsante Impostazioni. |
+
+Il `TableViewModel` è **parametrizzato** da `TableRules` (blind/personalità/buy-in) e
+riceve un callback `onLeave` per il cash-out; ospita il **boost mano decisiva** (D-037)
+e il **lascia tavolo** (D-036). Estetica rustica del Riverwood resa con palette scura +
+**serif**, SwiftUI puro (nessuna texture — gli asset arriveranno dopo).

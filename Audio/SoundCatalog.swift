@@ -15,14 +15,19 @@ import Foundation
 
 public enum SoundCatalog {
 
-    // MARK: Ambient (5)
+    // MARK: Ambient (8)
     public static let ambLoungeCalm1 = SoundID("amb_lounge_calm_01")
     public static let ambLoungeCalm2 = SoundID("amb_lounge_calm_02")
     public static let ambLoungeTense = SoundID("amb_lounge_tense_01")
     public static let ambCrowdDistant = SoundID("amb_crowd_distant")     // not delivered
     public static let ambSilenceTension = SoundID("amb_silence_tension")
+    /// M2.1 world ambients — NOT delivered yet; each falls back to a lounge_calm
+    /// bed until the real files are produced (D-035, D-028 fallback via missing→silent).
+    public static let ambHomeNeutral = SoundID("amb_home_neutral")           // not delivered
+    public static let ambRiverwoodCalm1 = SoundID("amb_riverwood_calm_01")   // not delivered
+    public static let ambRiverwoodCalm2 = SoundID("amb_riverwood_calm_02")   // not delivered
 
-    // MARK: UI (9)
+    // MARK: UI (10)
     public static let uiButtonTap = SoundID("ui_button_tap")
     public static let uiButtonTapSoft = SoundID("ui_button_tap_soft")
     public static let uiBoxOpen = SoundID("ui_box_open")
@@ -32,6 +37,8 @@ public enum SoundCatalog {
     public static let uiAllInTrigger = SoundID("ui_all_in_trigger")
     public static let uiConfirm = SoundID("ui_confirm")
     public static let uiCancel = SoundID("ui_cancel")
+    /// Screen-to-screen transition blip — NOT delivered yet (silent fallback, D-035).
+    public static let uiNavigation = SoundID("ui_navigation")                // not delivered
 
     // MARK: Table (9)
     public static let tblCardDealSingle = SoundID("tbl_card_deal_single")
@@ -52,6 +59,9 @@ public enum SoundCatalog {
     /// Human-is-on-the-button role cue. NOT delivered yet → covered by a synthesis
     /// fallback ("sei sul bàtton") declared in the UI mapping (D-030).
     public static let voRoleButton = SoundID("vo_it_role_button")
+    /// Fast-table decisive-hand cue — NOT delivered yet → synthesis fallback
+    /// "mano decisiva" declared in the UI mapping (D-037/D-030).
+    public static let voHighStakes = SoundID("vo_it_high_stakes")
     public static let voFlop = SoundID("vo_it_flop")
     public static let voTurn = SoundID("vo_it_turn")
     public static let voRiver = SoundID("vo_it_river")
@@ -88,13 +98,15 @@ public enum SoundCatalog {
     public static let all: [(id: SoundID, category: SoundCategory)] = [
         (ambLoungeCalm1, .ambient), (ambLoungeCalm2, .ambient), (ambLoungeTense, .ambient),
         (ambCrowdDistant, .ambient), (ambSilenceTension, .ambient),
+        (ambHomeNeutral, .ambient), (ambRiverwoodCalm1, .ambient), (ambRiverwoodCalm2, .ambient),
         (uiButtonTap, .ui), (uiButtonTapSoft, .ui), (uiBoxOpen, .ui), (uiBoxClose, .ui),
         (uiRaisePlus, .ui), (uiRaiseMinus, .ui), (uiAllInTrigger, .ui), (uiConfirm, .ui), (uiCancel, .ui),
+        (uiNavigation, .ui),
         (tblCardDealSingle, .table), (tblCardFlipSingle, .table), (tblCardsDealFlop, .table),
         (tblChipsSingle, .table), (tblChipsStack, .table), (tblChipsBetLarge, .table),
         (tblChipsPotCollect, .table), (tblMuck, .table), (tblShuffle, .table),
         (voYourTurn, .croupier), (voHandStart, .croupier), (voBlindSmall, .croupier), (voBlindBig, .croupier),
-        (voRoleButton, .croupier),
+        (voRoleButton, .croupier), (voHighStakes, .croupier),
         (voFlop, .croupier), (voTurn, .croupier), (voRiver, .croupier), (voShowdown, .croupier),
         (voActionFold, .croupier), (voActionCheck, .croupier), (voActionCall, .croupier),
         (voActionRaise, .croupier), (voActionAllIn, .croupier), (voPotAwarded, .croupier), (voSplitPot, .croupier),

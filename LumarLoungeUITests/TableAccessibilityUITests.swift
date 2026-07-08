@@ -39,7 +39,17 @@ final class TableAccessibilityUITests: XCTestCase {
 
     func testLayoutAndHumanInteraction() {
         let app = XCUIApplication()
+        app.launchArguments += ["-resetWallet"]   // deterministic fresh 5000 chips (M2.1)
         app.launch()
+
+        // 0. Navigate Home → Riverwood → Classic table (the app no longer opens on
+        // the table directly — D-035).
+        let riverwood = app.buttons["home.casino.riverwood"]
+        XCTAssertTrue(riverwood.waitForExistence(timeout: 15), "Riverwood entry missing on Home")
+        riverwood.tap()
+        let classicTable = app.buttons["riverwood.table.classic"]
+        XCTAssertTrue(classicTable.waitForExistence(timeout: 10), "Classic table missing in Riverwood")
+        classicTable.tap()
 
         // 1. The layered layout is present and accessible (leaves of each zone).
         XCTAssertTrue(any(app, "table.container").waitForExistence(timeout: 15), "table missing")

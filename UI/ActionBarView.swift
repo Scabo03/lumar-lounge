@@ -204,7 +204,7 @@ struct RaiseBoxView: View {
 
 struct EndOverlay: View {
     let outcome: GameOutcome
-    let onRestart: () -> Void
+    let onReturn: () -> Void
 
     var body: some View {
         ZStack {
@@ -217,8 +217,8 @@ struct EndOverlay: View {
                     .accessibilityIdentifier("endgame.message")
                     .accessibilityAddTraits(.isHeader)
 
-                Button(action: onRestart) {
-                    Text(verbatim: uiLocalized(outcome == .won ? "endgame.continue" : "endgame.restart"))
+                Button(action: onReturn) {
+                    Text(verbatim: uiLocalized("endgame.return"))
                         .font(.headline.weight(.bold))
                         .padding(.horizontal, 28).padding(.vertical, 14)
                         .foregroundStyle(.black)

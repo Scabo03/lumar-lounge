@@ -47,15 +47,27 @@ nei file collegati.
   `Resources/Audio/` (2 del catalogo non ancora consegnati → silenziosi, D-025).
   157 unit test verdi + 2 XCUITest.
 
-**🏁 Fase 1 (M1) completa — il gioco base gira end-to-end con audio ed è pronto
-per un primo TestFlight** (motore + bot + sessione + flusso + UI accessibile +
-audio pieno). L'app bundle contiene 51 mp3; mancano solo **2** suoni non ancora
-consegnati (`amb_crowd_distant`, `fx_hand_neutral`), da aggiungere in
-`Resources/Audio/` quando prodotti.
+- **`GameWorld`/`UI` M2.1:** il **mondo attorno al tavolo**. Struttura di
+  navigazione a **tre livelli** Home → Riverwood Casinò → Tavolo (D-035, `AppState`
+  + `AppRootView`, chrome trasversale). **Gettoni persistenti** del giocatore in
+  GameWorld (`PlayerAccount`), distinti dalle fiches al tavolo; buy-in/cash-out/bust,
+  lascia-tavolo (D-036). Tavolo **Rapido** con bot più aggressivi e **boost mano
+  decisiva** (blind raddoppiate + annuncio croupier, D-037). Five-Card Draw visibile
+  ma non entrabile. 174 unit test + 3 XCUITest.
 
-**Prossimo passo.** **Fase 2 (`GameWorld` — il mondo attorno al tavolo, M2.x)**:
-lo specifico sarà definito con l'utente nella prossima conversazione. Vedi
-[`ROADMAP.md`](ROADMAP.md).
+**🏁 Fase 1 (M1) completa; Fase 2 (M2) avviata con M2.1.** Il gioco gira end-to-end
+con navigazione, casinò, gettoni e due tavoli Hold'em. L'app bundle contiene 51 mp3;
+oltre ai 2 storici (`amb_crowd_distant`, `fx_hand_neutral`) mancano ora **5 slot M2**
+predisposti con fallback (vedi sotto), da produrre e depositare in `Resources/Audio/`.
+
+**Slot audio M2 da produrre** (dichiarati nel catalogo, con fallback nel frattempo):
+`amb_home_neutral`, `amb_riverwood_calm_01`, `amb_riverwood_calm_02` (→ fallback
+lounge_calm), `vo_it_high_stakes` (→ fallback sintesi "mano decisiva"), `ui_navigation`
+(→ silenzio).
+
+**Prossimo passo.** Prossimi sotto-mattoni M2 (vedi [`ROADMAP.md`](ROADMAP.md)): cassa/
+DLC per ricarica gettoni, ambient dedicati Riverwood (produzione file), motore Five-Card
+Draw, secondo casinò più lussuoso, NPC narrativi.
 
 **Stato completo, sempre aggiornato:** sezione *Stato di sviluppo* in
 [`README.md`](README.md).
@@ -732,3 +744,60 @@ consumatore** in `UI`; `SessionDriver` **non si tocca** (CONVENTIONS).
 - **Log:** `SpokenLog` traccia ogni evento visualizzato con timestamp e modalità.
 **Vincoli:** solo `UI`, nessuna modifica a `GameEngine`/`SessionDriver`/`Audio`(salvo
 `AnnouncementQueue`); nessuna dipendenza nuova. 157 test verdi + 1 XCUITest impostazioni.
+
+### D-035 — Struttura di navigazione a tre livelli: Home → Casinò → Tavolo (M2.1)
+L'app non apre più direttamente sul tavolo: entra su **Home**. Tre livelli espliciti,
+spina dorsale di tutto il progetto: **Home** (scelta del casinò) → **Casinò**
+(Riverwood, scelta del tavolo) → **Tavolo** (il gioco). Stato di navigazione + saldo
+in un `AppState` (`ObservableObject`) al livello app; navigazione **guidata da stato**
+(`enum Screen`), non `NavigationStack`, per **pieno controllo del chrome** e
+testabilità (transizioni animate, focus/ordine VoiceOver prevedibili). Nuovo entry
+point `AppRootView` (l'app usa questo, non più `PokerTableView`, rimosso). **`GameChrome`**
+(D-033) avvolge **ogni** schermata: top bar con azione leading opzionale (indietro /
+lascia tavolo) + pulsante Impostazioni sempre presente, e riga saldo gettoni (Home/
+Casinò). **Riverwood Casinò**: primo casinò, estetica rustica di frontiera resa con
+palette scura, feltro desaturato, accenti ottone e **tipografia serif** (SwiftUI puro,
+nessuna texture — gli asset arriveranno dopo). Lista tavoli: Classico (buy-in 1000),
+Rapido (buy-in 1000), Five-Card Draw "Sala Whiskey" **visibile ma non entrabile** ("In
+arrivo", letto da VoiceOver come non disponibile). Home elenca Riverwood + placeholder
+"In arrivo" (Velvet Palace, Aurea Lounge). Ogni riga tavolo è un blocco VoiceOver unico
+("Tavolo … buy-in … posti liberi. Tocca per sederti."). Config tavolo via `TableRules`
+(GameWorld); il `TableViewModel` è ora parametrizzato (blind, personalità, buy-in come
+stack). `SessionDriver` **non modificato strutturalmente** (usa i suoi entry di config).
+
+### D-036 — Gettoni persistenti in GameWorld, distinti dalle fiches al tavolo (M2.1)
+Nuovo tipo `PlayerAccount` (GameWorld): il conto **gettoni** del giocatore, valuta
+**esterna** al tavolo, **persistita** (`ChipsStore` protocollo iniettabile →
+`UserDefaultsChipsStore`, `InMemoryChipsStore` per test/UI-test). Prima esecuzione: 5000
+gettoni, salvati e ripristinati. Le **fiches** restano valuta **effimera** che vive solo
+al tavolo. Flusso: **buy-in** sottrae gettoni → diventano fiches iniziali (stack);
+**alzarsi** riconverte le fiches rimaste in gettoni; **bust** riconverte 0. Buy-in
+possibile solo se coperto, altrimenti la riga è disabilitata e VoiceOver dice "gettoni
+insufficienti". Nessuna ricarica in M2.1 (arriverà la cassa/DLC). UI: `AppState` fa da
+specchio osservabile del conto; saldo mostrato in Home/Casinò; al tavolo si vede lo
+stack di fiches. **Lascia il tavolo**: pulsante nel tavolo; la mano corrente finisce
+regolarmente (nessun abbandono mid-hand), poi ritorno al Riverwood con cash-out;
+immediato se già bustato. Vittoria/bust di sessione → ritorno al Riverwood col cash-out
+(overlay con "Torna al Riverwood"). **Semplificazione documentata:** per il gate
+produttore-consumatore, "lascia" può richiedere la fine di **una** mano ancora prodotta
+(il produttore è al più una mano avanti).
+
+### D-037 — Boost "mano decisiva" nel tavolo Rapido: meccanica narrativa trasparente (M2.1)
+Il tavolo **Rapido** ha bot **più aggressivi** (personalità in `WorldPersonalities.fast`:
+aggression/bluff/risk alzate, tightness abbassata, rationality moderata così non sono
+stupidi — definite in **GameWorld**, il motore le riceve, non le decide) e il **boost
+mano decisiva**: dopo **3 mani consecutive senza fold pre-flop**, la mano successiva è
+**decisiva** — il croupier la annuncia (`vo_it_high_stakes`, non ancora consegnato →
+**fallback di sintesi** "mano decisiva", D-030), l'ambient passa a `amb_lounge_tense_01`,
+e le **blind raddoppiano** per quella singola mano; poi si torna al ritmo normale. È
+**trasparente** (il giocatore lo capisce e lo aspetta). Architettura: componente
+osservabile/testabile `DecisiveHandBoost` (GameWorld) col contatore; il rilevamento
+"fold pre-flop" è tracciato dal consumatore (`present`) e alimenta il boost a fine mano,
+**prima** del rilascio del gate, così il produttore vede lo streak aggiornato; la mano
+decisiva usa l'**override additivo** `SessionDriver.playHand(overrideSmallBlind:
+overrideBigBlind:)` — nessuna modifica strutturale al driver. Il `present` rileva la mano
+decisiva dai blind raddoppiati nell'evento `handBegan` (niente flag condiviso), l'
+`AudioDirector` idem per l'ambient (riceve il big blind base). 174 test verdi (+ XCUITest
+navigazione): gettoni (buy-in/cash-out/bust/insufficiente/persistenza), boost, raddoppio
+blind via override, personalità Rapide più aggressive (caratterizzazione). **Chiude
+M1, apre M2.**

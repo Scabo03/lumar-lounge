@@ -98,3 +98,12 @@ Vedi [`../ROADMAP.md`](../ROADMAP.md).
   iscritti ricevono la stessa sequenza; un giocatore vede le proprie hole card
   ma mai le altrui, lo spettatore nessuna; determinismo dell'intero flusso;
   narrazione di ingressi e bust.
+
+## M2.1 — Il mondo attorno al tavolo (D-035/036/037)
+
+| Tipo | A cosa serve |
+|---|---|
+| `PlayerAccount` + `ChipsStore` | Il conto **gettoni** persistente del giocatore (valuta esterna al tavolo, D-036), dietro un `ChipsStore` iniettabile (`UserDefaultsChipsStore`, `InMemoryChipsStore` per i test). Prima esecuzione: 5000. `buyIn`/`cashOut`/`canAfford`. |
+| `TableFormat` / `TableRules` | La configurazione di un tavolo (D-035): stile (`classic`/`fast`), blind, buy-in, personalità dei bot, flag del boost. `.classic` e `.fast` come preset. Alimenta gli entry di config del `SessionDriver`, che **non è modificato strutturalmente**. |
+| `WorldPersonalities` | Le personalità dei bot per stile di tavolo (definite **qui**, non nel motore): `classic` (roster M1) e `fast` (aggression/bluff/risk alzate, tightness abbassata — visibilmente più aggressive, D-037). |
+| `DecisiveHandBoost` | Il contatore osservabile/testabile del **boost mano decisiva** (D-037): dopo 3 mani consecutive senza fold pre-flop, `isNextHandDecisive`; un fold azzera; `consumeDecisiveHand` riparte. Le blind della mano decisiva si raddoppiano via l'override additivo `SessionDriver.playHand(overrideSmallBlind:overrideBigBlind:)`. |

@@ -22,6 +22,19 @@ riscoprirle dalla conversazione. Il riassunto operativo per Claude Code sta in
   opachi, non conosce poker/blackjack.
 - `UI` può importare tutto ciò che sta sotto; solo la thin shell dell'app
   importa `UI`.
+- **Navigazione a tre livelli espliciti (D-035):** l'app è strutturata su **Home
+  → Casinò → Tavolo**, e **ogni schermata principale è avvolta da `GameChrome`**
+  per le funzionalità trasversali (Impostazioni, saldo gettoni, e future). Ogni
+  nuovo casinò/gioco/schermata si aggancia a questa struttura.
+- **Gettoni persistenti in GameWorld; fiches effimere al tavolo (D-036).** Il
+  concetto di **gettoni** (valuta del giocatore fra le sessioni) è **persistito** e
+  appartiene a **GameWorld** (`PlayerAccount`); le **fiches** sono valuta effimera
+  che vive **solo** al tavolo. La UI li visualizza, non li possiede.
+- **Meccaniche narrative di tavolo nel driver di GameWorld, trasparenti (D-037).**
+  Quando un tavolo introduce meccaniche **non standard** rispetto al motore (boost,
+  eventi speciali, blind dinamiche), queste vivono nel **driver di sessione di
+  GameWorld** (non nel motore, che resta puro) e sono **trasparenti** al giocatore
+  tramite **annunci espliciti** del croupier o della sintesi — mai regole nascoste.
 
 ## 2. Lingua del codice e del dominio
 

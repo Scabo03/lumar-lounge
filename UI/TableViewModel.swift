@@ -87,6 +87,19 @@ public final class TableViewModel: ObservableObject {
     /// The app's own VoiceOver mode: when ON the visual timeline paces to the spoken
     /// channel; when OFF it keeps the fast internal rhythm (D-034).
     private let mode: AppVoiceOverMode
+    /// This table's rules (blinds, personalities, boost — D-035/D-037).
+    private let rules: TableRules
+    /// Called when the player stands up: the remaining fiches to cash out (D-036).
+    private let onLeave: (Int) -> Void
+    /// The Fast table's decisive-hand boost (D-037).
+    private let boost = DecisiveHandBoost()
+
+    /// The player asked to stand up; they leave at the end of the current hand.
+    @Published public private(set) var pendingLeave = false
+    private var leaveAfterHand = false
+    /// Whether any player folded pre-flop this hand (feeds the boost, D-037).
+    private var preflopFoldThisHand = false
+    private var sawFlopThisHand = false
 
     private var eventQueue: [EventPayload] = []
     private var streamFinished = false
@@ -99,17 +112,19 @@ public final class TableViewModel: ObservableObject {
 
     public init(seed: UInt64 = 20_260_704, fastMode: Bool = false,
                 audio: AudioServicing = NullAudioService(),
-                mode: AppVoiceOverMode) {
+                mode: AppVoiceOverMode,
+                rules: TableRules = .classic,
+                onLeave: @escaping (Int) -> Void = { _ in }) {
         self.fastMode = fastMode
         self.audio = audio
         self.mode = mode
-        // Seat 0 is the human (bottom of the screen); seats 1–3 are the bots.
-        let bots: [(id: Int, personality: Personality, nameKey: String)] = [
-            (1, .eagerNovice, "seat.name.novice"),
-            (2, .conservativeRock, "seat.name.rock"),
-            (3, .hotAggressor, "seat.name.aggressor"),
-        ]
-        let startingChips = 1000
+        self.rules = rules
+        self.onLeave = onLeave
+        // Seat 0 is the human; seats 1–3 are the bots, taking this table's
+        // personalities (Classic vs Fast, D-035/D-037). The buy-in is the stack.
+        let startingChips = rules.buyIn
+        let nameKeys = ["seat.name.novice", "seat.name.rock", "seat.name.aggressor"]
+        let bots = zip(1...3, rules.personalities).map { (id: $0.0, personality: $0.1) }
         var assignments = [SeatAssignment(position: 0, playerID: 0, chips: startingChips, provider: human)]
         assignments += bots.map { bot in
             SeatAssignment(position: bot.id, playerID: bot.id, chips: startingChips,
@@ -118,16 +133,17 @@ public final class TableViewModel: ObservableObject {
                                                                     equitySamples: fastMode ? 30 : 120)))
         }
         self.driver = SessionDriver(capacity: 4, seats: assignments, buttonPosition: 0,
-                                    smallBlind: 10, bigBlind: 20, seed: seed)
+                                    smallBlind: rules.smallBlind, bigBlind: rules.bigBlind, seed: seed)
 
         var names = [0: uiLocalized("seat.name.you")]
-        for bot in bots { names[bot.id] = uiLocalized(bot.nameKey) }
+        for (bot, key) in zip(bots, nameKeys) { names[bot.id] = uiLocalized(key) }
         self.names = names
 
-        // Each bot's CHARACTER, so the audio layer picks fitting voicelines.
+        // Each bot's CHARACTER (for voicelines) stays the same across tables; the
+        // base big blind lets the director raise the ambient on a decisive hand.
         let characters: [Int: BotCharacter] = [1: .novice, 2: .rock, 3: .aggressor]
         self.audioDirector = AudioDirector(audio: audio, heroSeatID: 0, characters: characters,
-                                           seed: seed, fastMode: fastMode)
+                                           seed: seed, fastMode: fastMode, baseBigBlind: rules.bigBlind)
         self.conductor = SpeechConductor(audio: audio, queue: announcements)
         self.botChatter = BotChatter(heroSeatID: 0, characters: characters, seed: seed &+ 999)
 
@@ -135,6 +151,22 @@ public final class TableViewModel: ObservableObject {
             seats: ([0] + bots.map { $0.id }).map { SeatPresentation(id: $0, position: $0, chips: startingChips) },
             phase: .idle, heroSeatID: 0
         )
+    }
+
+    // MARK: - Leaving the table (D-036)
+
+    /// The player asks to stand up. Between hands (or after busting) they leave at
+    /// once; during a hand it's deferred to the end of the current hand — nobody
+    /// abandons a hand mid-way.
+    public func requestLeave() {
+        if outcome != nil { finishAndLeave(); return }   // already ended → leave now
+        leaveAfterHand = true
+        pendingLeave = true
+    }
+
+    private func finishAndLeave() {
+        let remaining = state.seat(heroSeatID)?.chips ?? 0
+        onLeave(remaining)
     }
 
     // MARK: - Lifecycle
@@ -165,10 +197,18 @@ public final class TableViewModel: ObservableObject {
     private func produce() async {
         while !Task.isCancelled && driver.canDealNextHand {
             await gate.acquire()
-            if Task.isCancelled { break }
-            _ = try? await driver.playHand()
-            // Stop as soon as the human busts (the bots may still have chips).
-            if (driver.chips(of: heroSeatID) ?? 0) == 0 { break }
+            if Task.isCancelled || leaveAfterHand { break }   // stood up between hands
+            // Decisive hand (Fast table): double the blinds for this one hand via
+            // the driver's additive override; the counter restarts afterwards (D-037).
+            if rules.decisiveHandBoost && boost.isNextHandDecisive {
+                _ = try? await driver.playHand(overrideSmallBlind: rules.smallBlind * 2,
+                                               overrideBigBlind: rules.bigBlind * 2)
+                boost.consumeDecisiveHand()
+            } else {
+                _ = try? await driver.playHand()
+            }
+            if leaveAfterHand { break }                        // stood up during the hand
+            if (driver.chips(of: heroSeatID) ?? 0) == 0 { break } // hero busted
         }
         await driver.endSession()
     }
@@ -191,19 +231,26 @@ public final class TableViewModel: ObservableObject {
 
     private func present(_ payload: EventPayload) async {
         switch payload {
-        case let .handBegan(_, _, _, _, _, _, _, seats):
+        case let .handBegan(_, _, _, _, _, _, bigBlind, seats):
             conductor.handBegan()          // reset once-per-hand voices (D-029)
             botChatter.handBegan(seats: seats)
             shownCategory.removeAll()
             potAnnounced = false
+            preflopFoldThisHand = false
+            sawFlopThisHand = false
             state = TableReducer.reduce(state, payload)
             speak(payload, "hand-start")   // croupier: "new hand"
             speakRole(payload)             // the human's OWN role, or silence (D-031)
+            if bigBlind > rules.bigBlind { // decisive hand: blinds doubled (D-037)
+                conductor.say(lead: SoundCatalog.voHighStakes, fallback: uiLocalized("announce.high.stakes"),
+                              priority: .high, reason: "high-stakes")
+            }
             await pace(payload, human: Pacing.seconds(for: payload))
 
         case let .streetOpened(.flop, cards):
             // The croupier says "flop", then the conductor reads the three cards
             // (D-029). Meanwhile reveal them one at a time.
+            sawFlopThisHand = true
             speak(payload, "flop")
             let cardPace = mode.isEnabled ? 0.15 : 0.55
             for card in cards {
@@ -221,6 +268,7 @@ public final class TableViewModel: ObservableObject {
             state.activeSeatID = seatID
             if seatID != heroSeatID { await pause(mode.isEnabled ? 0.1 : 0.55) } // bot "thinking"
             state = TableReducer.reduce(state, payload)
+            if case .folded = action, !sawFlopThisHand { preflopFoldThisHand = true } // for the boost (D-037)
             speakAction(seatID: seatID, action: action)   // opponent synthesis + vob_ (D-031)
             await pace(payload, human: 0.4)
             if state.activeSeatID == seatID { state.activeSeatID = nil }
@@ -238,6 +286,9 @@ public final class TableViewModel: ObservableObject {
 
         case .handEnded:
             state = TableReducer.reduce(state, payload)
+            // Feed the boost BEFORE releasing the gate, so the producer sees the
+            // updated streak when it acquires it for the next hand (D-037).
+            if rules.decisiveHandBoost { boost.recordHand(anyFoldPreflop: preflopFoldThisHand) }
             await gate.release() // let the producer deal the next hand
             await pace(payload, human: 1.2)
 
@@ -445,10 +496,23 @@ public final class TableViewModel: ObservableObject {
 
     private func finishSession() {
         let heroChips = state.seat(heroSeatID)?.chips ?? 0
+        // Voluntary stand-up: no win/lose overlay, just cash out and return (D-036).
+        if leaveAfterHand {
+            onLeave(heroChips)
+            return
+        }
+        // Bust or session win: show the outcome, then the overlay's button returns
+        // to the casino with the remaining fiches cashed out.
         let didWin = heroChips > 0
         outcome = didWin ? .won : .lost
         conductor.say(lead: nil, synthesis: SpeechMap.text(for: didWin ? .sessionWon : .sessionLost),
                       priority: .high, reason: "session-end")
+    }
+
+    /// Returns to the Riverwood, cashing out the remaining fiches (D-036). Called by
+    /// the end-of-session overlay's button.
+    public func returnToCasino() {
+        onLeave(state.seat(heroSeatID)?.chips ?? 0)
     }
 
     // MARK: - UI input sounds (played by the UI itself, not from the stream)

@@ -195,3 +195,32 @@
 "settings.vomode.a11y" = "App VoiceOver mode";
 "settings.vomode.hint" = "When on, the game advances at the pace of the spoken announcements";
 "settings.vomode.footer" = "Independent of iOS VoiceOver: keep it on with system VoiceOver off, or off even when it is on.";
+
+/* ------------------------------------------------------------------ */
+/* M2.1 — Home, Riverwood Casino, tables, chips, leave (D-035/036/037) */
+"home.tagline" = "The lounge for card and casino games";
+"home.casinos.header" = "Casinos";
+"home.riverwood.blurb" = "An old frontier card room. Dark woods, whiskey, Texas Hold'em.";
+"home.casino.a11y" = "%1$@. %2$@";
+"home.casino.hint" = "Tap to enter";
+"world.comingSoon" = "Coming soon";
+"world.comingSoon.a11y" = "%@, not available yet";
+"riverwood.tagline" = "Hard chairs, risky hands.";
+"riverwood.tables.header" = "Tables";
+"table.holdem.title" = "Texas Hold'em No Limit";
+"table.style.classic" = "Classic";
+"table.style.fast" = "Fast";
+"table.row.info" = "Buy-in %1$d chips · %2$d seats open";
+"table.row.a11y" = "%1$@ %2$@ table, buy-in %3$d chips, %4$d seats open. Tap to sit down.";
+"table.row.a11y.locked" = "%1$@ %2$@ table, buy-in %3$d chips. Not enough chips.";
+"table.draw.title" = "Five-Card Draw";
+"table.draw.room" = "Whiskey Room";
+"table.draw.a11y" = "%1$@ %2$@ table, not available yet.";
+"chrome.chips" = "Chips: %d";
+"chrome.chips.a11y" = "%d chips";
+"chrome.back" = "Back";
+"table.leave" = "Leave table";
+"table.leave.hint" = "You stand up at the end of the current hand";
+"table.leave.pending" = "You'll stand up after this hand";
+"endgame.return" = "Back to the Riverwood";
+"announce.high.stakes" = "decisive hand, everyone bets big";

@@ -1,23 +1,37 @@
 // GameChrome.swift
 // =====================================================================
-// The persistent app chrome (D-033): a reusable shell around any main screen that
-// hosts a top bar with a permanent Settings button (top-right) and presents the
-// Settings screen. Introduced now, above the table, so every future screen (menu,
-// casino, sign-in) inherits the same button without re-implementing it.
-//
-// The top bar reserves its own strip, so the button never overlaps the screen's
-// content (e.g. the opponents' badges). Fully accessible: the button reads
-// "Impostazioni" with a hint, and the sheet is navigable top-to-bottom.
+// The persistent app chrome (D-033/D-035): a reusable shell around any main screen
+// with a top bar (an optional LEADING action — back / leave table — on the left, a
+// permanent Settings button on the right), an optional CHIPS balance row, and the
+// Settings sheet. Every screen (Home, Riverwood, Table) is wrapped in it, so the
+// settings button and wallet are consistent everywhere.
 
 import SwiftUI
 
+/// A labelled action for the chrome's leading slot (back, leave table, …).
+public struct ChromeAction {
+    let label: String
+    let systemImage: String
+    let identifier: String
+    let action: () -> Void
+    public init(label: String, systemImage: String, identifier: String, action: @escaping () -> Void) {
+        self.label = label; self.systemImage = systemImage; self.identifier = identifier; self.action = action
+    }
+}
+
 public struct GameChrome<Content: View>: View {
     @ObservedObject var voMode: AppVoiceOverMode
+    /// The chips balance to show under the bar (nil at the table, where fiches show).
+    let chips: Int?
+    let leading: ChromeAction?
     @State private var showingSettings = false
     private let content: Content
 
-    public init(voMode: AppVoiceOverMode, @ViewBuilder content: () -> Content) {
+    public init(voMode: AppVoiceOverMode, chips: Int? = nil, leading: ChromeAction? = nil,
+                @ViewBuilder content: () -> Content) {
         self.voMode = voMode
+        self.chips = chips
+        self.leading = leading
         self.content = content()
     }
 
@@ -26,26 +40,35 @@ public struct GameChrome<Content: View>: View {
             TablePalette.background.ignoresSafeArea()
             VStack(spacing: 0) {
                 topBar
+                if let chips { chipsBar(chips) }
                 content
             }
         }
-        .sheet(isPresented: $showingSettings) {
-            SettingsView(voMode: voMode)
-        }
+        .sheet(isPresented: $showingSettings) { SettingsView(voMode: voMode) }
     }
 
     private var topBar: some View {
         HStack {
+            if let leading {
+                Button(action: leading.action) {
+                    Label(leading.label, systemImage: leading.systemImage)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(TablePalette.primaryText)
+                        .padding(.horizontal, 10).frame(height: 44)
+                        .background(Capsule().fill(Color.white.opacity(0.10)))
+                }
+                .accessibilityIdentifier(leading.identifier)
+            } else {
+                Spacer().frame(width: 1)
+            }
             Spacer()
             Button { showingSettings = true } label: {
                 Image(systemName: "gearshape.fill")
                     .font(.title2)
                     .foregroundStyle(TablePalette.primaryText)
-                    .frame(width: 44, height: 44)              // comfortable tap target
-                    .background(
-                        Circle().fill(Color.white.opacity(0.12))
-                            .overlay(Circle().strokeBorder(TablePalette.accent.opacity(0.8), lineWidth: 1))
-                    )
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(Color.white.opacity(0.12))
+                        .overlay(Circle().strokeBorder(TablePalette.accent.opacity(0.8), lineWidth: 1)))
             }
             .accessibilityIdentifier("settings.button")
             .accessibilityLabel(Text(uiLocalized("settings.button.a11y")))
@@ -53,7 +76,19 @@ public struct GameChrome<Content: View>: View {
         }
         .padding(.horizontal, 12)
         .padding(.top, 4)
-        .padding(.bottom, 2)
+    }
+
+    private func chipsBar(_ chips: Int) -> some View {
+        HStack {
+            Text(verbatim: uiLocalized("chrome.chips", chips))
+                .font(.subheadline.weight(.semibold).monospacedDigit())
+                .foregroundStyle(TablePalette.accent)
+                .accessibilityIdentifier("chrome.chips")
+                .accessibilityLabel(Text(verbatim: uiLocalized("chrome.chips.a11y", chips)))
+            Spacer()
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 2)
     }
 }
 
@@ -72,7 +107,6 @@ struct SettingsView: View {
                         .accessibilityLabel(Text(uiLocalized("settings.vomode.a11y")))
                         .accessibilityHint(Text(uiLocalized("settings.vomode.hint")))
                 } footer: {
-                    // The description and the iOS-independence note (D-034).
                     Text(uiLocalized("settings.vomode.desc") + "\n\n" + uiLocalized("settings.vomode.footer"))
                 }
             }

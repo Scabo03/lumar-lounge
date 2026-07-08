@@ -11,9 +11,9 @@ import UI
 struct LumarLoungeApp: App {
     var body: some Scene {
         WindowGroup {
-            // The single screen of M1.6: the demo poker table. (No navigation
-            // yet — that arrives with later bricks.)
-            PokerTableView()
+            // M2.1: the app opens on Home, with navigation to the Riverwood Casino
+            // and its tables (D-035). AppRootView owns the app-level state.
+            AppRootView()
         }
     }
 }

@@ -195,3 +195,32 @@
 "settings.vomode.a11y" = "Modalità VoiceOver dell'app";
 "settings.vomode.hint" = "Quando attiva, il gioco procede al ritmo degli annunci vocali";
 "settings.vomode.footer" = "Indipendente da VoiceOver di iOS: puoi tenerla attiva anche con VoiceOver di sistema spento, o disattivarla anche se è acceso.";
+
+/* ------------------------------------------------------------------ */
+/* M2.1 — Home, Riverwood Casino, tables, chips, leave (D-035/036/037) */
+"home.tagline" = "Il salotto dei giochi di carte e da casinò";
+"home.casinos.header" = "Casinò";
+"home.riverwood.blurb" = "Un vecchio locale di frontiera. Legni scuri, whiskey, Texas Hold'em.";
+"home.casino.a11y" = "%1$@. %2$@";
+"home.casino.hint" = "Tocca per entrare";
+"world.comingSoon" = "In arrivo";
+"world.comingSoon.a11y" = "%@, non ancora disponibile";
+"riverwood.tagline" = "Sedie scomode, mani rischiose.";
+"riverwood.tables.header" = "Tavoli";
+"table.holdem.title" = "Texas Hold'em No Limit";
+"table.style.classic" = "Classico";
+"table.style.fast" = "Rapido";
+"table.row.info" = "Buy-in %1$d gettoni · %2$d posti liberi";
+"table.row.a11y" = "Tavolo %1$@ %2$@, buy-in %3$d gettoni, %4$d posti liberi. Tocca per sederti.";
+"table.row.a11y.locked" = "Tavolo %1$@ %2$@, buy-in %3$d gettoni. Gettoni insufficienti.";
+"table.draw.title" = "Five-Card Draw";
+"table.draw.room" = "Sala Whiskey";
+"table.draw.a11y" = "Tavolo %1$@ %2$@, non ancora disponibile.";
+"chrome.chips" = "Gettoni: %d";
+"chrome.chips.a11y" = "%d gettoni";
+"chrome.back" = "Indietro";
+"table.leave" = "Lascia il tavolo";
+"table.leave.hint" = "Ti alzi alla fine della mano in corso";
+"table.leave.pending" = "Ti alzerai dopo questa mano";
+"endgame.return" = "Torna al Riverwood";
+"announce.high.stakes" = "mano decisiva, tutti puntano forte";

@@ -50,14 +50,17 @@ public final class AudioDirector {
     private var heroChips = 0
     private var allInInPlay = false
     private var showdownHushed = false
+    /// The table's base big blind; a hand whose blind exceeds it is decisive (D-037).
+    private let baseBigBlind: Int
 
     public init(audio: AudioServicing, heroSeatID: Int, characters: [Int: BotCharacter],
-                seed: UInt64, fastMode: Bool = false) {
+                seed: UInt64, fastMode: Bool = false, baseBigBlind: Int = 20) {
         self.audio = audio
         self.heroSeatID = heroSeatID
         self.characters = characters
         self.rng = SeededGenerator(seed: seed)
         self.fastMode = fastMode
+        self.baseBigBlind = baseBigBlind
     }
 
     public func run(_ stream: AsyncStream<SessionEvent>) async {
@@ -80,13 +83,15 @@ public final class AudioDirector {
             for s in seats { startChips[s.seatID] = s.chips }
             heroChips = startChips[heroSeatID] ?? 0
 
-        case let .handBegan(number, _, _, _, _, _, _, seats):
+        case let .handBegan(number, _, _, _, _, _, bigBlind, seats):
             handNumber = number
             allInInPlay = false
             showdownHushed = false
             for s in seats { startChips[s.seatID] = s.chips }
             audio.setAmbientScale(1.0, duration: 0.3)
-            audio.crossfadeAmbient(to: calmBed(for: number), duration: 0.8)
+            // A decisive hand (doubled blinds) opens on the tense bed (D-037).
+            let bed = bigBlind > baseBigBlind ? SoundCatalog.ambLoungeTense : calmBed(for: number)
+            audio.crossfadeAmbient(to: bed, duration: 0.8)
 
         case let .playerActed(_, action):
             if SpeechMap.isAllIn(action), !allInInPlay {
