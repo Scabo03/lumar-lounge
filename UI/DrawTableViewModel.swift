@@ -108,7 +108,11 @@ public final class DrawTableViewModel: ObservableObject {
     private var shownBestFive: [Int: [Card]] = [:]
     private var potAnnounced = false
 
-    public init(seed: UInt64 = 20_260_709, fastMode: Bool = false,
+    /// - Parameter seed: `nil` (production default) → the session deals fresh RANDOM
+    ///   cards every deal (D-047); a fixed value makes the whole session deterministic
+    ///   (tests/previews). The bots' and audio's seeds derive from a concrete root —
+    ///   random per session when `seed` is nil.
+    public init(seed: UInt64? = nil, fastMode: Bool = false,
                 audio: AudioServicing = NullAudioService(),
                 mode: AppVoiceOverMode,
                 rules: DrawTableRules = .riverwoodWhiskey,
@@ -119,6 +123,10 @@ public final class DrawTableViewModel: ObservableObject {
         self.rules = rules
         self.onLeave = onLeave
 
+        // Concrete root seed for bots/audio (random per session in production); the
+        // DRIVER gets the optional `seed`, so nil makes it draw a fresh random seed
+        // for every deal.
+        let rootSeed = seed ?? UInt64.random(in: .min ... .max)
         let startingChips = rules.buyIn
         let nameKeys = ["seat.name.novice", "seat.name.rock", "seat.name.aggressor"]
         let bots = zip(1...3, rules.personalities).map { (id: $0.0, personality: $0.1) }
@@ -126,7 +134,7 @@ public final class DrawTableViewModel: ObservableObject {
         assignments += bots.map { bot in
             DrawSeatAssignment(position: bot.id, playerID: bot.id, chips: startingChips,
                                provider: DrawBotActionProvider(HeuristicDrawBot(personality: bot.personality,
-                                                                                seed: UInt64(bot.id) * 101 &+ seed)))
+                                                                                seed: UInt64(bot.id) * 101 &+ rootSeed)))
         }
         self.driver = DrawSessionDriver(capacity: 4, seats: assignments, buttonPosition: 0,
                                         ante: rules.ante, smallBet: rules.smallBet, bigBet: rules.bigBet, seed: seed)
@@ -137,9 +145,9 @@ public final class DrawTableViewModel: ObservableObject {
 
         let characters: [Int: BotCharacter] = [1: .novice, 2: .rock, 3: .aggressor]
         self.audioDirector = DrawAudioDirector(audio: audio, heroSeatID: 0, characters: characters,
-                                               seed: seed, fastMode: fastMode)
+                                               seed: rootSeed, fastMode: fastMode)
         self.conductor = SpeechConductor(audio: audio, queue: announcements)
-        self.botChatter = DrawBotChatter(heroSeatID: 0, characters: characters, seed: seed &+ 777)
+        self.botChatter = DrawBotChatter(heroSeatID: 0, characters: characters, seed: rootSeed &+ 777)
 
         self.state = DrawTableState(
             seats: ([0] + bots.map { $0.id }).map { DrawSeatPresentation(id: $0, position: $0, chips: startingChips) },

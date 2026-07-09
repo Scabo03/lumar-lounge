@@ -22,7 +22,8 @@ struct DrawTableScreen: View {
 
     init(rules: DrawTableRules, audio: AudioEngine, mode: AppVoiceOverMode, onLeave: @escaping (Int) -> Void) {
         let fastMode = ProcessInfo.processInfo.arguments.contains("-uiTesting")
-        _model = StateObject(wrappedValue: DrawTableViewModel(seed: 20_260_709, fastMode: fastMode,
+        // No seed → fresh random cards every deal in production (D-047).
+        _model = StateObject(wrappedValue: DrawTableViewModel(fastMode: fastMode,
                                                               audio: audio, mode: mode, rules: rules, onLeave: onLeave))
     }
 

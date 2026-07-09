@@ -1029,3 +1029,50 @@ una griglia accessibile aggiorna lo stato ma non sposta né intrappola il focus,
 ristruttura il sottoalbero** — commuta con opacity, non con inserimento condizionale.
 XCUITest aggiunto: dopo ogni selezione/deselezione tutte le cinque carte + contatore +
 conferma restano raggiungibili e nell'ordine originale. Solo `UI`.
+
+### D-047 — Seed hardcoded in produzione: ogni partita distribuiva le stesse carte (bug critico, primo test utente su device)
+Al primo test utente reale su iPhone **ogni singola partita distribuiva le stesse
+identiche carte** (Texas e Draw), con sempre lo stesso bot vincente: gioco di fatto
+ingiocabile. **Causa reale, verificata nel codice:** il motore è deterministico dato un
+seed fin da M1.1 (giusto), e i driver derivano il seed di ogni mano **deterministicamente**
+dal `baseSeed` (`handSeed`/`dealSeed` = SplitMix64(baseSeed + n·C)). Ma il `baseSeed`
+arrivava da una **costante cablata** nei view model/schermate della UI
+(`TableViewModel(seed: 20_260_704)`, `DrawTableViewModel(seed: 20_260_709)`, ripetuta nei
+`TableScreen`/`DrawTableScreen`): ad ogni lancio lo **stesso** baseSeed → gli stessi seed
+per-mano → le stesse carte in ogni sessione (le mani **entro** una sessione variavano per
+`handNumber`, ma la sessione N era identica alla sessione M). Anche bot e audio erano
+seedati dalla stessa costante. **I test verdi lo mascheravano** perché iniettano seed fissi
+apposta (determinismo desiderato nei test).
+**Fix (semantica: motore invariato, driver casuali in produzione):**
+- **`GameEngine` NON toccato:** riceve ancora un seed e resta deterministico rispetto ad
+  esso; i test continuano a passare seed fissi.
+- **Driver in `GameWorld`:** `SessionDriver`/`DrawSessionDriver` hanno ora `seed: UInt64?
+  = nil`. Con seed **impostato** (test) → seed per-mano **deterministico** come prima; con
+  seed **nil** (produzione) → `handSeed`/`dealSeed` estraggono un seed **fresco casuale**
+  da `SystemRandomNumberGenerator` (`UInt64.random(in: .min ... .max)`) **a ogni mano**:
+  carte sempre diverse, ogni mano e ogni sessione.
+- **Tocco minimo alla UI (inevitabile: la costante viveva lì):** i view model hanno
+  `seed: UInt64? = nil`; passano l'opzionale **direttamente al driver** (nil→casuale in
+  produzione) e derivano un `rootSeed = seed ?? UInt64.random(...)` **concreto** per bot e
+  audio (casuale per-sessione in produzione, fisso nei test). Le schermate non passano più
+  la costante. Nessun'altra logica UI cambiata; motore/flusso eventi intatti.
+- **Bot e voci (D-010/D-018):** il bot combina il **proprio** seed statico col
+  **fingerprint del contesto** (che include le carte): con carte casuali il fingerprint
+  varia → decisioni varie, anche a seed di bot fisso. Le `vob_` dipendono da RNG seedati che
+  avanzano su eventi ora variabili → naturalmente varie. Verificato: nessun seed residuo
+  cablato le rendeva ripetitive.
+**Verifica pratica:** test d'integrazione (`SeedRandomizationTests`) che girano **20 mani
+Texas + 20 Draw** in modalità produzione (seed nil): carte private dell'umano diverse quasi
+ogni mano, vincitori distribuiti su ≥2 posti; e **10 sessioni successive** producono ≥9
+distribuzioni di prime carte diverse (il bug dava 1). Confermato anche che con seed
+iniettato tutto resta **identico** (i test restano riproducibili). 247 test verdi.
+
+### ⚠️ Nota di autocritica per sessioni future — determinismo vs casualità in produzione
+Quando un motore è **deterministico dato un seed** (scelta corretta per test/replay),
+**verifica sempre che in produzione la generazione del seed a livello di driver sia
+genuinamente casuale a ogni nuova mano** (fonte di sistema), e che nessun seed non sia una
+**costante cablata** propagata da un livello superiore (view model, schermata, config del
+tavolo). È un bug **silenzioso**: i test restano verdi — anzi *devono* usare seed fissi —
+quindi il difetto sopravvive fino al test su device reale. Regola pratica: cerca ogni
+letterale numerico passato come `seed:` fuori dai test e chiediti "questo viene mai
+rigenerato a caso in produzione?".

@@ -248,6 +248,17 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
 - I test del package stanno in `Tests/…` ed eseguono con `swift test`.
 - Le sorgenti di casualità (es. mescolata del mazzo) devono essere
   **deterministiche e seedabili** per rendere i test riproducibili.
+- **Il motore è deterministico rispetto al seed; i test iniettano seed fissi; la
+  produzione genera seed casuali reali a ogni nuova mano (D-047).** La regola di
+  cui sopra vale per il **motore** e per i **test**. In **produzione**, però, il
+  seme di ogni mano va **rigenerato da una fonte di sistema reale**
+  (`SystemRandomNumberGenerator` / `UInt64.random(...)`) **a livello di driver di
+  sessione** (`SessionDriver`/`DrawSessionDriver` con `seed: UInt64? = nil` →
+  casuale per-mano), così ogni partita, ogni mano e ogni sessione sono diverse. Un
+  seed **costante cablato** propagato in produzione (tipicamente da un view model o
+  una schermata) è un bug **silenzioso**: i test — che *devono* usare seed fissi —
+  restano verdi e lo mascherano. Verificare sempre che ogni `seed:` non-di-test sia
+  genuinamente casuale.
 
 ## 6. Domini di gioco (ordine previsto)
 

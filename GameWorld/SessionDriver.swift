@@ -35,7 +35,11 @@ public final class SessionDriver {
     public let capacity: Int
     public let smallBlind: Int
     public let bigBlind: Int
-    private let baseSeed: UInt64
+    /// The base seed. When set (tests), each hand derives a DETERMINISTIC per-hand
+    /// seed from it. When `nil` (production), each hand draws a FRESH RANDOM seed
+    /// from the system RNG, so every hand — and every session — deals differently
+    /// (D-047). The engine itself stays deterministic given whatever seed it gets.
+    private let baseSeed: UInt64?
 
     // MARK: Mutable table state
 
@@ -70,13 +74,15 @@ public final class SessionDriver {
     ///     positive chips).
     ///   - buttonPosition: initial physical button position.
     ///   - smallBlind/bigBlind: positive, `smallBlind <= bigBlind`.
-    ///   - seed: base seed; each hand derives a deterministic per-hand seed.
+    ///   - seed: base seed for DETERMINISTIC play (tests inject a fixed value). Pass
+    ///     `nil` (the default, used in production) to draw a fresh random seed for
+    ///     every hand from the system RNG — always different cards (D-047).
     public init(capacity: Int,
                 seats: [SeatAssignment],
                 buttonPosition: Int,
                 smallBlind: Int,
                 bigBlind: Int,
-                seed: UInt64) {
+                seed: UInt64? = nil) {
         precondition((2...10).contains(capacity), "A table seats 2–10.")
         precondition((0..<capacity).contains(buttonPosition), "Button position out of range.")
         precondition(smallBlind > 0 && bigBlind > 0 && smallBlind <= bigBlind, "Invalid blinds.")
@@ -384,8 +390,11 @@ public final class SessionDriver {
         }
     }
 
-    /// Deterministic per-hand seed (SplitMix64 over base seed + hand number).
+    /// The seed for a hand. With a base seed (tests) it is a DETERMINISTIC function
+    /// of the base seed and the hand number; without one (production) it is a FRESH
+    /// RANDOM draw from the system RNG, so no two hands ever repeat (D-047).
     private func handSeed(_ number: Int) -> UInt64 {
+        guard let baseSeed else { return UInt64.random(in: .min ... .max) }
         var z = baseSeed &+ (UInt64(bitPattern: Int64(number)) &* 0x9E37_79B9_7F4A_7C15)
         z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
         z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB

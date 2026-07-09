@@ -130,3 +130,20 @@ bust con fiches conservate; sessione a quattro con umano simulato; pass-and-out 
 più mani con **pot progressivo** che si accumula e **button che non ruota**; mano
 giocata che ruota il button e azzera il carry; determinismo; ordine canonico degli
 eventi (mano giocata, pass-and-out, squalifica openers) e routing pubblico/privato.
+
+## Fix produzione: seed casuale per-mano nei driver (D-047)
+
+Il motore resta **deterministico dato un seed**; cambia **come i driver generano il
+seed** che gli passano. `SessionDriver` e `DrawSessionDriver` hanno ora
+`seed: UInt64? = nil` nell'init:
+
+- **seed impostato** (test/replay): ogni mano deriva un seed **deterministico** dal
+  base seed (come prima) → sessioni riproducibili.
+- **seed `nil`** (produzione, default): ogni mano estrae un seed **fresco casuale** da
+  `SystemRandomNumberGenerator` → carte sempre diverse, ogni mano e ogni sessione.
+
+Prima il seed arrivava da una **costante cablata** nei view model della UI, quindi ogni
+partita distribuiva le stesse identiche carte (bug scoperto al primo test su device). I
+test unitari continuano a iniettare seed fissi e restano deterministici; nuovi test
+(`SeedRandomizationTests`) verificano che in produzione (seed nil) sessioni successive
+diano carte diverse e che una sessione lunga abbia mani e vincitori vari.

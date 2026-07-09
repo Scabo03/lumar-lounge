@@ -112,7 +112,11 @@ public final class TableViewModel: ObservableObject {
     /// (main + side), and only the croupier mp3 was deduped before (D-029 fix).
     private var potAnnounced = false
 
-    public init(seed: UInt64 = 20_260_704, fastMode: Bool = false,
+    /// - Parameter seed: `nil` (production default) → the session deals fresh RANDOM
+    ///   cards every hand (D-047); a fixed value makes the whole session deterministic
+    ///   (used by tests/previews). The bots' and audio's own seeds derive from a
+    ///   concrete root — random per session when `seed` is nil.
+    public init(seed: UInt64? = nil, fastMode: Bool = false,
                 audio: AudioServicing = NullAudioService(),
                 mode: AppVoiceOverMode,
                 rules: TableRules = .classic,
@@ -122,6 +126,10 @@ public final class TableViewModel: ObservableObject {
         self.mode = mode
         self.rules = rules
         self.onLeave = onLeave
+        // A concrete root seed for the bots and audio: fixed in tests, random per
+        // session in production. The DRIVER gets the optional `seed` directly, so a
+        // nil seed makes it draw a fresh random seed for every hand.
+        let rootSeed = seed ?? UInt64.random(in: .min ... .max)
         // Seat 0 is the human; seats 1–3 are the bots, taking this table's
         // personalities (Classic vs Fast, D-035/D-037). The buy-in is the stack.
         let startingChips = rules.buyIn
@@ -131,7 +139,7 @@ public final class TableViewModel: ObservableObject {
         assignments += bots.map { bot in
             SeatAssignment(position: bot.id, playerID: bot.id, chips: startingChips,
                            provider: BotActionProvider(HeuristicBot(personality: bot.personality,
-                                                                    seed: UInt64(bot.id) * 101 &+ seed,
+                                                                    seed: UInt64(bot.id) * 101 &+ rootSeed,
                                                                     equitySamples: fastMode ? 30 : 120)))
         }
         self.driver = SessionDriver(capacity: 4, seats: assignments, buttonPosition: 0,
@@ -145,9 +153,9 @@ public final class TableViewModel: ObservableObject {
         // base big blind lets the director raise the ambient on a decisive hand.
         let characters: [Int: BotCharacter] = [1: .novice, 2: .rock, 3: .aggressor]
         self.audioDirector = AudioDirector(audio: audio, heroSeatID: 0, characters: characters,
-                                           seed: seed, fastMode: fastMode, baseBigBlind: rules.bigBlind)
+                                           seed: rootSeed, fastMode: fastMode, baseBigBlind: rules.bigBlind)
         self.conductor = SpeechConductor(audio: audio, queue: announcements)
-        self.botChatter = BotChatter(heroSeatID: 0, characters: characters, seed: seed &+ 999)
+        self.botChatter = BotChatter(heroSeatID: 0, characters: characters, seed: rootSeed &+ 999)
 
         self.state = TableState(
             seats: ([0] + bots.map { $0.id }).map { SeatPresentation(id: $0, position: $0, chips: startingChips) },

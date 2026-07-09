@@ -30,7 +30,8 @@ struct TableScreen: View {
 
     init(rules: TableRules, audio: AudioEngine, mode: AppVoiceOverMode, onLeave: @escaping (Int) -> Void) {
         let fastMode = ProcessInfo.processInfo.arguments.contains("-uiTesting")
-        _model = StateObject(wrappedValue: TableViewModel(seed: 20_260_704, fastMode: fastMode,
+        // No seed → fresh random cards every hand in production (D-047).
+        _model = StateObject(wrappedValue: TableViewModel(fastMode: fastMode,
                                                           audio: audio, mode: mode, rules: rules, onLeave: onLeave))
     }
 

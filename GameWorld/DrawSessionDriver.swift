@@ -35,7 +35,11 @@ public final class DrawSessionDriver {
     public let ante: Int
     public let smallBet: Int
     public let bigBet: Int
-    private let baseSeed: UInt64
+    /// The base seed. When set (tests), each deal derives a DETERMINISTIC per-deal
+    /// seed from it. When `nil` (production), each deal draws a FRESH RANDOM seed
+    /// from the system RNG, so every deal — and every session — plays differently
+    /// (D-047). The engine stays deterministic given whatever seed it gets.
+    private let baseSeed: UInt64?
 
     // MARK: Mutable table state
 
@@ -62,13 +66,16 @@ public final class DrawSessionDriver {
 
     // MARK: - Init
 
+    /// - Parameter seed: base seed for DETERMINISTIC play (tests inject a fixed
+    ///   value). Pass `nil` (the default, used in production) to draw a fresh random
+    ///   seed for every deal from the system RNG — always different cards (D-047).
     public init(capacity: Int,
                 seats: [DrawSeatAssignment],
                 buttonPosition: Int,
                 ante: Int,
                 smallBet: Int,
                 bigBet: Int,
-                seed: UInt64) {
+                seed: UInt64? = nil) {
         precondition((2...7).contains(capacity), "A draw table seats 2–7.")
         precondition((0..<capacity).contains(buttonPosition), "Button position out of range.")
         precondition(ante > 0 && smallBet > 0 && bigBet >= smallBet, "Invalid ante/bet sizes.")
@@ -388,7 +395,11 @@ public final class DrawSessionDriver {
         }
     }
 
+    /// The seed for a deal. With a base seed (tests) it is a DETERMINISTIC function
+    /// of the base seed and the deal index; without one (production) it is a FRESH
+    /// RANDOM draw from the system RNG, so no two deals ever repeat (D-047).
     private func dealSeed(_ number: Int) -> UInt64 {
+        guard let baseSeed else { return UInt64.random(in: .min ... .max) }
         var z = baseSeed &+ (UInt64(bitPattern: Int64(number)) &* 0x9E37_79B9_7F4A_7C15)
         z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
         z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
