@@ -62,24 +62,36 @@ nei file collegati.
   vincente su fold-out, D-039), **pass-and-out con pot progressivo** (D-040). Bot
   dedicati + tre dial di personalità additivi (D-041). Nessun driver/UI ancora. 31
   unit test (205 nel package).
+- **`GameWorld`/`UI` M2.4:** il **Five-Card Draw giocabile** end-to-end. Driver di
+  sessione dedicato `DrawSessionDriver` (pot progressivo, ante, due sospensioni umane
+  puntata/scambio — D-042) con flusso eventi proprio `DrawSessionEvent` sulla stessa
+  infrastruttura EventHub (D-043); **tavolo giocabile** `DrawTableView` con barra
+  limit (importi fissi) e **box modale di scambio** accessibile (cinque carte
+  selezionabili, doppio segnale visivo, annuncio dello stato — D-044). La "Sala
+  Whiskey" del Riverwood è **entrabile** (buy-in 2000). Riuso di tutta l'infrastruttura
+  trasversale (chrome, coda annunci, conductor, modalità VoiceOver). Motore/Texas non
+  toccati. 234 unit test + XCUITest del tavolo Draw.
 
-**🏁 Fase 1 (M1) completa; Fase 2 (M2) avviata con M2.1.** Il gioco Hold'em gira
-end-to-end con navigazione, casinò, gettoni e due tavoli; `GameEngine` contiene ora
-**due motori** (Hold'em No Limit e Five-Card Draw, M1.9), ma il Draw non ha ancora
-driver né UI (la Sala Whiskey resta non entrabile). L'app bundle contiene 51 mp3;
+**🏁 Fase 1 (M1) completa; Fase 2 (M2) in corso.** Girano end-to-end **due giochi
+completi**: Texas Hold'em No Limit (Classico e Rapido) e **Five-Card Draw** (Sala
+Whiskey), dentro la navigazione Home → Riverwood → Tavolo con gettoni persistenti.
+`GameEngine` contiene due motori; entrambi hanno ora driver, UI e audio. L'app bundle contiene 51 mp3;
 oltre ai 2 storici (`amb_crowd_distant`, `fx_hand_neutral`) mancano ora **5 slot M2**
-predisposti con fallback (vedi sotto), da produrre e depositare in `Resources/Audio/`.
+e **5 nuovi slot croupier del Draw**, tutti predisposti con fallback (vedi sotto), da
+produrre e depositare in `Resources/Audio/`.
 
-**Slot audio M2 da produrre** (dichiarati nel catalogo, con fallback nel frattempo):
-`amb_home_neutral`, `amb_riverwood_calm_01`, `amb_riverwood_calm_02` (→ fallback
-lounge_calm), `vo_it_high_stakes` (→ fallback sintesi "mano decisiva"), `ui_navigation`
-(→ silenzio).
+**Slot audio da produrre** (dichiarati nel catalogo, con fallback nel frattempo):
+- **M2 mondo:** `amb_home_neutral`, `amb_riverwood_calm_01`, `amb_riverwood_calm_02`
+  (→ fallback lounge_calm), `vo_it_high_stakes` (→ fallback sintesi "mano decisiva"),
+  `ui_navigation` (→ silenzio).
+- **Croupier Five-Card Draw (M2.4):** `vo_it_ante`, `vo_it_draw_phase`,
+  `vo_it_pass_and_out`, `vo_it_carried_pot`, `vo_it_openers_disqualified` — tutti con
+  **fallback di sintesi VoiceOver** dichiarato nella `DrawSpeechMap` (D-030), così
+  parlano finché l'mp3 non viene consegnato.
 
 **Prossimo passo.** Prossimi sotto-mattoni M2 (vedi [`ROADMAP.md`](ROADMAP.md)): cassa/
-DLC per ricarica gettoni, ambient dedicati Riverwood (produzione file), **sessione +
-UI del Five-Card Draw** (il motore c'è già — M1.9; serve il `DrawSession` in GameWorld
-e la UI del tavolo per rendere entrabile la Sala Whiskey), secondo casinò più lussuoso,
-NPC narrativi.
+DLC per ricarica gettoni, ambient dedicati Riverwood e voci croupier del Draw
+(produzione dei file audio elencati sopra), secondo casinò più lussuoso, NPC narrativi.
 
 **Stato completo, sempre aggiornato:** sezione *Stato di sviluppo* in
 [`README.md`](README.md).
@@ -892,3 +904,82 @@ dai tre dial (D-038): `drawDiscipline` (quanto segue il manuale), `drawBluffines
 (stand pat / short-draw per fingere forza), `openingDiscipline` (se bluff-apre su
 aria). Determinismo via `SeededGenerator` come il bot Hold'em. 31 unit test (99 nel
 modulo, 205 nel package), tutti verdi.
+
+### D-042 — `DrawSessionDriver` in GameWorld: driver dedicato, riuso mirato senza astrazioni forzate (M2.4)
+Il Five-Card Draw giocabile ha bisogno di un **driver di sessione proprio**,
+`DrawSessionDriver`, **speculare** al `SessionDriver` del Texas ma **indipendente**:
+il driver Texas **non è toccato**. Dove il Texas ha già risolto un problema
+architetturale ne **riuso la forma provata** (anello a capacità fissa, dead button,
+fan-out eventi via actor, cambi strutturali solo tra le mani, `HandGate` in UI), ma
+**non i tipi**: i tipi del Draw sono dedicati (`DrawSessionPlayer`,
+`DrawSeatAssignment`, `DrawHandOutcome`, `DrawSessionError`, `DrawActionProvider`)
+perché le regole differiscono abbastanza (ante, due giri limit, draw, pass-and-out)
+che condividere un'astrazione aggiungerebbe rigidità, non valore. **La coerenza
+esteriore per l'utente conta più della fattorizzazione interna** (principio di
+sessione). Novità rispetto al Texas: **due sospensioni** del provider umano
+(`HumanDrawActionProvider`: `provideAction` per la puntata e `provideDiscards` per lo
+scambio, nettamente separate — solo una pendente per volta); il **pot progressivo**
+orchestrato esplicitamente (tra una mano annullata e la successiva il driver conserva
+il `carriedPot` esposto dal motore e lo passa come `carryPot`; **il button NON ruota**
+e il contatore delle mani giocate non avanza sulle mani annullate, D-040); un seme
+per-deal monotòno così anche le ri-distribuzioni delle mani passate rimescolano.
+`playHand()` gioca **una sola** distribuzione (che può essere passata: `wasPlayed=false`),
+emette i suoi eventi e ritorna; il consumatore la narra (incluso il messaggio di
+pass-and-out) e rilascia il gate — stesso ritmo del Texas. Cliente puro del motore,
+deterministico, fiches conservate (invariante testato: `Σstack + carriedPot`
+costante). 6 unit test.
+
+### D-043 — Flusso eventi del Draw distinto ma sulla stessa infrastruttura EventHub (M2.4)
+Il driver del Draw **narra** con una **tassonomia di eventi propria**,
+`DrawSessionEvent`/`DrawEventPayload`, **non unificata** con `SessionEvent` del Texas:
+sono giochi con vocabolari diversi (ante, apertura, pass-and-out, draw con conteggio
+scarti, openers, pot progressivo), e forzare un tipo comune sarebbe fragile. Riusa
+**solo** i tipi game-agnostici `EventAudience`/`EventViewer` (instradamento pubblico/
+privato, D-015). L'attore di fan-out è un `DrawEventHub` speculare a `EventHub` —
+**piccola duplicazione consapevole** invece di un generico forzato sui due tipi
+(coerente con D-042), che lascia il Texas intatto. Pubblico/privato come D-015: le
+proprie cinque carte iniziali e le carte pescate al draw sono **strettamente private**
+(audience `.player(id)`); tutto il resto pubblico (incluso **quante** carte cambia
+ogni avversario — informazione pubblica dopo il draw, non **quali**). Copertura:
+ordine canonico di una mano giocata, di un pass-and-out, e di una squalifica per
+openers; routing pubblico/privato; determinismo. 4 unit test.
+
+### D-044 — UI del tavolo Draw: box modale dedicato per lo scambio, doppio segnale di selezione (M2.4)
+La UII del Draw (`DrawTableView` + `DrawTableViewModel` + `DrawTableReducer`/
+`DrawTableState`, il tutto avvolto da `GameChrome`) è **speculare** a quella del Texas
+ma dedicata, con **stato e riduzione puri** propri (cinque carte dell'umano, niente
+board, macchina a fasi firstBet→draw→secondBet, pot progressivo, conteggio scarti per
+posto, squalifica openers). **Riusa** l'infrastruttura trasversale **così com'è**:
+`GameChrome`, `AnnouncementQueue`, `SpeechConductor`, `AppVoiceOverMode` + ritmo
+adattivo (D-034), `CardView` (esteso **additivamente** con misure `medium`/`huge`),
+`HandGate`, `EndOverlay`, `GameOutcome`. **Betting limit:** barra Fold/Check-Call/Bet/
+Raise con **importi fissi nel testo** ("Bet 20", "Raise 40"), **nessun box di rilancio
+progressivo**; il Bet resta attivo anche senza openers (apertura sull'onore, D-039), il
+Raise si disabilita al raggiungimento del cap. **Principio nuovo (in CONVENTIONS §4):**
+quando un gioco introduce una **fase che il primo gioco non aveva** (qui il draw),
+l'interazione dedicata a quella fase vive in un **box modale con la propria trappola di
+accessibilità**, non nel layout principale del tavolo. Il `DrawBoxView`: cinque carte
+grandi selezionabili al tap, **doppio segnale visivo** per ogni selezione (bordo ottone
+brillante **e** mark scuro con X sulla faccia, così chi ha problemi visivi ne coglie
+almeno uno); ogni carta è un **pulsante VoiceOver** con label esplicita di rango, seme
+e stato ("asso di picche, selezionato per lo scarto"), e il tap **annuncia** il nuovo
+stato via `announceLiveValue` (interruzione deliberata, come i +/- del box Raise); un
+contatore ("N carte da scartare") e un **Conferma sempre attivo** (0 selezioni = "stai
+pat"); **nessun Annulla** (deselezionare tutto equivale). Il quinto tap è rifiutato con
+annuncio "non puoi scartare più di quattro carte". È una **vera modale d'accessibilità**
+(D-027): sfondo `accessibilityHidden`, focus portato dentro all'apertura, ordine di
+lettura carte→contatore→conferma. La **sincronizzazione del turno umano** (D-021) è
+estesa alle **due** sospensioni: la barra puntate appare quando il provider attende una
+puntata, il box quando attende uno scambio. **Layer parlato** (`DrawSpeechMap`, autorità
+pura come D-029) e **non parlato** (`DrawAudioScore`/`DrawAudioDirector`) dedicati:
+croupier riusato dove serve (turno, all-in, showdown, pot) + **cinque nuovi slot**
+`vo_it_ante`/`vo_it_draw_phase`/`vo_it_pass_and_out`/`vo_it_carried_pot`/
+`vo_it_openers_disqualified` **non ancora prodotti → fallback di sintesi** (D-030);
+sintesi per proprie carte iniziali/pescate, scarti degli avversari ("giocatore N scarta
+X carte"), pot progressivo, squalifica, conclusione. Ambient Riverwood (fallback lounge)
+che passa a **teso** quando il pot progressivo supera il doppio del base o su un all-in.
+**Cablaggio Riverwood:** la "Sala Whiskey" (buy-in **2000** gettoni) da slot "in arrivo"
+diventa **entrabile** (`AppState.Screen.drawTable` + `sitDownDraw`); buy-in/cash-out via
+lo stesso `PlayerAccount`. `GameEngine`/motore Texas/driver Texas/UI Texas **non
+toccati**. 234 unit test + XCUITest del tavolo Draw (apertura dal Riverwood, layout
+accessibile, box che si apre/seleziona/conferma) + navigazione aggiornata, tutti verdi.

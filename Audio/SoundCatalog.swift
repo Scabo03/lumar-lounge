@@ -74,6 +74,15 @@ public enum SoundCatalog {
     public static let voPotAwarded = SoundID("vo_it_pot_awarded")
     public static let voSplitPot = SoundID("vo_it_split_pot")
 
+    // MARK: Croupier voices — Five-Card Draw (5, NOT delivered yet)
+    // Each declares a VoiceOver synthesis fallback in the UI mapping (D-030), so it
+    // speaks until the mp3 is produced and dropped into Resources/Audio/.
+    public static let voAnte = SoundID("vo_it_ante")                         // not delivered
+    public static let voDrawPhase = SoundID("vo_it_draw_phase")              // not delivered
+    public static let voPassAndOut = SoundID("vo_it_pass_and_out")           // not delivered
+    public static let voCarriedPot = SoundID("vo_it_carried_pot")            // not delivered
+    public static let voOpenersDisqualified = SoundID("vo_it_openers_disqualified") // not delivered
+
     // MARK: Bot voices (7)
     public static let vobNoviceExcited = SoundID("vob_novice_excited_01")
     public static let vobNoviceDisappointed = SoundID("vob_novice_disappointed_01")
@@ -110,6 +119,8 @@ public enum SoundCatalog {
         (voFlop, .croupier), (voTurn, .croupier), (voRiver, .croupier), (voShowdown, .croupier),
         (voActionFold, .croupier), (voActionCheck, .croupier), (voActionCall, .croupier),
         (voActionRaise, .croupier), (voActionAllIn, .croupier), (voPotAwarded, .croupier), (voSplitPot, .croupier),
+        (voAnte, .croupier), (voDrawPhase, .croupier), (voPassAndOut, .croupier),
+        (voCarriedPot, .croupier), (voOpenersDisqualified, .croupier),
         (vobNoviceExcited, .botVoice), (vobNoviceDisappointed, .botVoice), (vobNoviceNervous, .botVoice),
         (vobRockGrunt, .botVoice), (vobAggressorConfident, .botVoice), (vobAggressorTaunt, .botVoice),
         (vobAggressorBluffGiveaway, .botVoice),

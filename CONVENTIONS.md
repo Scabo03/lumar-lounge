@@ -127,6 +127,18 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     una schermata (`.accessibilityElement`/`.accessibilityIdentifier` su una
     ZStack/GeometryReader di root): collassa il sottoalbero in un solo elemento e
     nasconde gli identifier dei figli. Gli **identifier vanno sui leaf**.
+  - **Una fase nuova di un gioco → interazione in un box modale con trappola
+    d'accessibilità propria (D-044).** Quando un nuovo gioco introduce una **fase che
+    il primo gioco non aveva** (come lo *scambio di carte* del Five-Card Draw), l'
+    interazione dedicata a quella fase vive in un **box modale con la propria trappola
+    di accessibilità** (sfondo `accessibilityHidden`, focus portato dentro all'apertura,
+    ordine di lettura esplicito), **non** stipata nel layout principale del tavolo. Per
+    una selezione multipla nel box (es. le carte da scartare): ogni elemento è un
+    **pulsante VoiceOver** con label esplicita di contenuto **e stato** ("asso di picche,
+    selezionato per lo scarto"), il tap **annuncia** il nuovo stato (interruzione
+    deliberata via `announceLiveValue`), un limite superato è annunciato, e la conferma
+    è **sempre attiva** con l'assenza di selezione come default sensato (niente
+    "Annulla" ridondante se deselezionare tutto equivale).
   - **Un overlay modale deve intrappolare l'accessibilità (D-027).** Quando una
     finestra sovrapposta è aperta (box Raise, overlay di fine partita), il contenuto
     dietro va reso `.accessibilityHidden(true)`: altrimenti VoiceOver ci naviga

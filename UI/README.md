@@ -139,3 +139,27 @@ Il `TableViewModel` è **parametrizzato** da `TableRules` (blind/personalità/bu
 riceve un callback `onLeave` per il cash-out; ospita il **boost mano decisiva** (D-037)
 e il **lascia tavolo** (D-036). Estetica rustica del Riverwood resa con palette scura +
 **serif**, SwiftUI puro (nessuna texture — gli asset arriveranno dopo).
+
+## M2.4 — Tavolo di Five-Card Draw giocabile (D-044)
+
+La UI del secondo gioco: **speculare** al tavolo Texas ma dedicata, con stato e
+riduzione puri propri e — la novità — un **box modale per la fase di scambio**.
+Riusa **così com'è** tutta l'infrastruttura trasversale (`GameChrome`,
+`AnnouncementQueue`, `SpeechConductor`, `AppVoiceOverMode` + ritmo adattivo,
+`HandGate`, `EndOverlay`, `GameOutcome`, `CardView`).
+
+| Componente | A cosa serve |
+|---|---|
+| `DrawTableState` / `DrawTableReducer` | Stato di presentazione **puro** e riduzione evento→stato del tavolo Draw (cinque carte dell'umano, niente board, fasi firstBet→draw→secondBet, pot progressivo, conteggio scarti per posto, squalifica openers). Testabile in isolamento. |
+| `DrawTableViewModel` | Possiede la sessione (`DrawSessionDriver` + umano + tre bot), pace umano/adattivo, narrazione, e **due punti di decisione** dell'umano: barra puntate (limit) e **box di scambio**. Sincronizza il turno umano su **due** sospensioni del provider (D-021 esteso). |
+| `DrawTableView` | La schermata giocabile: badge avversari in alto, tavolo con pot + **pot progressivo** + button + fase, barra azioni, cinque carte dell'umano in basso; overlay del box di scambio e di fine partita. |
+| `DrawActionBarView` | Fold / Check-Call / **Bet** / **Raise** a **importi fissi** nel testo ("Bet 20", "Raise 40") — limit, nessun box progressivo. Bet attivo anche senza openers (apertura sull'onore, D-039); Raise disabilitato al cap. |
+| `DrawBoxView` | Il **box modale d'accessibilità** dello scambio: cinque carte selezionabili al tap con **doppio segnale visivo** (bordo ottone + mark scuro con X), ogni carta pulsante VoiceOver con label di stato, contatore, Conferma sempre attivo (0 = "stai pat"), quinto tap rifiutato con annuncio; focus portato dentro all'apertura. |
+| `DrawSpeechMap` | Mappatura autorevole evento→parlato del Draw (pura, come `SpeechMap`): croupier riusato + **cinque nuovi slot** con fallback di sintesi (D-030); sintesi per proprie carte, scarti avversari, pot progressivo, squalifica, conclusione. |
+| `DrawAudioScore` / `DrawAudioDirector` | Layer **non parlato** dedicato: suoni fisici puri + ambient Riverwood (fallback lounge) che passa a **teso** quando il pot progressivo supera il doppio del base o su un all-in. |
+
+La "Sala Whiskey" del Riverwood è ora **entrabile** (buy-in 2000): `AppState` ha
+`screen == .drawTable` e `sitDownDraw`, e `RiverwoodView` mostra la riga come tavolo
+attivo (bloccata se gettoni insufficienti). Coperto da un XCUITest dedicato
+(`DrawTableUITests`: apertura dal Riverwood, layout accessibile, box che si apre,
+seleziona e conferma) più la navigazione aggiornata.

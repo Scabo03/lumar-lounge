@@ -14,19 +14,37 @@ struct CardView: View {
         case down
     }
 
+    /// The rendered size. `medium` suits the five hero cards of Five-Card Draw,
+    /// where two big cards' worth of width must hold five (D-044).
+    enum Size { case normal, medium, big, huge }
+
     let face: Face
-    private let big: Bool
+    private let size: Size
 
     @ScaledMetric private var width: CGFloat
     @ScaledMetric private var height: CGFloat
 
-    /// - Parameter big: a large variant for the human's own hole cards.
+    /// - Parameter big: a large variant for the human's own hole cards (Texas).
     init(face: Face, big: Bool = false) {
-        self.face = face
-        self.big = big
-        _width = ScaledMetric(wrappedValue: big ? 78 : 40, relativeTo: .title3)
-        _height = ScaledMetric(wrappedValue: big ? 108 : 56, relativeTo: .title3)
+        self.init(face: face, size: big ? .big : .normal)
     }
+
+    /// Explicit-size initializer (used by the draw table's five-card layouts).
+    init(face: Face, size: Size) {
+        self.face = face
+        self.size = size
+        let w: CGFloat, h: CGFloat
+        switch size {
+        case .normal: (w, h) = (40, 56)
+        case .medium: (w, h) = (52, 74)
+        case .big:    (w, h) = (78, 108)
+        case .huge:   (w, h) = (64, 92)
+        }
+        _width = ScaledMetric(wrappedValue: w, relativeTo: .title3)
+        _height = ScaledMetric(wrappedValue: h, relativeTo: .title3)
+    }
+
+    private var big: Bool { size == .big || size == .huge }
 
     var body: some View {
         ZStack {

@@ -35,13 +35,11 @@ final class NavigationUITests: XCTestCase {
         XCTAssertTrue(riverwood.exists, "Riverwood entry missing")
         riverwood.tap()
 
-        // Its three tables: Classic + Fast are buttons; the Five-Card Draw is a
-        // visible-but-not-enterable slot (present as an element, not a button).
+        // Its three tables are all enterable buttons now (with a fresh 5000-chip
+        // wallet the 2000-buy-in Five-Card Draw is affordable, D-044).
         XCTAssertTrue(app.buttons["riverwood.table.classic"].waitForExistence(timeout: 10), "Classic table missing")
         XCTAssertTrue(app.buttons["riverwood.table.fast"].exists, "Fast table missing")
-        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "riverwood.table.draw").firstMatch.exists,
-                      "Five-Card Draw slot missing")
-        XCTAssertFalse(app.buttons["riverwood.table.draw"].exists, "Five-Card Draw must not be enterable")
+        XCTAssertTrue(app.buttons["riverwood.table.draw"].exists, "Five-Card Draw table missing/not enterable")
 
         // Settings present here too; back returns to Home.
         XCTAssertTrue(app.buttons["settings.button"].exists, "settings missing in Riverwood")

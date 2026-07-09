@@ -224,3 +224,56 @@
 "table.leave.pending" = "You'll stand up after this hand";
 "endgame.return" = "Back to the Riverwood";
 "announce.high.stakes" = "decisive hand, everyone bets big";
+
+/* ------------------------------------------------------------------ */
+/* M2.4 — Five-Card Draw table (Whiskey Room) — D-042/043/044 */
+"draw.table.a11y" = "Five-Card Draw table";
+"draw.phase.firstbet" = "First betting round";
+"draw.phase.draw" = "Draw phase";
+"draw.phase.secondbet" = "Second betting round";
+"draw.pot.carried" = "Carried: %d";
+"draw.pot.a11y.carried" = "Pot of %1$d chips, %2$d of it carried over";
+"draw.passedin.banner" = "Nobody opens, ante kept";
+
+/* Opponent badges */
+"draw.badge.opener" = "OPEN";
+"draw.badge.drew" = "-%d";
+"draw.badge.disqualified" = "DQ";
+"draw.a11y.opener" = "opened the pot";
+"draw.a11y.standpat" = "stands pat";
+"draw.a11y.drew" = "drew %d cards";
+"draw.a11y.disqualified" = "disqualified for an invalid open";
+
+/* Action bar (limit betting — fixed amounts) */
+"draw.action.bet" = "Bet %d";
+"draw.action.bet.a11y" = "bet %d";
+"draw.action.raise" = "Raise %d";
+"draw.action.raise.a11y" = "raise to %d";
+
+/* Draw box */
+"draw.box.title" = "Choose cards to discard";
+"draw.box.title.a11y" = "choose cards to discard, zero to four. %d selected";
+"draw.box.count.zero" = "No cards selected";
+"draw.box.count.n" = "%d cards to discard";
+"draw.card.a11y.selected" = "%@, selected to discard";
+"draw.card.a11y.unselected" = "%@, not selected";
+"draw.box.selected" = "%@, selected";
+"draw.box.deselected" = "%@, deselected";
+"draw.box.max" = "you can't discard more than four cards";
+"draw.confirm.standpat" = "Stand pat";
+"draw.confirm.standpat.a11y" = "confirm, keep all cards";
+"draw.confirm.n" = "Discard %d";
+"draw.confirm.n.a11y" = "confirm, discard %d cards";
+
+/* Spoken layer (croupier fallbacks + synthesis) */
+"draw.announce.ante" = "everyone posts the ante";
+"draw.announce.carried" = "progressive pot of %d chips";
+"draw.announce.hero.cards" = "your cards: %@";
+"draw.announce.hero.drew" = "your new cards: %@";
+"draw.announce.opp.drew" = "player %1$d discards %2$d cards";
+"draw.announce.opp.standpat" = "player %d stands pat";
+"draw.announce.opp.bet" = "player %1$d opens for %2$d";
+"draw.announce.opp.raise" = "player %1$d raises to %2$d";
+"draw.announce.drawphase" = "draw phase";
+"draw.announce.passedin" = "nobody can open, ante kept, redealing";
+"draw.announce.disqualified" = "player %d opened without jacks, disqualified";

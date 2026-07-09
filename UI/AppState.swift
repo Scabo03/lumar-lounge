@@ -11,11 +11,13 @@ import GameWorld
 @MainActor
 public final class AppState: ObservableObject {
 
-    /// The three explicit levels of the app (D-035).
+    /// The three explicit levels of the app (D-035). The table level hosts either a
+    /// Texas Hold'em table (by format) or the Five-Card Draw table (D-044).
     public enum Screen: Equatable {
         case home
         case riverwood
         case table(TableFormat)
+        case drawTable
     }
 
     @Published public var screen: Screen = .home
@@ -43,6 +45,15 @@ public final class AppState: ObservableObject {
         guard account.buyIn(buyIn) else { return nil }
         chips = account.chips
         screen = .table(style)
+        return buyIn
+    }
+
+    /// Sits at the Five-Card Draw table: deducts the buy-in and navigates (D-044).
+    @discardableResult
+    public func sitDownDraw(buyIn: Int) -> Int? {
+        guard account.buyIn(buyIn) else { return nil }
+        chips = account.chips
+        screen = .drawTable
         return buyIn
     }
 

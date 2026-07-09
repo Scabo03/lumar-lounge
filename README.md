@@ -109,6 +109,22 @@ personalità dei bot con tre nuove leve dedicate al draw. Non ha ancora né tavo
 UI (arriveranno per rendere entrabile la "Sala Whiskey" del Riverwood); il motore è
 coperto da 31 nuovi unit test, per un totale di **205 test verdi** nel package.
 
+Con il mattone successivo il Five-Card Draw diventa **giocabile end-to-end** (M2.4).
+Un driver di sessione dedicato (`DrawSessionDriver`, indipendente da quello del
+Texas) orchestra la sessione — ante, i due giri di puntata, lo scambio, e il **pot
+progressivo** delle mani annullate — e la **narra** con un suo flusso di eventi.
+Sopra ci sono il **tavolo giocabile** e, novità di questo gioco, un **box modale per
+lo scambio delle carte**: le cinque carte si selezionano al tocco con un **doppio
+segnale visivo** (bordo brillante e un segno scuro sulla faccia) e, per VoiceOver,
+ogni carta annuncia il proprio stato ("asso di picche, selezionato per lo scarto");
+un pulsante Conferma sempre attivo chiude lo scambio (zero carte = "stai pat"). La
+"Sala Whiskey" del Riverwood è ora **entrabile** (buy-in 2000 gettoni). Il tavolo
+riusa tutta l'infrastruttura trasversale (chrome, coda annunci, croupier↔sintesi,
+modalità VoiceOver, ritmo adattivo); il motore e tutta la parte Texas restano
+intatti. Cinque nuove voci di croupier del Draw sono predisposte con **fallback di
+sintesi** finché gli mp3 non verranno prodotti. **234 unit test verdi** più gli
+XCUITest del tavolo Draw e della navigazione.
+
 > **🏁 La prima fase è completa.** Il gioco base è funzionante end-to-end — motore
 > completo, bot credibili, sessione multi-mano, flusso di eventi, UI giocabile e
 > accessibile, e **audio pieno**: i 47 file mp3 consegnati (atmosfera, carte,

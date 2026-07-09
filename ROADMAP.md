@@ -253,12 +253,28 @@ Draw **visibile ma non entrabile**. `SessionDriver` non modificato strutturalmen
 - **M2.2 — Cassa / DLC:** ricarica dei gettoni quando finiscono (acquisti, bonus).
 - **M2.3 — Ambient Riverwood:** produzione e integrazione dei file audio dedicati
   (chitarra/piano rustici) al posto dei fallback.
-- **M2.4 — Sessione + UI Five-Card Draw:** il **motore** è pronto (M1.9); resta il
-  `DrawSession` in `GameWorld` (replica di M1.4 per il draw: tavolo, gettoni, pot
-  progressivo tra le mani annullate, azioni bot/umano) e la UI del tavolo, per
-  rendere finalmente entrabile la Sala Whiskey del Riverwood.
 - **M2.5 — Secondo casinò lussuoso** (es. Velvet Palace) con estetica opposta.
 - **M2.6 — NPC narrativi:** avversari ricorrenti con nome/carattere/storia.
+
+### ✅ M2.4 — Five-Card Draw giocabile fino a TestFlight (D-042/043/044)
+Il secondo gioco diventa **giocabile end-to-end**. Driver di sessione dedicato
+`DrawSessionDriver` in GameWorld (speculare a M1.4 ma indipendente: ante, due giri
+limit, draw, **pass-and-out con pot progressivo** — button che non ruota sulle mani
+annullate, D-040; **due sospensioni** del provider umano puntata/scambio, D-042), con
+**flusso eventi proprio** `DrawSessionEvent` sulla stessa infrastruttura EventHub
+(D-043). **UI del tavolo Draw** `DrawTableView` (stato/riduzione puri dedicati, barra
+limit a importi fissi, cinque carte dell'umano) con il **box modale di scambio**
+accessibile (cinque carte selezionabili, **doppio segnale visivo**, ogni carta pulsante
+VoiceOver con stato, Conferma sempre attivo, focus intrappolato — D-044). **Cablaggio
+Riverwood:** la "Sala Whiskey" (buy-in 2000) da slot "in arrivo" diventa **entrabile**.
+Riuso di tutta l'infrastruttura trasversale (chrome, coda annunci, conductor, modalità
+VoiceOver, ritmo adattivo). Layer parlato dedicato (`DrawSpeechMap`) con **5 nuovi slot
+croupier** non ancora prodotti → **fallback di sintesi** (D-030). Motore/Texas non
+toccati. 234 unit test + XCUITest del tavolo Draw + navigazione aggiornata.
+**Dipendenze:** M1.9, M2.1. **Note di design:** D-042, D-043, D-044 in `CLAUDE.md`.
+
+> Prossimi sotto-mattoni M2 (residui): cassa/DLC per ricarica gettoni, produzione dei
+> file audio predisposti (ambient Riverwood + voci croupier del Draw), secondo casinò.
 
 ---
 

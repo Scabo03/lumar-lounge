@@ -47,4 +47,30 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(state.chips, 4000)
         XCTAssertEqual(state.screen, .riverwood)
     }
+
+    // MARK: - Five-Card Draw table (D-044)
+
+    func testSitDownDrawDeductsBuyInAndNavigates() {
+        let state = app()                       // 5000
+        let stack = state.sitDownDraw(buyIn: 2000)
+        XCTAssertEqual(stack, 2000)
+        XCTAssertEqual(state.chips, 3000)
+        XCTAssertEqual(state.screen, .drawTable)
+    }
+
+    func testSitDownDrawFailsWhenTooPoor() {
+        let state = app(startingChips: 1500)
+        XCTAssertFalse(state.canAfford(2000))
+        XCTAssertNil(state.sitDownDraw(buyIn: 2000))
+        XCTAssertEqual(state.chips, 1500)
+        XCTAssertEqual(state.screen, .home)
+    }
+
+    func testLeavingDrawTableCreditsRemainingAndReturns() {
+        let state = app()
+        state.sitDownDraw(buyIn: 2000)          // 3000
+        state.leaveTable(cashingOut: 2600)      // won at the draw table → 5600
+        XCTAssertEqual(state.chips, 5600)
+        XCTAssertEqual(state.screen, .riverwood)
+    }
 }

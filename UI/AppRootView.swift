@@ -53,6 +53,11 @@ public struct AppRootView: View {
                             onLeave: { remaining in app.leaveTable(cashingOut: remaining) })
                     .id(style)   // a fresh session per sit-down
             }
+        case .drawTable:
+            GameChrome(voMode: voMode) {
+                DrawTableScreen(rules: .riverwoodWhiskey, audio: audio, mode: voMode,
+                                onLeave: { remaining in app.leaveTable(cashingOut: remaining) })
+            }
         }
     }
 
@@ -75,7 +80,7 @@ public struct AppRootView: View {
         case .riverwood:
             audio.crossfadeAmbient(to: bed(SoundCatalog.ambRiverwoodCalm1, SoundCatalog.ambLoungeCalm2), duration: 1.0)
             audio.setAmbientScale(1.0, duration: 1.0)
-        case .table:
+        case .table, .drawTable:
             // The table's AudioDirector takes over the ambient on sessionBegan.
             break
         }

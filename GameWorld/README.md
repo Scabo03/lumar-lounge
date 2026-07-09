@@ -107,3 +107,26 @@ Vedi [`../ROADMAP.md`](../ROADMAP.md).
 | `TableFormat` / `TableRules` | La configurazione di un tavolo (D-035): stile (`classic`/`fast`), blind, buy-in, personalità dei bot, flag del boost. `.classic` e `.fast` come preset. Alimenta gli entry di config del `SessionDriver`, che **non è modificato strutturalmente**. |
 | `WorldPersonalities` | Le personalità dei bot per stile di tavolo (definite **qui**, non nel motore): `classic` (roster M1) e `fast` (aggression/bluff/risk alzate, tightness abbassata — visibilmente più aggressive, D-037). |
 | `DecisiveHandBoost` | Il contatore osservabile/testabile del **boost mano decisiva** (D-037): dopo 3 mani consecutive senza fold pre-flop, `isNextHandDecisive`; un fold azzera; `consumeDecisiveHand` riparte. Le blind della mano decisiva si raddoppiano via l'override additivo `SessionDriver.playHand(overrideSmallBlind:overrideBigBlind:)`. |
+
+## M2.4 — Sessione di Five-Card Draw (D-042/043)
+
+Un secondo driver di sessione, **dedicato e indipendente** dal Texas (il
+`SessionDriver` non è toccato), per il gioco del Draw. Riusa la *forma provata*
+del Texas (anello, dead button, fan-out eventi, cambi strutturali tra le mani) ma
+con **tipi propri**, perché le regole differiscono troppo per condividere
+un'astrazione senza rigidità (D-042).
+
+| Tipo | A cosa serve |
+|---|---|
+| `DrawSessionDriver` | Orchestra una **sessione multi-mano** di Five-Card Draw: ante, due giri limit, draw, **pass-and-out con pot progressivo** (conserva il `carriedPot` e lo passa alla mano successiva; il **button non ruota** sulle mani annullate, D-040), dead button, bust, ingressi/uscite tra le mani. Cliente puro del motore, deterministico, fiches conservate. |
+| `DrawActionProvider` | Interfaccia async uniforme bot/umano con **due** metodi: `provideAction` (puntata) e `provideDiscards` (scambio). `DrawBotActionProvider` avvolge un `DrawBot`; `HumanDrawActionProvider` è un actor con **due sospensioni nettamente separate** (puntata vs draw, mai entrambe pendenti). |
+| `DrawSessionTypes` | `DrawSessionPlayer`, `DrawSeatAssignment`, `DrawHandOutcome` (con `wasPlayed`/`carriedPot`/`consecutivePassed`), `DrawSessionError`. |
+| `DrawTableRules` | Configurazione del tavolo Draw: ante, small/big bet, buy-in, personalità. `.riverwoodWhiskey` (ante 10, 20/40, buy-in 2000). |
+| `DrawSessionEvent` / `DrawEventPayload` | La **tassonomia di eventi propria** del Draw (D-043): ante, apertura dichiarata (con `hasOpeners`), pass-and-out, fase di draw + conteggio scarti, carte pescate (privato), squalifica openers, ecc. **Non unificata** con quella del Texas; riusa solo `EventAudience`/`EventViewer`. |
+| `DrawEventHub` | Fan-out multicast speculare a `EventHub`, tipizzato su `DrawSessionEvent` (piccola duplicazione consapevole invece di un generico forzato). |
+
+**Test** (`DrawSessionDriverTests`, `DrawSessionEventTests`): bot vs bot fino al
+bust con fiches conservate; sessione a quattro con umano simulato; pass-and-out su
+più mani con **pot progressivo** che si accumula e **button che non ruota**; mano
+giocata che ruota il button e azzera il carry; determinismo; ordine canonico degli
+eventi (mano giocata, pass-and-out, squalifica openers) e routing pubblico/privato.

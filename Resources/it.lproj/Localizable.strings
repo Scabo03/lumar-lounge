@@ -224,3 +224,56 @@
 "table.leave.pending" = "Ti alzerai dopo questa mano";
 "endgame.return" = "Torna al Riverwood";
 "announce.high.stakes" = "mano decisiva, tutti puntano forte";
+
+/* ------------------------------------------------------------------ */
+/* M2.4 — Five-Card Draw table (Sala Whiskey) — D-042/043/044 */
+"draw.table.a11y" = "Tavolo di Five-Card Draw";
+"draw.phase.firstbet" = "Primo giro di puntate";
+"draw.phase.draw" = "Fase di scambio";
+"draw.phase.secondbet" = "Secondo giro di puntate";
+"draw.pot.carried" = "Progressivo: %d";
+"draw.pot.a11y.carried" = "Pot di %1$d fiche, di cui %2$d progressivi";
+"draw.passedin.banner" = "Nessuno apre, ante conservato";
+
+/* Opponent badges */
+"draw.badge.opener" = "APRE";
+"draw.badge.drew" = "-%d";
+"draw.badge.disqualified" = "SQUAL.";
+"draw.a11y.opener" = "ha aperto il pot";
+"draw.a11y.standpat" = "sta pat";
+"draw.a11y.drew" = "ha cambiato %d carte";
+"draw.a11y.disqualified" = "squalificato per apertura non valida";
+
+/* Action bar (limit betting — fixed amounts) */
+"draw.action.bet" = "Bet %d";
+"draw.action.bet.a11y" = "bett %d";
+"draw.action.raise" = "Raise %d";
+"draw.action.raise.a11y" = "reis a %d";
+
+/* Draw box */
+"draw.box.title" = "Scegli le carte da scartare";
+"draw.box.title.a11y" = "scegli le carte da scartare, da zero a quattro. %d selezionate";
+"draw.box.count.zero" = "Nessuna carta selezionata";
+"draw.box.count.n" = "%d carte da scartare";
+"draw.card.a11y.selected" = "%@, selezionato per lo scarto";
+"draw.card.a11y.unselected" = "%@, non selezionato";
+"draw.box.selected" = "%@, selezionato";
+"draw.box.deselected" = "%@, deselezionato";
+"draw.box.max" = "non puoi scartare più di quattro carte";
+"draw.confirm.standpat" = "Stai pat";
+"draw.confirm.standpat.a11y" = "conferma, non cambio carte";
+"draw.confirm.n" = "Scarta %d";
+"draw.confirm.n.a11y" = "conferma, scarta %d carte";
+
+/* Spoken layer (croupier fallbacks + synthesis) */
+"draw.announce.ante" = "tutti versano l'ante";
+"draw.announce.carried" = "pot progressivo di %d fiche";
+"draw.announce.hero.cards" = "le tue carte: %@";
+"draw.announce.hero.drew" = "le tue nuove carte: %@";
+"draw.announce.opp.drew" = "giocatore %1$d scarta %2$d carte";
+"draw.announce.opp.standpat" = "giocatore %d sta pat";
+"draw.announce.opp.bet" = "giocatore %1$d apre a %2$d";
+"draw.announce.opp.raise" = "giocatore %1$d rilancia a %2$d";
+"draw.announce.drawphase" = "fase di scambio";
+"draw.announce.passedin" = "nessuno può aprire, ante conservato, si ridistribuisce";
+"draw.announce.disqualified" = "giocatore %d ha aperto senza jack, squalificato";

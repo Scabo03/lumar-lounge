@@ -40,9 +40,10 @@ struct RiverwoodView: View {
                          styleName: uiLocalized("table.style.fast"),
                          buyIn: TableRules.fast.buyIn, freeSeats: 1, identifier: "riverwood.table.fast")
 
-                comingSoonTable(title: uiLocalized("table.draw.title"),
-                                styleName: uiLocalized("table.draw.room"),
-                                identifier: "riverwood.table.draw")
+                drawTableRow(title: uiLocalized("table.draw.title"),
+                             styleName: uiLocalized("table.draw.room"),
+                             buyIn: DrawTableRules.riverwoodWhiskey.buyIn, freeSeats: 1,
+                             identifier: "riverwood.table.draw")
             }
             .padding(.horizontal, 18).padding(.bottom, 24)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -84,25 +85,40 @@ struct RiverwoodView: View {
             : uiLocalized("table.row.a11y.locked", title, styleName, buyIn)))
     }
 
-    private func comingSoonTable(title: String, styleName: String, identifier: String) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(verbatim: "\(title) — \(styleName)")
-                    .font(.system(.title3, design: .serif))
-                    .foregroundStyle(TablePalette.secondaryText)
+    /// The Five-Card Draw table row (D-044): enterable when the player can cover the
+    /// 2000-gettoni buy-in, otherwise visible-but-locked like the Texas rows.
+    private func drawTableRow(title: String, styleName: String, buyIn: Int,
+                              freeSeats: Int, identifier: String) -> some View {
+        let affordable = app.canAfford(buyIn)
+        return Button {
+            if affordable { app.sitDownDraw(buyIn: buyIn) }
+        } label: {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(verbatim: "\(title) — \(styleName)")
+                        .font(.system(.title3, design: .serif).weight(.semibold))
+                        .foregroundStyle(affordable ? TablePalette.primaryText : TablePalette.foldedDim)
+                    Text(verbatim: uiLocalized("table.row.info", buyIn, freeSeats))
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(TablePalette.secondaryText)
+                }
+                Spacer()
+                Image(systemName: affordable ? "chevron.right" : "lock.fill")
+                    .foregroundStyle(affordable ? TablePalette.accent : TablePalette.foldedDim)
             }
-            Spacer()
-            Text(verbatim: uiLocalized("world.comingSoon"))
-                .font(.caption.weight(.semibold))
-                .padding(.horizontal, 8).padding(.vertical, 3)
-                .background(Capsule().fill(Color.white.opacity(0.12)))
-                .foregroundStyle(TablePalette.secondaryText)
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(TablePalette.felt.opacity(affordable ? 0.55 : 0.28))
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(TablePalette.accent.opacity(affordable ? 0.7 : 0.25), lineWidth: 1)))
         }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.05)))
-        .opacity(0.7)
-        .accessibilityElement(children: .ignore)
+        .disabled(!affordable)
         .accessibilityIdentifier(identifier)
-        .accessibilityLabel(Text(verbatim: uiLocalized("table.draw.a11y", title, styleName)))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim: affordable
+            ? uiLocalized("table.row.a11y", title, styleName, buyIn, freeSeats)
+            : uiLocalized("table.row.a11y.locked", title, styleName, buyIn)))
     }
+
 }
