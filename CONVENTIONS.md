@@ -127,6 +127,21 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     una schermata (`.accessibilityElement`/`.accessibilityIdentifier` su una
     ZStack/GeometryReader di root): collassa il sottoalbero in un solo elemento e
     nasconde gli identifier dei figli. Gli **identifier vanno sui leaf**.
+  - **Gli annunci di showdown parlano di combinazioni e kicker rilevanti, mai di
+    carte singole (D-045).** Allo showdown la sintesi VoiceOver comunica la
+    **combinazione** ottenuta (più il **kicker** solo dove può decidere: coppia,
+    doppia coppia, tris), **mai** l'elenco carta per carta — lo showdown è un momento
+    drammatico, non una lezione di poker. Vale per **tutti i giochi**: una funzione
+    pura condivisa (`SpeechMap.handDescription(category:bestFive:)`) rende la mano;
+    le voci mp3 del croupier restano, cambia solo la sintesi che le segue.
+  - **La selezione di un elemento in una griglia accessibile aggiorna lo stato ma non
+    tocca il focus né la struttura del sottoalbero (D-046).** Selezionare/deselezionare
+    un elemento navigabile (le carte del box di draw, e qualunque griglia futura)
+    **aggiorna solo la sua accessibility label** (e annuncia il cambio come feedback
+    interrompibile), **senza** spostare o intrappolare il focus e **senza** ristrutturare
+    il sottoalbero: i segnali visivi di stato si commutano con `opacity`, non con
+    inserimento/rimozione condizionale di viste, così l'elemento resta **un solo leaf
+    stabile** e lo swipe VoiceOver scorre naturale come in una lista standard iOS.
   - **Una fase nuova di un gioco → interazione in un box modale con trappola
     d'accessibilità propria (D-044).** Quando un nuovo gioco introduce una **fase che
     il primo gioco non aveva** (come lo *scambio di carte* del Five-Card Draw), l'

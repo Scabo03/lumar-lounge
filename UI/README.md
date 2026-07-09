@@ -163,3 +163,19 @@ La "Sala Whiskey" del Riverwood è ora **entrabile** (buy-in 2000): `AppState` h
 attivo (bloccata se gettoni insufficienti). Coperto da un XCUITest dedicato
 (`DrawTableUITests`: apertura dal Riverwood, layout accessibile, box che si apre,
 seleziona e conferma) più la navigazione aggiornata.
+
+## Fix trasversali post-test Draw (D-045/D-046)
+
+- **Showdown asciutto (D-045).** La sintesi VoiceOver dello showdown legge la
+  **combinazione + kicker rilevante**, mai le carte una per una, per **tutti i
+  giochi**. La resa è una funzione pura condivisa `SpeechMap.handDescription(category:
+  bestFive:)` (gestisce la wheel A-2-3-4-5, l'elisione italiana "al/all'" scelta sul
+  rango, i ranghi al plurale `card.rank.plural.*`), riusata anche da `DrawSpeechMap`.
+  Nuovo caso `.splitWon` per il pareggio ("pareggio tra … entrambi …"). I view model
+  tracciano il `bestFive` del vincitore per la conclusione del pot. Le voci mp3 del
+  croupier restano invariate.
+- **Focus del box di draw (D-046).** La selezione di una carta nel `DrawBoxView` ora
+  **aggiorna solo lo stato** (label + annuncio), senza spostare/intrappolare il focus:
+  i due segnali visivi (patina scura + X) sono sempre presenti e commutati con
+  `opacity` (sottoalbero stabile), ogni carta è **un solo leaf** accessibile, e il
+  trait `.isButton` ridondante è stato rimosso. Lo swipe VoiceOver scorre naturale.

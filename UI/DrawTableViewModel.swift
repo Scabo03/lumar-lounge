@@ -105,6 +105,7 @@ public final class DrawTableViewModel: ObservableObject {
     private var turnContinuation: CheckedContinuation<Void, Never>?
     private var drawContinuation: CheckedContinuation<Void, Never>?
     private var shownCategory: [Int: HandCategory] = [:]
+    private var shownBestFive: [Int: [Card]] = [:]
     private var potAnnounced = false
 
     public init(seed: UInt64 = 20_260_709, fastMode: Bool = false,
@@ -210,6 +211,7 @@ public final class DrawTableViewModel: ObservableObject {
             conductor.handBegan()
             botChatter.handBegan(seats: seats)
             shownCategory.removeAll()
+            shownBestFive.removeAll()
             potAnnounced = false
             state = DrawTableReducer.reduce(state, payload)
             speak(payload, "ante")
@@ -257,8 +259,9 @@ public final class DrawTableViewModel: ObservableObject {
             speak(payload, "hero-drew")
             await pace(payload, human: 0.6)
 
-        case let .handShown(seatID, _, category, _):
+        case let .handShown(seatID, _, category, bestFive):
             shownCategory[seatID] = category
+            shownBestFive[seatID] = bestFive
             state = DrawTableReducer.reduce(state, payload)
             speak(payload, "showdown")
             await pace(payload, human: 1.0)
@@ -334,12 +337,17 @@ public final class DrawTableViewModel: ObservableObject {
         guard case let .potAwarded(_, _, winners) = payload, !potAnnounced else { return }
         potAnnounced = true
         let plan = DrawSpeechMap.plan(for: payload, heroSeatID: heroSeatID, names: names)
+        let joined = winners.map { names[$0] ?? "\($0)" }.joined(separator: ", ")
+        let ref = winners.first    // any winner: in a split all share the same hand
         let line: DrawSynthLine?
-        if winners.contains(heroSeatID) {
-            line = .heroWon(category: shownCategory[heroSeatID])
+        if winners.count > 1 {
+            line = .splitWon(who: joined, category: ref.flatMap { shownCategory[$0] },
+                             bestFive: ref.flatMap { shownBestFive[$0] })
+        } else if winners.contains(heroSeatID) {
+            line = .heroWon(category: shownCategory[heroSeatID], bestFive: shownBestFive[heroSeatID])
         } else if let winner = winners.first {
-            line = .otherWon(who: winners.map { names[$0] ?? "\($0)" }.joined(separator: ", "),
-                             category: shownCategory[winner])
+            line = .otherWon(who: names[winner] ?? "\(winner)",
+                             category: shownCategory[winner], bestFive: shownBestFive[winner])
         } else {
             line = nil
         }

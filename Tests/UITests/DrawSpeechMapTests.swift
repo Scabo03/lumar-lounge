@@ -57,7 +57,7 @@ final class DrawSpeechMapTests: XCTestCase {
         let heroWins = DrawSpeechMap.plan(for: .potAwarded(potIndex: 0, amount: 100, winnerSeatIDs: [0]),
                                           heroSeatID: 0, names: names)
         XCTAssertEqual(heroWins.croupier, SoundCatalog.voPotAwarded)
-        XCTAssertEqual(heroWins.synthesis, .heroWon(category: nil))
+        XCTAssertEqual(heroWins.synthesis, .heroWon(category: nil, bestFive: nil))
 
         let split = DrawSpeechMap.plan(for: .potAwarded(potIndex: 0, amount: 100, winnerSeatIDs: [1, 2]),
                                        heroSeatID: 0, names: names)
@@ -72,14 +72,28 @@ final class DrawSpeechMapTests: XCTestCase {
             .opponentAction(seat: 1, action: .called(amount: 20, isAllIn: true)),
             .opponentDrew(seat: 2, count: 0), .opponentDrew(seat: 2, count: 3),
             .yourTurnContext(toCall: 20, pot: 100), .drawPhase, .passedIn,
-            .shown(who: "Il Sasso", cards: [c(.ace, .spades)], category: .pair),
-            .openersDisqualified(seat: 3), .heroWon(category: nil), .heroWon(category: .flush),
-            .otherWon(who: "Tu", category: nil), .otherWon(who: "Tu", category: .straight),
+            .shown(who: "Il Sasso", category: .pair, bestFive: fullFive),
+            .openersDisqualified(seat: 3),
+            .heroWon(category: nil, bestFive: nil), .heroWon(category: .flush, bestFive: fullFive),
+            .otherWon(who: "Tu", category: nil, bestFive: nil), .otherWon(who: "Tu", category: .straight, bestFive: fullFive),
+            .splitWon(who: "Tu, Il Sasso", category: .pair, bestFive: fullFive), .splitWon(who: "Tu, Il Sasso", category: nil, bestFive: nil),
             .sessionWon, .sessionLost,
         ]
         for line in lines {
             XCTAssertFalse(DrawSpeechMap.text(for: line).isEmpty, "empty render for \(line)")
         }
+    }
+
+    private var fullFive: [Card] {
+        [c(.ace, .spades), c(.king, .hearts), c(.queen, .diamonds), c(.seven, .clubs), c(.three, .spades)]
+    }
+
+    func testDrawShowdownUsesSharedCombinationDescription() {
+        // The Draw layer reuses SpeechMap.handDescription (D-045) — no card-by-card.
+        let five = [c(.nine,.hearts), c(.nine,.spades), c(.four,.hearts), c(.four,.clubs), c(.king,.diamonds)]
+        let text = DrawSpeechMap.text(for: .shown(who: "Il Sasso", category: .twoPair, bestFive: five))
+        XCTAssertEqual(text, uiLocalized("announce.shown", "Il Sasso",
+                                         SpeechMap.handDescription(category: .twoPair, bestFive: five)))
     }
 
     func testPrioritiesFollowStrategyC() {

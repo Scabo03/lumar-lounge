@@ -48,12 +48,17 @@ public enum SynthLine: Equatable, Sendable {
     case communityCards([Card])
     /// Context added after "it's your turn", only when there is something to call.
     case yourTurnContext(toCall: Int, pot: Int)
-    /// A seat's revealed hand at showdown.
-    case shown(who: String, cards: [Card], category: HandCategory)
-    /// The human won the pot (with the hand category if it went to showdown).
-    case heroWon(category: HandCategory?)
+    /// A seat's revealed hand at showdown — spoken as its COMBINATION plus a
+    /// relevant kicker, never card-by-card (D-045). Carries the evaluated best five
+    /// so the description can be derived.
+    case shown(who: String, category: HandCategory, bestFive: [Card])
+    /// The human won the pot (with the winning hand's best five if it went to
+    /// showdown, so the combination + kicker can be spoken).
+    case heroWon(category: HandCategory?, bestFive: [Card]?)
     /// Someone else won the pot.
-    case otherWon(who: String, category: HandCategory?)
+    case otherWon(who: String, category: HandCategory?, bestFive: [Card]?)
+    /// Two or more players tied for the pot, all with the same combination (D-045).
+    case splitWon(who: String, category: HandCategory?, bestFive: [Card]?)
     case sessionWon
     case sessionLost
     /// An opponent's action, attributed by their on-screen seat number (D-031).
@@ -99,11 +104,12 @@ public enum SpeechMap {
             // (D-031); the human's own action stays silent (physical sounds only).
             return opponent ? SpeechPlan(synthesis: .opponentAction(seat: seatID, action: action)) : .silent
 
-        case let .handShown(seatID, cards, category, _):
+        case let .handShown(seatID, _, category, bestFive):
             // voShowdown is a once-per-hand cue: the conductor de-dupes it across
-            // the several handShown events; each still reads its own hand.
+            // the several handShown events; each still reads its own COMBINATION
+            // (plus a relevant kicker), never card-by-card (D-045).
             return SpeechPlan(croupier: SoundCatalog.voShowdown,
-                              synthesis: .shown(who: name(seatID), cards: cards, category: category))
+                              synthesis: .shown(who: name(seatID), category: category, bestFive: bestFive))
 
         case let .potAwarded(_, _, winnerSeatIDs):
             // The croupier voice is once-per-hand (the conductor de-dupes across
@@ -112,8 +118,8 @@ public enum SpeechMap {
             let split = winnerSeatIDs.count > 1
             let croupier = split ? SoundCatalog.voSplitPot : SoundCatalog.voPotAwarded
             let synthesis: SynthLine = winnerSeatIDs.contains(heroSeatID)
-                ? .heroWon(category: nil)
-                : .otherWon(who: winnerSeatIDs.map(name).joined(separator: ", "), category: nil)
+                ? .heroWon(category: nil, bestFive: nil)
+                : .otherWon(who: winnerSeatIDs.map(name).joined(separator: ", "), category: nil, bestFive: nil)
             return SpeechPlan(croupier: croupier, synthesis: synthesis)
 
         default:
@@ -157,14 +163,23 @@ public enum SpeechMap {
             return CardText.spoken(cards)
         case let .yourTurnContext(toCall, pot):
             return uiLocalized("announce.your.turn.context", toCall, pot)
-        case let .shown(who, cards, category):
-            return uiLocalized("announce.shown", who, CardText.spoken(cards), categoryText(category))
-        case let .heroWon(category):
-            if let category { return uiLocalized("announce.hero.won.category", categoryText(category)) }
+        case let .shown(who, category, bestFive):
+            return uiLocalized("announce.shown", who, handDescription(category: category, bestFive: bestFive))
+        case let .heroWon(category, bestFive):
+            if let category, let bestFive {
+                return uiLocalized("announce.hero.won.category", handDescription(category: category, bestFive: bestFive))
+            }
             return uiLocalized("announce.hero.won")
-        case let .otherWon(who, category):
-            if let category { return uiLocalized("announce.other.won.category", who, categoryText(category)) }
+        case let .otherWon(who, category, bestFive):
+            if let category, let bestFive {
+                return uiLocalized("announce.other.won.category", who, handDescription(category: category, bestFive: bestFive))
+            }
             return uiLocalized("announce.other.won", who)
+        case let .splitWon(who, category, bestFive):
+            if let category, let bestFive {
+                return uiLocalized("announce.split.won", who, handDescription(category: category, bestFive: bestFive))
+            }
+            return uiLocalized("announce.split.won.nohand", who)
         case .sessionWon:
             return uiLocalized("announce.session.won")
         case .sessionLost:
@@ -193,11 +208,50 @@ public enum SpeechMap {
         uiLocalized("hand.category.\(category.rawValue)")
     }
 
+    /// The showdown-friendly spoken description of a made hand: its COMBINATION,
+    /// plus the relevant kicker only where a kicker can decide the hand (pair, two
+    /// pair, three of a kind) — never card-by-card (D-045). Shared by both games.
+    ///
+    /// `bestFive` is the evaluated best five, ordered combination-first (as
+    /// `HandRank.cards`), so the combination and kicker ranks read straight off it.
+    static func handDescription(category: HandCategory, bestFive: [Card]) -> String {
+        guard bestFive.count == 5 else { return categoryText(category) }
+        let ranks = bestFive.map { $0.rank }
+        func sing(_ r: Rank) -> String { uiLocalized("card.rank.\(r.rawValue)") }
+        func plur(_ r: Rank) -> String { uiLocalized("card.rank.plural.\(r.rawValue)") }
+        // Straight/flush "to the X" needs Italian elision (al re / all'asso); pick
+        // the vowel variant when the Italian rank word starts with a vowel — the
+        // only two are "asso" (ace) and "otto" (eight). Decided on the RANK, not the
+        // localized string, so it is correct even when a bundle isn't loaded (tests)
+        // and independent of language (English's vowel template equals its base).
+        func italianVowelInitial(_ r: Rank) -> Bool { r == .ace || r == .eight }
+        func highPhrase(_ base: String, _ r: Rank) -> String {
+            uiLocalized(italianVowelInitial(r) ? base + ".vowel" : base, sing(r))
+        }
+        // The straight's true high card (handles the A-2-3-4-5 wheel, where the
+        // evaluated cards sort the ace first but the straight is five-high).
+        func straightHigh() -> Rank {
+            Set(ranks.map { $0.rawValue }) == [14, 2, 3, 4, 5] ? .five : ranks.max()!
+        }
+        switch category {
+        case .highCard:      return uiLocalized("hand.desc.highcard", sing(ranks[0]))
+        case .pair:          return uiLocalized("hand.desc.pair", plur(ranks[0]), sing(ranks[2]))
+        case .twoPair:       return uiLocalized("hand.desc.twopair", plur(ranks[0]), plur(ranks[2]), sing(ranks[4]))
+        case .threeOfAKind:  return uiLocalized("hand.desc.trips", plur(ranks[0]), sing(ranks[3]))
+        case .straight:      return highPhrase("hand.desc.straight", straightHigh())
+        case .flush:         return highPhrase("hand.desc.flush", ranks[0])
+        case .fullHouse:     return uiLocalized("hand.desc.fullhouse", plur(ranks[0]), plur(ranks[3]))
+        case .fourOfAKind:   return uiLocalized("hand.desc.quads", plur(ranks[0]))
+        case .straightFlush: return highPhrase("hand.desc.straightflush", straightHigh())
+        case .royalFlush:    return uiLocalized("hand.desc.royal")
+        }
+    }
+
     /// The announcement priority of a synthesis line (D-032): personal/critical =
     /// high (never dropped); opponent info = medium; secondary description = low.
     public static func priority(for line: SynthLine) -> AnnouncementPriority {
         switch line {
-        case .heroCards, .yourTurnContext, .heroWon, .sessionWon, .sessionLost, .roleButton:
+        case .heroCards, .yourTurnContext, .heroWon, .splitWon, .sessionWon, .sessionLost, .roleButton:
             return .high
         case .otherWon, .opponentAction, .shown:
             return .medium

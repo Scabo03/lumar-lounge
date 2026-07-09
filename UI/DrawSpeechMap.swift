@@ -41,10 +41,13 @@ public enum DrawSynthLine: Equatable, Sendable {
     case yourTurnContext(toCall: Int, pot: Int)
     case drawPhase
     case passedIn
-    case shown(who: String, cards: [Card], category: HandCategory)
+    /// A seat's revealed hand at showdown — spoken as its COMBINATION plus a
+    /// relevant kicker, never card-by-card (D-045).
+    case shown(who: String, category: HandCategory, bestFive: [Card])
     case openersDisqualified(seat: Int)
-    case heroWon(category: HandCategory?)
-    case otherWon(who: String, category: HandCategory?)
+    case heroWon(category: HandCategory?, bestFive: [Card]?)
+    case otherWon(who: String, category: HandCategory?, bestFive: [Card]?)
+    case splitWon(who: String, category: HandCategory?, bestFive: [Card]?)
     case sessionWon
     case sessionLost
 }
@@ -83,9 +86,9 @@ public enum DrawSpeechMap {
         case let .privateDrawnCards(seatID, cards) where seatID == heroSeatID:
             return DrawSpeechPlan(synthesis: .heroDrewCards(cards))
 
-        case let .handShown(seatID, cards, category, _):
+        case let .handShown(seatID, _, category, bestFive):
             return DrawSpeechPlan(croupier: SoundCatalog.voShowdown,
-                                  synthesis: .shown(who: name(seatID), cards: cards, category: category))
+                                  synthesis: .shown(who: name(seatID), category: category, bestFive: bestFive))
 
         case let .openersDisqualified(seatID):
             return DrawSpeechPlan(croupier: SoundCatalog.voOpenersDisqualified,
@@ -96,8 +99,8 @@ public enum DrawSpeechMap {
             let split = winnerSeatIDs.count > 1
             let croupier = split ? SoundCatalog.voSplitPot : SoundCatalog.voPotAwarded
             let synthesis: DrawSynthLine = winnerSeatIDs.contains(heroSeatID)
-                ? .heroWon(category: nil)
-                : .otherWon(who: winnerSeatIDs.map(name).joined(separator: ", "), category: nil)
+                ? .heroWon(category: nil, bestFive: nil)
+                : .otherWon(who: winnerSeatIDs.map(name).joined(separator: ", "), category: nil, bestFive: nil)
             return DrawSpeechPlan(croupier: croupier, synthesis: synthesis)
 
         default:
@@ -138,16 +141,25 @@ public enum DrawSpeechMap {
             return uiLocalized("draw.announce.drawphase")
         case .passedIn:
             return uiLocalized("draw.announce.passedin")
-        case let .shown(who, cards, category):
-            return uiLocalized("announce.shown", who, CardText.spoken(cards), SpeechMap.categoryText(category))
+        case let .shown(who, category, bestFive):
+            return uiLocalized("announce.shown", who, SpeechMap.handDescription(category: category, bestFive: bestFive))
         case let .openersDisqualified(seat):
             return uiLocalized("draw.announce.disqualified", seat)
-        case let .heroWon(category):
-            if let category { return uiLocalized("announce.hero.won.category", SpeechMap.categoryText(category)) }
+        case let .heroWon(category, bestFive):
+            if let category, let bestFive {
+                return uiLocalized("announce.hero.won.category", SpeechMap.handDescription(category: category, bestFive: bestFive))
+            }
             return uiLocalized("announce.hero.won")
-        case let .otherWon(who, category):
-            if let category { return uiLocalized("announce.other.won.category", who, SpeechMap.categoryText(category)) }
+        case let .otherWon(who, category, bestFive):
+            if let category, let bestFive {
+                return uiLocalized("announce.other.won.category", who, SpeechMap.handDescription(category: category, bestFive: bestFive))
+            }
             return uiLocalized("announce.other.won", who)
+        case let .splitWon(who, category, bestFive):
+            if let category, let bestFive {
+                return uiLocalized("announce.split.won", who, SpeechMap.handDescription(category: category, bestFive: bestFive))
+            }
+            return uiLocalized("announce.split.won.nohand", who)
         case .sessionWon:
             return uiLocalized("announce.session.won")
         case .sessionLost:
@@ -169,7 +181,7 @@ public enum DrawSpeechMap {
     /// The announcement priority of a synthesis line (D-032).
     public static func priority(for line: DrawSynthLine) -> AnnouncementPriority {
         switch line {
-        case .heroCards, .heroDrewCards, .yourTurnContext, .heroWon, .sessionWon, .sessionLost,
+        case .heroCards, .heroDrewCards, .yourTurnContext, .heroWon, .splitWon, .sessionWon, .sessionLost,
              .openersDisqualified, .passedIn, .carriedPot:
             return .high
         case .otherWon, .opponentAction, .opponentDrew, .shown, .ante, .drawPhase:

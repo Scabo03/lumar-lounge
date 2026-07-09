@@ -104,8 +104,10 @@ public final class TableViewModel: ObservableObject {
     private var eventQueue: [EventPayload] = []
     private var streamFinished = false
     private var turnContinuation: CheckedContinuation<Void, Never>?
-    /// Each seat's hand category revealed at showdown, for the pot conclusion line.
+    /// Each seat's revealed hand at showdown (category + best five), for the pot
+    /// conclusion line — spoken as a combination + kicker, never card-by-card (D-045).
     private var shownCategory: [Int: HandCategory] = [:]
+    private var shownBestFive: [Int: [Card]] = [:]
     /// Guards the pot conclusion to once per hand — a hand can award several pots
     /// (main + side), and only the croupier mp3 was deduped before (D-029 fix).
     private var potAnnounced = false
@@ -235,6 +237,7 @@ public final class TableViewModel: ObservableObject {
             conductor.handBegan()          // reset once-per-hand voices (D-029)
             botChatter.handBegan(seats: seats)
             shownCategory.removeAll()
+            shownBestFive.removeAll()
             potAnnounced = false
             preflopFoldThisHand = false
             sawFlopThisHand = false
@@ -273,8 +276,9 @@ public final class TableViewModel: ObservableObject {
             await pace(payload, human: 0.4)
             if state.activeSeatID == seatID { state.activeSeatID = nil }
 
-        case let .handShown(seatID, _, category, _):
+        case let .handShown(seatID, _, category, bestFive):
             shownCategory[seatID] = category
+            shownBestFive[seatID] = bestFive
             state = TableReducer.reduce(state, payload)
             speak(payload, "showdown")     // croupier "showdown" (once) + reveal
             await pace(payload, human: Pacing.seconds(for: payload))
@@ -392,12 +396,17 @@ public final class TableViewModel: ObservableObject {
         guard case let .potAwarded(_, _, winners) = payload, !potAnnounced else { return }
         potAnnounced = true
         let plan = SpeechMap.plan(for: payload, heroSeatID: heroSeatID, names: names)
+        let names = winners.map { self.names[$0] ?? "\($0)" }.joined(separator: ", ")
+        let ref = winners.first    // any winner: in a split all share the same hand
         let line: SynthLine?
-        if winners.contains(heroSeatID) {
-            line = .heroWon(category: shownCategory[heroSeatID])
+        if winners.count > 1 {
+            line = .splitWon(who: names, category: ref.flatMap { shownCategory[$0] },
+                             bestFive: ref.flatMap { shownBestFive[$0] })
+        } else if winners.contains(heroSeatID) {
+            line = .heroWon(category: shownCategory[heroSeatID], bestFive: shownBestFive[heroSeatID])
         } else if let winner = winners.first {
-            line = .otherWon(who: winners.map { names[$0] ?? "\($0)" }.joined(separator: ", "),
-                             category: shownCategory[winner])
+            line = .otherWon(who: self.names[winner] ?? "\(winner)",
+                             category: shownCategory[winner], bestFive: shownBestFive[winner])
         } else {
             line = nil
         }

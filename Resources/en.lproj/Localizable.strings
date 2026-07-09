@@ -95,7 +95,7 @@
 "announce.street.flop" = "The flop: %@";
 "announce.street.turn" = "The turn: %@";
 "announce.street.river" = "The river: %@";
-"announce.shown" = "%1$@ shows %2$@: %3$@";
+"announce.shown" = "%1$@: %2$@";
 "announce.pot.awarded" = "The pot of %2$d goes to %1$@";
 "announce.hand.end" = "Hand over";
 "announce.hand.end.winner" = "Hand over, %1$@ wins %2$d";
@@ -277,3 +277,39 @@
 "draw.announce.drawphase" = "draw phase";
 "draw.announce.passedin" = "nobody can open, ante kept, redealing";
 "draw.announce.disqualified" = "player %d opened without jacks, disqualified";
+
+/* ------------------------------------------------------------------ */
+/* D-045 — Showdown announcements: combination + relevant kicker, never card-by-card */
+/* Rank names in the PLURAL (for spoken combinations) */
+"card.rank.plural.2" = "twos";
+"card.rank.plural.3" = "threes";
+"card.rank.plural.4" = "fours";
+"card.rank.plural.5" = "fives";
+"card.rank.plural.6" = "sixes";
+"card.rank.plural.7" = "sevens";
+"card.rank.plural.8" = "eights";
+"card.rank.plural.9" = "nines";
+"card.rank.plural.10" = "tens";
+"card.rank.plural.11" = "jacks";
+"card.rank.plural.12" = "queens";
+"card.rank.plural.13" = "kings";
+"card.rank.plural.14" = "aces";
+
+/* Spoken hand description (combination + kicker where relevant) */
+"hand.desc.highcard" = "%@ high";
+"hand.desc.pair" = "pair of %1$@, %2$@ kicker";
+"hand.desc.twopair" = "two pair, %1$@ and %2$@, %3$@ kicker";
+"hand.desc.trips" = "three of a kind, %1$@, %2$@ kicker";
+"hand.desc.straight" = "straight to the %@";
+"hand.desc.straight.vowel" = "straight to the %@";
+"hand.desc.flush" = "flush, %@ high";
+"hand.desc.flush.vowel" = "flush, %@ high";
+"hand.desc.fullhouse" = "full house, %1$@ over %2$@";
+"hand.desc.quads" = "four of a kind, %@";
+"hand.desc.straightflush" = "straight flush to the %@";
+"hand.desc.straightflush.vowel" = "straight flush to the %@";
+"hand.desc.royal" = "royal flush";
+
+/* Split pot: the same combination for every winner */
+"announce.split.won" = "split between %1$@, both with %2$@";
+"announce.split.won.nohand" = "split between %@";

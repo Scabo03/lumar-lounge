@@ -983,3 +983,49 @@ diventa **entrabile** (`AppState.Screen.drawTable` + `sitDownDraw`); buy-in/cash
 lo stesso `PlayerAccount`. `GameEngine`/motore Texas/driver Texas/UI Texas **non
 toccati**. 234 unit test + XCUITest del tavolo Draw (apertura dal Riverwood, layout
 accessibile, box che si apre/seleziona/conferma) + navigazione aggiornata, tutti verdi.
+
+### D-045 — Annunci di showdown: combinazione + kicker rilevante, mai carta per carta (fix post-test, trasversale)
+Dopo il test reale del Draw è emerso che lo showdown leggeva **tutte le carte** di
+ogni giocatore ancora in gioco (Texas: due coperte + cinque comuni; Draw: cinque
+proprie): il momento più drammatico della mano diventava una lettura lunga e piatta
+di rango e seme. **Motivazione narrativa:** lo showdown è un *momento drammatico*, non
+una lezione di poker — si comunica **chi vince e con che mano**, asciutto. Fix **a
+livello di mappatura degli annunci** (non del motore né del flusso): una funzione pura
+condivisa `SpeechMap.handDescription(category:bestFive:)` rende la mano come
+**combinazione + eventuale kicker** solo dove il kicker può decidere (coppia, doppia
+coppia, tris); mai le carte singole. Vale per **tutti i giochi** presenti e futuri
+(Texas e Draw la usano già; `DrawSpeechMap` la riusa). Esempi: "colore all'asso",
+"doppia coppia, assi e dieci, kicker donna", "full di re sui sette", "scala colore al
+re", "hai vinto con doppia coppia, kicker donna", e per il pari "pareggio tra giocatore
+2 e giocatore 3, entrambi coppia di assi, kicker donna" (nuovo caso `.splitWon`).
+Dettagli: `bestFive` (già negli eventi `handShown`) è ordinato combinazione-prima, così
+i ranghi si leggono direttamente; la **wheel A-2-3-4-5** è gestita (le carte valutate
+mettono l'asso in testa ma la scala è al cinque → "scala al cinque"); l'**elisione
+italiana** ("al re" / "all'asso") sceglie la variante `.vowel` in base al **rango**
+(asso, otto), non alla stringa localizzata, così è corretta anche senza bundle (test) e
+indipendente dalla lingua. I nomi dei ranghi hanno ora una forma **plurale**
+(`card.rank.plural.*`) per le combinazioni. Le voci mp3 del croupier (showdown, pot)
+**restano**: cambia solo la **sintesi** che le segue. I view model tracciano il
+`bestFive` del vincitore (non solo la categoria) per la conclusione del pot. Solo `UI`
+(+ stringhe). Test aggiornati/aggiunti (vedi sotto).
+
+### D-046 — Focus VoiceOver nel box di draw: la selezione aggiorna lo stato, non tocca il focus (fix post-test)
+Nel box modale di scambio, toccare una carta per selezionarla **inchiodava** il focus
+VoiceOver sulla carta invece di lasciare la navigazione a swipe fluida verso la
+successiva. **Causa reale:** il sottoalbero d'accessibilità del pulsante-carta
+**cambiava struttura** alla selezione — un `if selected { … }` **aggiungeva/rimuoveva**
+la patina scura e la X — e c'era un `.accessibilityAddTraits(.isButton)` **ridondante**
+sopra un `Button`; ad ogni toggle SwiftUI **ricreava** l'elemento accessibile e VoiceOver
+vi **ri-atterrava**, spezzando l'ordine di swipe. **Fix (solo `DrawBoxView`):** i due
+segnali visivi di selezione (patina + X) sono ora **sempre presenti**, commutati con
+`.opacity`, così il sottoalbero è **strutturalmente stabile**; ogni carta è **un solo
+leaf** (`.accessibilityElement(children: .ignore)` sul contenuto del label, che assorbe
+l'elemento interno di `CardView`), con la sola **label** che cambia a riflettere lo
+stato ("selezionato"/"non selezionato") e l'annuncio del cambio via `announceLiveValue`
+(interruzione a bassa priorità già esistente). Rimosso il trait ridondante. Niente
+`accessibilityElement` forzato né `children` che collassa la griglia (il container resta
+`.contain`). **Pattern generale (in CONVENTIONS §4):** la **selezione di un elemento in
+una griglia accessibile aggiorna lo stato ma non sposta né intrappola il focus, e non
+ristruttura il sottoalbero** — commuta con opacity, non con inserimento condizionale.
+XCUITest aggiunto: dopo ogni selezione/deselezione tutte le cinque carte + contatore +
+conferma restano raggiungibili e nell'ordine originale. Solo `UI`.

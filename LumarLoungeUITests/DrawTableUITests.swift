@@ -40,12 +40,10 @@ final class DrawTableUITests: XCTestCase {
         XCTAssertTrue(app.buttons["settings.button"].exists, "settings missing at the draw table")
     }
 
-    func testDrawBoxOpensSelectsAndConfirms() {
-        let app = launchAtDrawTable()
+    /// Drives the hand (opening the pot when possible to force a played deal to the
+    /// draw, otherwise checking/calling) until the human's draw box appears.
+    private func driveToDrawBox(_ app: XCUIApplication) {
         let box = app.otherElements["drawbox"]
-
-        // Drive the hand: open the pot when we can (forces a played deal to the
-        // draw), otherwise check/call, until our draw box appears.
         let bet = app.buttons["action.bet"]
         let checkCall = app.buttons["action.checkcall"]
         let deadline = Date().addingTimeInterval(60)
@@ -59,6 +57,11 @@ final class DrawTableUITests: XCTestCase {
             }
         }
         XCTAssertTrue(box.waitForExistence(timeout: 5), "the draw box never opened")
+    }
+
+    func testDrawBoxOpensSelectsAndConfirms() {
+        let app = launchAtDrawTable()
+        driveToDrawBox(app)
 
         // Five selectable cards, a count, and an always-active Confirm.
         for i in 0..<5 {
@@ -70,7 +73,42 @@ final class DrawTableUITests: XCTestCase {
         // Select a card, then confirm — the box dismisses and play resumes.
         app.buttons["draw.card.0"].tap()
         confirm.tap()
-        XCTAssertTrue(waitForDisappearance(of: box, timeout: 10), "the draw box did not dismiss on confirm")
+        XCTAssertTrue(waitForDisappearance(of: app.otherElements["drawbox"], timeout: 10),
+                      "the draw box did not dismiss on confirm")
+    }
+
+    /// Fix 2 (D-046): selecting/deselecting a card updates its state but never
+    /// removes or re-orders elements — every card, the count and Confirm stay
+    /// reachable in a stable order (the precondition for fluid VoiceOver swipe
+    /// navigation, which a headless XCUITest can't drive directly).
+    func testDrawBoxStaysFullyNavigableAcrossSelections() {
+        let app = launchAtDrawTable()
+        driveToDrawBox(app)
+
+        let cards = (0..<5).map { app.buttons["draw.card.\($0)"] }
+        let count = app.staticTexts["draw.box.count"]
+        let confirm = app.buttons["draw.confirm"]
+
+        func assertAllReachable(_ context: String) {
+            for (i, card) in cards.enumerated() {
+                XCTAssertTrue(card.exists && card.isHittable, "card \(i) not reachable \(context)")
+            }
+            XCTAssertTrue(count.exists, "count not reachable \(context)")
+            XCTAssertTrue(confirm.exists && confirm.isEnabled, "confirm not reachable \(context)")
+        }
+
+        assertAllReachable("initially")
+        // Select two, deselect one — after every toggle the whole grid is intact
+        // and no element has disappeared or become unhittable.
+        cards[0].tap(); assertAllReachable("after selecting card 0")
+        cards[2].tap(); assertAllReachable("after selecting card 2")
+        cards[0].tap(); assertAllReachable("after deselecting card 0")
+        // The identifiers are still their original positions (no re-ordering).
+        for i in 0..<5 { XCTAssertTrue(cards[i].exists, "card \(i) lost its identity") }
+
+        confirm.tap()
+        XCTAssertTrue(waitForDisappearance(of: app.otherElements["drawbox"], timeout: 10),
+                      "the draw box did not dismiss on confirm")
     }
 
     private func waitForDisappearance(of element: XCUIElement, timeout: TimeInterval) -> Bool {

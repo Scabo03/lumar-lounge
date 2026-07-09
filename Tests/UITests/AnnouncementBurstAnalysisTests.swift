@@ -58,7 +58,7 @@ final class AnnouncementBurstAnalysisTests: XCTestCase {
 
     private func priority(of line: SynthLine) -> Prio {
         switch line {
-        case .heroCards, .yourTurnContext, .heroWon, .sessionWon, .sessionLost: return .high
+        case .heroCards, .yourTurnContext, .heroWon, .splitWon, .sessionWon, .sessionLost: return .high
         case .otherWon, .opponentAction, .shown: return .medium
         case .communityCards: return .low
         case .roleButton: return .high

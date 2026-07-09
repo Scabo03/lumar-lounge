@@ -106,8 +106,94 @@ final class SpeechMapTests: XCTestCase {
 
     func testPotAwardedPlaysPotVoiceAndNamesWinner() {
         XCTAssertEqual(plan(.potAwarded(potIndex: 0, amount: 100, winnerSeatIDs: [hero])),
-                       SpeechPlan(croupier: SoundCatalog.voPotAwarded, synthesis: .heroWon(category: nil)))
+                       SpeechPlan(croupier: SoundCatalog.voPotAwarded, synthesis: .heroWon(category: nil, bestFive: nil)))
         XCTAssertEqual(plan(.potAwarded(potIndex: 0, amount: 100, winnerSeatIDs: [1, 2])).croupier,
                        SoundCatalog.voSplitPot)
+    }
+
+    // MARK: - Showdown announcements: combination + relevant kicker, never card-by-card (D-045)
+
+    private func c(_ r: Rank, _ s: Suit) -> Card { Card(r, s) }
+
+    func testShownReadsCombinationNotCardByCard() {
+        // A pair of aces with a queen kicker: bestFive ordered combo-first.
+        let bestFive = [c(.ace, .spades), c(.ace, .hearts), c(.queen, .diamonds), c(.seven, .clubs), c(.three, .spades)]
+        let text = SpeechMap.text(for: .shown(who: "Giocatore 2", category: .pair, bestFive: bestFive))
+        // Shown = "who: combination" — the mapping composes announce.shown with the
+        // hand description, never the individual cards.
+        XCTAssertEqual(text, uiLocalized("announce.shown", "Giocatore 2",
+                                         SpeechMap.handDescription(category: .pair, bestFive: bestFive)))
+    }
+
+    // Localized rank helpers (mirror the mapping's own composition, so these tests
+    // verify KEY/variant selection and ARG placement regardless of whether the
+    // .strings bundle is loaded under `swift test`).
+    private func sing(_ r: Rank) -> String { uiLocalized("card.rank.\(r.rawValue)") }
+    private func plur(_ r: Rank) -> String { uiLocalized("card.rank.plural.\(r.rawValue)") }
+
+    func testHandDescriptionPerCategory() {
+        func desc(_ cat: HandCategory, _ cards: [Card]) -> String {
+            SpeechMap.handDescription(category: cat, bestFive: cards)
+        }
+        // Pair of aces, queen kicker → combination + top kicker.
+        XCTAssertEqual(desc(.pair, [c(.ace,.spades), c(.ace,.hearts), c(.queen,.diamonds), c(.seven,.clubs), c(.three,.spades)]),
+                       uiLocalized("hand.desc.pair", plur(.ace), sing(.queen)))
+        // Two pair, aces and tens, queen kicker.
+        XCTAssertEqual(desc(.twoPair, [c(.ace,.spades), c(.ace,.hearts), c(.ten,.diamonds), c(.ten,.clubs), c(.queen,.spades)]),
+                       uiLocalized("hand.desc.twopair", plur(.ace), plur(.ten), sing(.queen)))
+        // Trips, kings, ace kicker.
+        XCTAssertEqual(desc(.threeOfAKind, [c(.king,.spades), c(.king,.hearts), c(.king,.diamonds), c(.ace,.clubs), c(.three,.spades)]),
+                       uiLocalized("hand.desc.trips", plur(.king), sing(.ace)))
+        // Full house, kings over sevens (no kicker).
+        XCTAssertEqual(desc(.fullHouse, [c(.king,.spades), c(.king,.hearts), c(.king,.diamonds), c(.seven,.clubs), c(.seven,.spades)]),
+                       uiLocalized("hand.desc.fullhouse", plur(.king), plur(.seven)))
+        // Four of a kind, aces.
+        XCTAssertEqual(desc(.fourOfAKind, [c(.ace,.spades), c(.ace,.hearts), c(.ace,.diamonds), c(.ace,.clubs), c(.two,.spades)]),
+                       uiLocalized("hand.desc.quads", plur(.ace)))
+        // Royal flush: no rank, no kicker.
+        XCTAssertEqual(desc(.royalFlush, [c(.ace,.spades), c(.king,.spades), c(.queen,.spades), c(.jack,.spades), c(.ten,.spades)]),
+                       uiLocalized("hand.desc.royal"))
+    }
+
+    func testElisionVariantChosenByHighCard() {
+        // Ace-high flush → the vowel elision variant ("colore all'asso").
+        XCTAssertEqual(SpeechMap.handDescription(category: .flush,
+                        bestFive: [c(.ace,.hearts), c(.jack,.hearts), c(.eight,.hearts), c(.five,.hearts), c(.two,.hearts)]),
+                       uiLocalized("hand.desc.flush.vowel", sing(.ace)))
+        // King-high flush → the plain variant ("colore al re").
+        XCTAssertEqual(SpeechMap.handDescription(category: .flush,
+                        bestFive: [c(.king,.hearts), c(.jack,.hearts), c(.eight,.hearts), c(.five,.hearts), c(.two,.hearts)]),
+                       uiLocalized("hand.desc.flush", sing(.king)))
+        // Straight flush to the king → plain variant.
+        XCTAssertEqual(SpeechMap.handDescription(category: .straightFlush,
+                        bestFive: [c(.king,.spades), c(.queen,.spades), c(.jack,.spades), c(.ten,.spades), c(.nine,.spades)]),
+                       uiLocalized("hand.desc.straightflush", sing(.king)))
+    }
+
+    func testStraightWheelReadsFiveHighNotAceHigh() {
+        // A-2-3-4-5: the evaluated cards sort the ace first, but the straight is
+        // five-high → "scala al cinque", NOT the ace.
+        let wheel = [c(.ace,.spades), c(.five,.hearts), c(.four,.diamonds), c(.three,.clubs), c(.two,.spades)]
+        XCTAssertEqual(SpeechMap.handDescription(category: .straight, bestFive: wheel),
+                       uiLocalized("hand.desc.straight", sing(.five)))
+        // A broadway straight IS ace-high → the vowel variant.
+        let broadway = [c(.ace,.spades), c(.king,.hearts), c(.queen,.diamonds), c(.jack,.clubs), c(.ten,.spades)]
+        XCTAssertEqual(SpeechMap.handDescription(category: .straight, bestFive: broadway),
+                       uiLocalized("hand.desc.straight.vowel", sing(.ace)))
+    }
+
+    func testHeroWonReadsCombinationWithKicker() {
+        let bestFive = [c(.king,.spades), c(.king,.hearts), c(.king,.diamonds), c(.seven,.clubs), c(.seven,.spades)]
+        XCTAssertEqual(SpeechMap.text(for: .heroWon(category: .fullHouse, bestFive: bestFive)),
+                       uiLocalized("announce.hero.won.category", SpeechMap.handDescription(category: .fullHouse, bestFive: bestFive)))
+        // Fold-out win (no showdown hand) falls back to the plain line.
+        XCTAssertEqual(SpeechMap.text(for: .heroWon(category: nil, bestFive: nil)), uiLocalized("announce.hero.won"))
+    }
+
+    func testSplitWonNamesTheSharedCombination() {
+        let bestFive = [c(.ace,.spades), c(.ace,.hearts), c(.queen,.diamonds), c(.seven,.clubs), c(.three,.spades)]
+        XCTAssertEqual(SpeechMap.text(for: .splitWon(who: "Giocatore 2, Giocatore 3", category: .pair, bestFive: bestFive)),
+                       uiLocalized("announce.split.won", "Giocatore 2, Giocatore 3",
+                                   SpeechMap.handDescription(category: .pair, bestFive: bestFive)))
     }
 }

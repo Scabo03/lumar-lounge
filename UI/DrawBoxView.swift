@@ -68,25 +68,31 @@ struct DrawBoxView: View {
         return Button { model.toggleDrawCard(card) } label: {
             ZStack {
                 CardView(face: .up(card), size: .huge)
-                if selected {
-                    // Dark mark on the face (second signal, for low vision).
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(Color.black.opacity(0.42))
-                    Image(systemName: "xmark")
-                        .font(.title2.weight(.heavy))
-                        .foregroundStyle(.white)
-                }
+                // Dark mark on the face (second selection signal, for low vision).
+                // ALWAYS present — toggled by opacity, never added/removed — so the
+                // button's accessibility subtree stays structurally stable across a
+                // selection and VoiceOver keeps a single, un-shifting element (D-046).
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.black.opacity(0.42))
+                    .opacity(selected ? 1 : 0)
+                Image(systemName: "xmark")
+                    .font(.title2.weight(.heavy))
+                    .foregroundStyle(.white)
+                    .opacity(selected ? 1 : 0)
             }
-            // Bright brass border (first signal).
+            // Bright brass border (first selection signal).
             .overlay(
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .strokeBorder(selected ? TablePalette.accent : Color.clear, lineWidth: 4)
             )
+            // Collapse the card face's own a11y element: the button is ONE leaf whose
+            // label we supply, so selecting only updates the label — it never restructures
+            // the subtree nor moves the focus (D-046).
+            .accessibilityElement(children: .ignore)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("draw.card.\(index)")
         .accessibilityLabel(Text(verbatim: cardLabel(card, selected: selected)))
-        .accessibilityAddTraits(.isButton)
     }
 
     private func cardLabel(_ card: Card, selected: Bool) -> String {

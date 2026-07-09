@@ -95,7 +95,7 @@
 "announce.street.flop" = "Esce il flop: %@";
 "announce.street.turn" = "Esce il tern: %@";
 "announce.street.river" = "Esce il river: %@";
-"announce.shown" = "%1$@ mostra %2$@: %3$@";
+"announce.shown" = "%1$@: %2$@";
 "announce.pot.awarded" = "Il pot di %2$d va a %1$@";
 "announce.hand.end" = "Mano conclusa";
 "announce.hand.end.winner" = "Mano conclusa, %1$@ vince %2$d";
@@ -277,3 +277,39 @@
 "draw.announce.drawphase" = "fase di scambio";
 "draw.announce.passedin" = "nessuno può aprire, ante conservato, si ridistribuisce";
 "draw.announce.disqualified" = "giocatore %d ha aperto senza jack, squalificato";
+
+/* ------------------------------------------------------------------ */
+/* D-045 — Annunci di showdown: combinazione + kicker rilevante, mai carta per carta */
+/* Nomi dei ranghi al PLURALE (per le combinazioni parlate) */
+"card.rank.plural.2" = "due";
+"card.rank.plural.3" = "tre";
+"card.rank.plural.4" = "quattro";
+"card.rank.plural.5" = "cinque";
+"card.rank.plural.6" = "sei";
+"card.rank.plural.7" = "sette";
+"card.rank.plural.8" = "otto";
+"card.rank.plural.9" = "nove";
+"card.rank.plural.10" = "dieci";
+"card.rank.plural.11" = "fanti";
+"card.rank.plural.12" = "donne";
+"card.rank.plural.13" = "re";
+"card.rank.plural.14" = "assi";
+
+/* Descrizione parlata della mano (combinazione + kicker se rilevante) */
+"hand.desc.highcard" = "carta alta %@";
+"hand.desc.pair" = "coppia di %1$@, kicker %2$@";
+"hand.desc.twopair" = "doppia coppia, %1$@ e %2$@, kicker %3$@";
+"hand.desc.trips" = "tris di %1$@, kicker %2$@";
+"hand.desc.straight" = "scala al %@";
+"hand.desc.straight.vowel" = "scala all'%@";
+"hand.desc.flush" = "colore al %@";
+"hand.desc.flush.vowel" = "colore all'%@";
+"hand.desc.fullhouse" = "full di %1$@ sui %2$@";
+"hand.desc.quads" = "poker di %@";
+"hand.desc.straightflush" = "scala colore al %@";
+"hand.desc.straightflush.vowel" = "scala colore all'%@";
+"hand.desc.royal" = "scala reale";
+
+/* Pareggio (split pot): stessa combinazione per tutti i vincitori */
+"announce.split.won" = "pareggio tra %1$@, entrambi %2$@";
+"announce.split.won.nohand" = "pareggio tra %@";
