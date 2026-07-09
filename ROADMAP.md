@@ -198,6 +198,29 @@ il ritmo veloce (D-034). Cambio modalità a **effetto immediato**. `SessionDrive
 toccato** (sincronia solo lato consumatore). Solo `UI`. 157 test + XCUITest impostazioni.
 **Note di design:** D-033, D-034.
 
+### ✅ M1.9 — Motore di Five-Card Draw ("Jacks or Better")
+Il **secondo motore di gioco** del progetto, interamente in `GameEngine/Draw/`,
+**indipendente** dal Texas (nessuna dipendenza incrociata; condivisi solo i tipi
+fondazionali M1.1 e l'aritmetica `PotMath`/`Pot`, D-038). `FiveCardDrawHand` è una
+macchina a stati pura e deterministica per **una mano** di draw tradizionale
+completa: quattro giocatori tipici, **ante** (niente blind), **due giri di puntata
+limit** (small/big bet come parametri del tavolo, cap a tre raise), **draw** 0–4
+carte, valutazione a cinque carte con `HandEvaluator`. Regole distintive:
+**jacks-or-better per aprire sull'onore** con **verifica degli openers allo
+showdown** (apre chi vuole, ma senza i jack allo showdown perde d'ufficio; bluff
+riuscito su fold-out invece vince, D-039); **pass-and-out con pot progressivo,
+variante B** (nessuno apre → mano nulla, ante che si accumulano nel `carryPot`
+della mano successiva, D-040). Bot dedicati (`HeuristicDrawBot` + `DrawStrategy`
+pura) che riusano le tre personalità del Texas con **tre nuovi dial** additivi
+(`drawDiscipline`/`drawBluffiness`/`openingDiscipline`, inerti nel Texas). Nessun
+driver di sessione né UI del Draw (mattoni futuri). Solo `GameEngine`. 31 unit test
+(99 nel modulo). **Dipendenze:** M1.1. **Note di design:** D-038…D-041 in `CLAUDE.md`.
+
+> Numerato M1.9 (motore puro, Fase 1) anche se realizzato dopo M2.1: è un mattone
+> `GameEngine`, non del mondo. Rende concreto il gioco già previsto per la "Sala
+> Whiskey" del Riverwood (D-035); mancano ancora il suo driver in `GameWorld` e la
+> sua UI perché la sala diventi entrabile.
+
 ---
 
 > **🏁 Fase 1 (M1) completata.** Il gioco base è funzionante **end-to-end**:
@@ -230,8 +253,10 @@ Draw **visibile ma non entrabile**. `SessionDriver` non modificato strutturalmen
 - **M2.2 — Cassa / DLC:** ricarica dei gettoni quando finiscono (acquisti, bonus).
 - **M2.3 — Ambient Riverwood:** produzione e integrazione dei file audio dedicati
   (chitarra/piano rustici) al posto dei fallback.
-- **M2.4 — Motore Five-Card Draw:** il secondo gioco, per rendere entrabile la Sala
-  Whiskey del Riverwood.
+- **M2.4 — Sessione + UI Five-Card Draw:** il **motore** è pronto (M1.9); resta il
+  `DrawSession` in `GameWorld` (replica di M1.4 per il draw: tavolo, gettoni, pot
+  progressivo tra le mani annullate, azioni bot/umano) e la UI del tavolo, per
+  rendere finalmente entrabile la Sala Whiskey del Riverwood.
 - **M2.5 — Secondo casinò lussuoso** (es. Velvet Palace) con estetica opposta.
 - **M2.6 — NPC narrativi:** avversari ricorrenti con nome/carattere/storia.
 

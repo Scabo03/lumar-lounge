@@ -17,6 +17,23 @@ riscoprirle dalla conversazione. Il riassunto operativo per Claude Code sta in
   importare un modulo non dichiarato come dipendenza non compila.
 - **`GameEngine` importa SOLO `Foundation`.** Mai SwiftUI, UIKit, AVFoundation,
   CoreHaptics, Combine o altri framework di piattaforma. È puro e portabile.
+- **Motori di gioco paralleli e indipendenti (D-038).** Ogni gioco (Texas Hold'em,
+  Five-Card Draw, e i futuri) è un **motore autonomo** dentro `GameEngine`, in una
+  sottocartella dedicata (`Draw/`; i file storici del Texas restano flat). I motori
+  **non si conoscono**: nessun `import` incrociato, **nessun tipo di regole
+  condiviso**. Condividono **solo** (a) i tipi fondazionali di M1.1
+  (`Card`/`Rank`/`Suit`/`Deck`/`HandEvaluator`) e (b) l'**aritmetica dei chip
+  game-agnostica** (`PotMath`/`Pot`), che è matematica pura dei pot, non regole di un
+  gioco specifico. Ogni motore definisce i **propri** tipi speculari
+  (seat/azione/risultato/mosse legali). Le astrazioni condivise dei bot
+  (`Personality`) si estendono in modo **additivo** (nuovi dial con default), così un
+  gioco non altera il comportamento di un altro.
+- **Regole "sull'onore" enforced allo showdown, non a monte (D-039).** Quando una
+  regola di un gioco è tradizionalmente sull'onore (es. *jacks or better* per aprire
+  nel Draw), il motore **non** la blocca all'azione ma la **traccia** (snapshot della
+  prova al momento del gesto) e la **verifica allo showdown**, punendo chi non può
+  dimostrarla. Così restano modellabili sia il bluff riuscito (tutti foldano → vince)
+  sia lo smascheramento (arriva allo showdown senza prova → perde d'ufficio).
 - `GameWorld` può importare `GameEngine`, mai `UI` né `Audio`.
 - `Audio` è agnostico rispetto al gioco: guida tutto tramite identificatori
   opachi, non conosce poker/blackjack.

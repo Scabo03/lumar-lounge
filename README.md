@@ -96,6 +96,19 @@ accavallano mai — l'audio arricchisce, ma VoiceOver da solo basta sempre. Il g
 **degrada con grazia** se un suono manca: gira lo stesso e segnala all'avvio cosa
 manca.
 
+Dopo la prima fase, `GameEngine` ha guadagnato un **secondo motore di gioco**: il
+**Five-Card Draw** tradizionale ("Jacks or Better"), completo e indipendente dal
+Texas (M1.9). È una macchina a stati pura per una mano di draw — ante, due giri di
+puntata a taglio fisso (*limit*, con un tetto di tre rilanci), lo scambio di 0–4
+carte, e lo showdown a cinque carte — con le sue regole caratteristiche: si apre
+solo con **almeno una coppia di jack**, ma **sull'onore**, e chi apre bluffando
+senza averli **perde d'ufficio** se la mano arriva allo showdown (mentre se tutti si
+ritirano il bluff riesce e vince); e il **pot progressivo**, per cui se nessuno può
+aprire la mano è nulla e gli ante si accumulano nella mano successiva. Riusa le tre
+personalità dei bot con tre nuove leve dedicate al draw. Non ha ancora né tavolo né
+UI (arriveranno per rendere entrabile la "Sala Whiskey" del Riverwood); il motore è
+coperto da 31 nuovi unit test, per un totale di **205 test verdi** nel package.
+
 > **🏁 La prima fase è completa.** Il gioco base è funzionante end-to-end — motore
 > completo, bot credibili, sessione multi-mano, flusso di eventi, UI giocabile e
 > accessibile, e **audio pieno**: i 47 file mp3 consegnati (atmosfera, carte,

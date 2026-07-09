@@ -33,6 +33,23 @@ public struct Personality: Equatable, Sendable {
     /// How much a recent swing (tilt) pushes it off its baseline.
     public let tiltReactivity: Double
 
+    // MARK: Five-Card Draw dimensions
+    //
+    // These three dials only bite in the Five-Card Draw engine (opening, the
+    // card exchange). In Texas Hold'em there is no draw and no jacks-or-better
+    // opening, so `HeuristicBot` never reads them — the Texas personalities keep
+    // sensible values here purely so the same presets behave well at a draw table.
+
+    /// How mathematically correct the card exchange is: 1 = keeps the strong
+    /// cards and draws to the best hand, 0 = discards emotionally / noisily.
+    public let drawDiscipline: Double
+    /// How theatrically the exchange misrepresents the hand: high = stands pat or
+    /// draws few cards on a weak hand to fake strength (or over-draws to deceive).
+    public let drawBluffiness: Double
+    /// How strictly it respects "jacks or better to open": 1 = opens only when it
+    /// can prove openers at showdown, 0 = may open on air and risk being exposed.
+    public let openingDiscipline: Double
+
     public init(name: String,
                 tightness: Double,
                 aggression: Double,
@@ -40,7 +57,10 @@ public struct Personality: Equatable, Sendable {
                 riskTolerance: Double,
                 positionAwareness: Double,
                 rationality: Double,
-                tiltReactivity: Double) {
+                tiltReactivity: Double,
+                drawDiscipline: Double = 0.5,
+                drawBluffiness: Double = 0.3,
+                openingDiscipline: Double = 0.7) {
         self.name = name
         self.tightness = tightness.clamped01
         self.aggression = aggression.clamped01
@@ -49,6 +69,9 @@ public struct Personality: Equatable, Sendable {
         self.positionAwareness = positionAwareness.clamped01
         self.rationality = rationality.clamped01
         self.tiltReactivity = tiltReactivity.clamped01
+        self.drawDiscipline = drawDiscipline.clamped01
+        self.drawBluffiness = drawBluffiness.clamped01
+        self.openingDiscipline = openingDiscipline.clamped01
     }
 }
 
@@ -64,7 +87,10 @@ public extension Personality {
         riskTolerance: 0.25,    // folds when the pressure is real
         positionAwareness: 0.15,
         rationality: 0.30,      // fallible reads
-        tiltReactivity: 0.80    // rides its emotions
+        tiltReactivity: 0.80,   // rides its emotions
+        drawDiscipline: 0.25,   // chaotic exchange — keeps the wrong cards
+        drawBluffiness: 0.15,   // draws honestly, doesn't scheme
+        openingDiscipline: 0.50 // doesn't always realise it holds openers
     )
 
     /// "Sasso conservativo": only strong hands, little aggression, predictable,
@@ -77,7 +103,10 @@ public extension Personality {
         riskTolerance: 0.30,
         positionAwareness: 0.70,
         rationality: 0.90,      // sticks to the maths
-        tiltReactivity: 0.10    // hard to rattle
+        tiltReactivity: 0.10,   // hard to rattle
+        drawDiscipline: 0.90,   // textbook-correct exchange
+        drawBluffiness: 0.05,   // never misrepresents the draw
+        openingDiscipline: 0.95 // opens only with provable openers
     )
 
     /// "Aggressivo caldo": raises constantly, bluffs a lot, barely reads
@@ -90,7 +119,10 @@ public extension Personality {
         riskTolerance: 0.80,    // loves the gamble
         positionAwareness: 0.20, // ignores position
         rationality: 0.55,
-        tiltReactivity: 0.55
+        tiltReactivity: 0.55,
+        drawDiscipline: 0.50,   // tactically sound, but bends it to deceive
+        drawBluffiness: 0.80,   // stands pat / short-draws to fake strength
+        openingDiscipline: 0.20 // gambles on opening light, risks exposure
     )
 
     /// The starting roster. More personalities arrive with game progression.

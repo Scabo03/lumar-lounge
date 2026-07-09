@@ -54,9 +54,19 @@ nei file collegati.
   lascia-tavolo (D-036). Tavolo **Rapido** con bot più aggressivi e **boost mano
   decisiva** (blind raddoppiate + annuncio croupier, D-037). Five-Card Draw visibile
   ma non entrabile. 174 unit test + 3 XCUITest.
+- **`GameEngine` M1.9:** **secondo motore di gioco**, il **Five-Card Draw** ("Jacks
+  or Better"), in `Draw/`, **indipendente** dal Texas (solo M1.1 + `PotMath`/`Pot`
+  condivisi, D-038). `FiveCardDrawHand`: ante, due giri **limit** (small/big bet, cap
+  a tre raise), draw 0–4 carte, showdown a 5 carte. Regole marcanti: **jacks-or-better
+  sull'onore + openers verificati allo showdown** (bluff-open punito allo showdown ma
+  vincente su fold-out, D-039), **pass-and-out con pot progressivo** (D-040). Bot
+  dedicati + tre dial di personalità additivi (D-041). Nessun driver/UI ancora. 31
+  unit test (205 nel package).
 
-**🏁 Fase 1 (M1) completa; Fase 2 (M2) avviata con M2.1.** Il gioco gira end-to-end
-con navigazione, casinò, gettoni e due tavoli Hold'em. L'app bundle contiene 51 mp3;
+**🏁 Fase 1 (M1) completa; Fase 2 (M2) avviata con M2.1.** Il gioco Hold'em gira
+end-to-end con navigazione, casinò, gettoni e due tavoli; `GameEngine` contiene ora
+**due motori** (Hold'em No Limit e Five-Card Draw, M1.9), ma il Draw non ha ancora
+driver né UI (la Sala Whiskey resta non entrabile). L'app bundle contiene 51 mp3;
 oltre ai 2 storici (`amb_crowd_distant`, `fx_hand_neutral`) mancano ora **5 slot M2**
 predisposti con fallback (vedi sotto), da produrre e depositare in `Resources/Audio/`.
 
@@ -66,8 +76,10 @@ lounge_calm), `vo_it_high_stakes` (→ fallback sintesi "mano decisiva"), `ui_na
 (→ silenzio).
 
 **Prossimo passo.** Prossimi sotto-mattoni M2 (vedi [`ROADMAP.md`](ROADMAP.md)): cassa/
-DLC per ricarica gettoni, ambient dedicati Riverwood (produzione file), motore Five-Card
-Draw, secondo casinò più lussuoso, NPC narrativi.
+DLC per ricarica gettoni, ambient dedicati Riverwood (produzione file), **sessione +
+UI del Five-Card Draw** (il motore c'è già — M1.9; serve il `DrawSession` in GameWorld
+e la UI del tavolo per rendere entrabile la Sala Whiskey), secondo casinò più lussuoso,
+NPC narrativi.
 
 **Stato completo, sempre aggiornato:** sezione *Stato di sviluppo* in
 [`README.md`](README.md).
@@ -801,3 +813,82 @@ decisiva dai blind raddoppiati nell'evento `handBegan` (niente flag condiviso), 
 navigazione): gettoni (buy-in/cash-out/bust/insufficiente/persistenza), boost, raddoppio
 blind via override, personalità Rapide più aggressive (caratterizzazione). **Chiude
 M1, apre M2.**
+
+### D-038 — Secondo motore di gioco (Five-Card Draw) parallelo e indipendente dal Texas (M1.9)
+Il Five-Card Draw è il **secondo motore** del progetto e vive **interamente** in
+`GameEngine`, in una sottocartella dedicata `Draw/` (i file del Texas restano flat:
+scelta **non invasiva**, nessun refactoring dell'esistente). I due motori sono
+**paralleli e indipendenti**: nessun `import` incrociato, **nessun tipo di regole
+condiviso**. Ciò che condividono è **solo** (a) i tipi fondazionali di M1.1
+(`Card`/`Rank`/`Suit`/`Deck`/`HandEvaluator`) e (b) l'**aritmetica dei chip
+game-agnostica** `PotMath`/`Pot`, che è matematica pura dei pot (side pot, chip di
+resto), **non** regole del Texas — riusarla è esplicitamente ammesso e la tiene DRY.
+Perciò il Draw definisce i **propri** tipi speculari (`DrawSeat`/`DrawSeatState`/
+`DrawAction`/`DrawResult`/`DrawLegalActions`/`DrawPhase`/`DrawOptions`) e **non** riusa
+`Seat`/`Action`/… del Texas (che sono M1.2, non fondazionali). `FiveCardDrawHand` è,
+come `HoldemHand`, un value type con transizioni `mutating`, sincrono e deterministico
+via seed. **Estensione additiva di `Personality`:** tre nuovi dial specifici del draw
+(`drawDiscipline`/`drawBluffiness`/`openingDiscipline`) aggiunti **con valori di
+default** nell'initializer, così tutti i call site esistenti (incl. `WorldPersonalities`
+in GameWorld) compilano invariati e il Texas — che non li legge — non cambia
+comportamento. **Nome scelto:** `FiveCardDrawHand` (esteso, non ambiguo). Solo
+`GameEngine`, solo Foundation.
+
+### D-039 — Jacks-or-better sull'onore + openers verificati allo showdown (M1.9)
+La regola di apertura è la parte più delicata. Due letture nella traccia
+sembravano in tensione ("bet senza openings validi rifiutato" vs "apre bluffando
+senza jack, perde d'ufficio"): la seconda è **impossibile** se l'apertura è bloccata
+a monte. Scelta, **fedele al jackpot poker tradizionale**: l'apertura è **sull'onore**.
+Chiunque può fare fisicamente il primo bet (`legalActions.canBet` non richiede i
+jack); `legalActions.hasOpeners` espone se il seat **potrebbe** dimostrarli, come
+guida per deciso­ri corretti. Al momento dell'apertura il motore **snapshotta** gli
+`openers` (le due carte della coppia jacks-or-better, o l'intera combinazione
+superiore) — `nil` se ha aperto **su aria**. Enforcement allo **showdown**: se
+l'apritore arriva allo showdown e ha `openers == nil`, è **squalificato** e **perde
+d'ufficio** comunque sia la sua mano finale; le sue fiches **restano nel pot** e sono
+vinte normalmente dagli altri (fallback: un pot rimasto senza aventi diritto va alla
+miglior mano viva non squalificata, così nessuna fiche svanisce). **Ma** se tutti
+foldano prima dello showdown (bluff riuscito), **nessuna prova è richiesta e
+l'apritore vince**: è ciò che rende sensato il dial `openingDiscipline` — aprire
+leggeri è un **rischio**, non un divieto. Gli openers sono conservati **anche se
+scartati nel draw**. Questo riconcilia entrambe le richieste della traccia e rende
+costruibile il test "openers negativo". Le azioni realmente illegali (check di fronte
+a un bet, raise oltre il cap, call/raise senza nulla da chiamare/rilanciare, azione a
+mano finita, draw fuori fase, scarto >4 o carta non posseduta) restano rifiutate.
+
+### D-040 — Pass-and-out con pot progressivo (variante B): la mano pura gestisce un solo giro (M1.9)
+Il pot progressivo delle mani annullate è un concetto **fra le mani**, non di una
+singola mano pura. Perciò `FiveCardDrawHand` gestisce **un solo giro di
+distribuzione**: se il primo giro di puntata si chiude **senza apertura**
+(`currentBet == 0`), la mano è **nulla** — esito `.passedIn` — ed espone
+`carriedPot` = ante di questa mano + eventuale pot già portato. Il pot progressivo
+vive **fuori** (nel futuro driver di GameWorld), che riceve `carriedPot`, rimescola
+e ridistribuisce passando quel valore come parametro `carryPot: Int` alla mano
+successiva. Il `carryPot` è **dead money**: entra nella mano, si fonde nel main pot
+al finish, e viene vinto normalmente quando la mano si gioca davvero. Il **button
+non ruota** sulle mani annullate (`nextButtonIndex` è per le mani *giocate*; la
+rotazione la decide comunque il driver, come per il Texas D-006/D-012). Caso limite
+documentato: se tutti sono all-in sull'ante (nessuno **può** aprire) la mano **non**
+è passed-in ma va a draw+showdown (nessuna apertura da declinare); la gestione di
+seat bustati/assenti resta un compito del driver.
+
+### D-041 — Betting limit a due giri, draw a turni, euristiche di scarto pure (M1.9)
+Struttura di puntata **limit** (non No Limit come il Texas), quindi le `DrawAction`
+**non portano importo**: `bet`/`raise` valgono un'unità fissa (small bet nel primo
+giro, big bet = parametro nel secondo), `call`/`check`/`fold` come di consueto.
+**Cap** a quattro escalation per giro (`aggressiveCount < 4`: bet + raise + re-raise
++ cap, poi solo call/fold); un all-in corto sotto una raise piena **non riapre**
+l'azione, come nel Texas. Il **draw** è a **turni, un seat alla volta** a sinistra
+del button (`drawingSeatID` + `drawOptions()` + `discard(_ cards:)`), scartando
+**0–4** carte per valore (validate come sottoinsieme della mano); i rimpiazzi
+vengono dalla cima del mazzo (gli scarti non rientrano — con ≤7 seat il mazzo non si
+esaurisce mai). Le carte di ogni seat sono tenute **ordinate** (rank desc). I **bot**
+del Draw (`HeuristicDrawBot`) decidono **puntata** e **scarto** su informazione onesta
+(`DrawBotContext`/`DrawDrawContext`: proprie 5 carte + stato pubblico, incluso il n°
+di carte cambiate dagli avversari — pubblico dopo il draw). L'euristica di scarto
+"da manuale" è isolata in `DrawStrategy` (**pura e testabile**: stand pat sui punti
+fatti, tieni la coppia/il tris, pesca a four-flush/four-straight), poi **modulata**
+dai tre dial (D-038): `drawDiscipline` (quanto segue il manuale), `drawBluffiness`
+(stand pat / short-draw per fingere forza), `openingDiscipline` (se bluff-apre su
+aria). Determinismo via `SeededGenerator` come il bot Hold'em. 31 unit test (99 nel
+modulo, 205 nel package), tutti verdi.
