@@ -1076,3 +1076,50 @@ tavolo). È un bug **silenzioso**: i test restano verdi — anzi *devono* usare 
 quindi il difetto sopravvive fino al test su device reale. Regola pratica: cerca ogni
 letterale numerico passato come `seed:` fuori dai test e chiediti "questo viene mai
 rigenerato a caso in produzione?".
+
+### D-048 — Propensione al fold: `pressureResistance` e `trashFoldTendency`, calibrate per tavolo (test reale)
+Al test su iPhone i bot **non foldavano quasi mai**: un bluff pesante post-flop (o
+post-draw) veniva chiamato sistematicamente, perché le personalità calibravano sulla
+**sola matematica** di equity contro range uniforme (D-011) senza pesare i **segnali di
+pressione** dell'avversario. Mancava anche una differenziazione sensibile Classico/Rapido
+sulla propensione al fold. **Direzione:** due **nuove dimensioni additive** della
+`Personality` (in `GameEngine`, dove vive `Personality`), calibrate diversamente per i due
+tavoli (i preset per tavolo vivono in `GameWorld`; il motore resta ignaro dei tavoli).
+- **`pressureResistance` (0…1):** quanto resiste al fold di fronte a una **bet grossa**.
+  Meccanica (pura e testabile, `Personality.callThresholdMultiplier`): calcolato il
+  rapporto **bet/pot prima della bet**; se supera **0.6** (segnale forte di mano fatta),
+  la **soglia di equity per chiamare** viene moltiplicata per `1 + min(0.8, betFraction ×
+  (1 − pressureResistance) × 0.9)` — cresce molto per un bot pressure-shy, pochissimo per
+  uno stubborn. Calibrazione (bet 70% del pot): pR 0.3 → **+44%** equity richiesta; pR 0.9
+  → **+6%**. Le mani forti (che superano la `valueBar`) chiamano/rilanciano comunque: la
+  pressione morde **solo le mani marginali**.
+- **`trashFoldTendency` (0…1):** quanto folda **pre-flop** (Texas) / al **primo giro**
+  (Draw) le mani **chiaramente spazzatura**, anche senza pressione. Texas: garbage =
+  forza preflop (Chen normalizzato) sotto `0.18` (cattura 7-2o, 8-3o…, non i connettori
+  suited). Draw: garbage = `DrawStrategy.isPreDrawGarbage` (nessuna coppia e nessun
+  progetto → `optimalDiscards` butta 4 carte). Con probabilità `trashFoldTendency` il bot
+  folda la spazzatura invece di proseguire.
+- **Stabilità RNG:** entrambe non spostano lo stream per le decisioni non interessate — il
+  `trashRoll` è pescato **dopo** il `roll` principale e **solo** nel ramo garbage (guardia
+  `trashFoldTendency > 0`); la penalità di pressione è deterministica. I **default
+  riproducono il comportamento precedente**: `pressureResistance = 1.0` (nessuna penalità),
+  `trashFoldTendency = 0.0` (nessun trash-fold), così una personalità che non li imposta è
+  identica a prima (retrocompatibile — vedi il principio additivo in CONVENTIONS §1).
+**Valori — Classico (preset in `GameEngine`) / Rapido (in `WorldPersonalities.fast`,
+`GameWorld`):**
+| Archetipo | Classico pR / tFT | Rapido pR / tFT |
+|---|---|---|
+| Novice | 0.35 / 0.30 | 0.60 / 0.15 |
+| Rock   | 0.50 / 0.90 | 0.70 / 0.75 |
+| Aggressor | 0.75 / 0.15 | 0.90 / 0.05 |
+Al **Rapido** tutti più stubborn (pR più alta) e più propensi a giocare qualsiasi mano
+(tFT più bassa), coerente col carattere di scontro drammatico (D-037). **Motivazione
+narrativa:** rendere il **bluff possibile** al Classico (rock/novice folderanno visibilmente
+su pressione forte) mantenendo l'**intensità** al Rapido. Applicato a **Texas e Draw**
+(nel Draw: pressione al secondo giro, trash-fold al primo); le nuove dimensioni si
+integrano con le tre del Draw (D-038) senza sovrapposizioni (quelle: draw/apertura; queste:
+fold). Solo `GameEngine` (dimensioni+logica+preset Classico) + `GameWorld` (preset Rapido);
+motore/driver/flusso/UI non toccati. **Test:** moltiplicatore puro sui tre scenari;
+trash-fold la cui frequenza approssima `trashFoldTendency`; caratterizzazione Classico
+(rock/novice foldano più dell'aggressor su pressione) e Classico-vs-Rapido (il Rapido folda
+meno); analoghi per il Draw; mani forti mai foldate. 255 test verdi.

@@ -28,6 +28,15 @@ riscoprirle dalla conversazione. Il riassunto operativo per Claude Code sta in
   (seat/azione/risultato/mosse legali). Le astrazioni condivise dei bot
   (`Personality`) si estendono in modo **additivo** (nuovi dial con default), così un
   gioco non altera il comportamento di un altro.
+- **Le dimensioni della `Personality` sono additive e retrocompatibili (D-038/D-048).**
+  Aggiungere una nuova dimensione **non deve mai richiedere di modificare le personalità
+  esistenti** oltre a fornire un **default sensato** che **riproduca il comportamento
+  precedente** (es. `pressureResistance = 1.0` → nessuna penalità di pressione,
+  `trashFoldTendency = 0.0` → nessun trash-fold). Una personalità che non imposta la nuova
+  dimensione resta identica a prima; solo chi vuole il nuovo comportamento la valorizza.
+  La logica che la legge non deve spostare lo stream RNG quando la dimensione è al default
+  (pescare i valori extra solo nel ramo attivo), così i test deterministici esistenti non
+  si rompono.
 - **Regole "sull'onore" enforced allo showdown, non a monte (D-039).** Quando una
   regola di un gioco è tradizionalmente sull'onore (es. *jacks or better* per aprire
   nel Draw), il motore **non** la blocca all'azione ma la **traccia** (snapshot della

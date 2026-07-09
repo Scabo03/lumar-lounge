@@ -150,3 +150,19 @@ positivo/negativo + bluff riuscito su fold-out, determinismo, azioni illegali);
 **bot Draw** (`DrawBotTests`: dial delle personalità, scarto da manuale, azioni e
 scarti sempre legali e deterministici, disciplina di apertura, simulazione
 multi-mano con fiches conservate).
+
+## Dimensioni di fold della Personality (D-048)
+
+Due dimensioni additive della `Personality` pesano i **segnali di pressione**
+dell'avversario che la sola matematica di equity (D-011) ignora — così bluffare
+diventa possibile. Default retrocompatibili (comportamento identico a prima):
+
+| Dimensione | Cosa fa |
+|---|---|
+| `pressureResistance` (default 1.0) | Resistenza al fold di fronte a una **bet grossa** (> 60% del pot). Meccanica pura in `Personality.callThresholdMultiplier(betFraction:pressureResistance:)`: sopra il 60% del pot la **soglia di equity per chiamare** viene moltiplicata per `1 + min(0.8, betFraction·(1−pR)·0.9)`. Bet 70% del pot: pR 0.3 → +44% equity richiesta; pR 0.9 → +6%. Le mani forti chiamano/rilanciano comunque. |
+| `trashFoldTendency` (default 0.0) | Probabilità di **foldare spazzatura** pre-flop (Texas, forza Chen normalizzata < 0.18) o al primo giro (Draw, `DrawStrategy.isPreDrawGarbage`), anche senza pressione. |
+
+Entrambe valgono per Texas (`HeuristicBot`) e Draw (`HeuristicDrawBot`); non
+spostano lo stream RNG per le decisioni non interessate (trashRoll pescato dopo il
+roll e solo nel ramo garbage). I **valori Classico** vivono nei preset qui; i valori
+**Rapido** in `GameWorld` (`WorldPersonalities.fast`).

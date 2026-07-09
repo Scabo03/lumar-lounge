@@ -70,6 +70,14 @@ enum DrawStrategy {
         }
     }
 
+    /// Whether a five-card holding is clearly weak BEFORE the draw (D-048): no
+    /// pair and no real draw — i.e. the textbook play is to throw four cards away.
+    /// `optimalDiscards` returns four cards only for exactly this case (a made hand
+    /// keeps ≥2; a four-flush/four-straight keeps four), so it is the clean test.
+    static func isPreDrawGarbage(_ cards: [Card]) -> Bool {
+        optimalDiscards(from: cards).count == 4
+    }
+
     // MARK: - Draw detection (high-card holdings only)
 
     /// Four cards of one suit, if present (the cards to KEEP for a flush draw).

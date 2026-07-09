@@ -52,6 +52,22 @@ public struct HeuristicDrawBot: DrawBot {
         let raiseWhenStrong = 0.35 + 0.60 * p.aggression
         let bluffChance = p.bluffFrequency * (0.25 + 0.75 * p.aggression)
 
+        // Pressure: a big bet (> ~60% of the pot) demands more equity to call,
+        // inversely to pressureResistance — mostly bites in the big-bet second
+        // round, making a post-draw bluff work against a pressure-shy bot (D-048).
+        let potBefore = Double(max(1, context.potSize - context.toCall))
+        let betFraction = Double(context.toCall) / potBefore
+        let callBar = min(0.98, continueBar *
+            Personality.callThresholdMultiplier(betFraction: betFraction, pressureResistance: p.pressureResistance))
+
+        // First-round trash fold: a clearly weak pre-draw hand facing a bet is
+        // folded with probability trashFoldTendency (D-048). Drawn AFTER `roll` so
+        // non-garbage decisions are unchanged.
+        if context.phase == .firstBet, context.currentBet > 0, p.trashFoldTendency > 0,
+           DrawStrategy.isPreDrawGarbage(context.cards), botUnit(&rng) < p.trashFoldTendency {
+            return .fold
+        }
+
         if context.currentBet == 0 {
             // Nobody has bet: check, or open.
             if legal.canBet {
@@ -72,7 +88,7 @@ public struct HeuristicDrawBot: DrawBot {
         } else {
             // Facing a bet: fold / call / raise (opening rules no longer bind).
             if perceived >= valueBar && roll < raiseWhenStrong && legal.canRaise { return .raise }
-            if perceived >= continueBar { return legal.canCall ? .call : .fold }
+            if perceived >= callBar { return legal.canCall ? .call : .fold }   // pressure-adjusted (D-048)
             if roll < bluffChance && legal.canRaise { return .raise }
             return .fold
         }

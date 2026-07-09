@@ -17,6 +17,11 @@
 import Foundation
 
 public struct HeuristicBot: PokerBot {
+    /// Preflop hand strength (normalised Chen) below which a hand is "garbage"
+    /// worth trash-folding — captures 7-2o, 8-3o and the like, not suited
+    /// connectors or decent offsuit hands (D-048).
+    static let garbagePreflopThreshold = 0.18
+
     public let personality: Personality
     /// The bot's "soul seed": its identity for reproducible randomness.
     public let seed: UInt64
@@ -63,6 +68,22 @@ public struct HeuristicBot: PokerBot {
         let raiseWhenStrong = 0.35 + 0.60 * p.aggression
         let sizeFraction = 0.5 + 0.8 * p.aggression   // 0.5×…1.3× pot
 
+        // Pressure: a big bet (> ~60% of the pot before it) demands more equity to
+        // call, inversely to pressureResistance — this is what makes a bluff work
+        // against a pressure-shy bot (D-048). Small bets leave the bar unchanged.
+        let potBefore = Double(max(1, context.potSize - context.toCall))
+        let betFraction = Double(context.toCall) / potBefore
+        let callBar = min(0.98, continueBar *
+            Personality.callThresholdMultiplier(betFraction: betFraction, pressureResistance: p.pressureResistance))
+
+        // Pre-flop trash fold: a clearly weak hand facing any bet is folded with
+        // probability trashFoldTendency, even without heavy pressure (D-048). Drawn
+        // AFTER `roll` so every non-garbage decision is byte-identical to before.
+        if context.board.isEmpty, context.toCall > 0, p.trashFoldTendency > 0,
+           rawStrength < Self.garbagePreflopThreshold, botUnit(&rng) < p.trashFoldTendency {
+            return .fold
+        }
+
         // 3. Decide.
         if context.toCall == 0 {
             // Nothing to call: we can check for free.
@@ -78,7 +99,7 @@ public struct HeuristicBot: PokerBot {
             if perceived >= valueBar && roll < raiseWhenStrong && legal.canRaise {
                 return aggressiveAction(context, legal, fraction: sizeFraction)
             }
-            if perceived >= continueBar {
+            if perceived >= callBar {   // pressure-adjusted call threshold (D-048)
                 return legal.canCall ? .call : (legal.canCheck ? .check : .fold)
             }
             // Weak: mostly give up, sometimes bluff-raise.

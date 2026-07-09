@@ -33,6 +33,24 @@ public struct Personality: Equatable, Sendable {
     /// How much a recent swing (tilt) pushes it off its baseline.
     public let tiltReactivity: Double
 
+    // MARK: Fold-propensity dimensions (D-048)
+    //
+    // These two make bluffing possible: they weight the opponent's PRESSURE
+    // signals that the pure equity-vs-uniform-range maths (D-011) ignores. Both
+    // apply to Texas and to Five-Card Draw. Their defaults reproduce the previous
+    // behaviour exactly (no pressure fold, no trash fold), so adding them never
+    // changes a personality that doesn't set them (CONVENTIONS §4-bis).
+
+    /// How much the bot resists folding to a BIG bet (> ~60% of the pot, a strong
+    /// representation of a made hand). 1 = stubborn, calls big bets on mediocre
+    /// equity (the old behaviour); low = with marginal equity it folds to heavy
+    /// pressure. Modulates the extra equity a big bet demands to call.
+    public let pressureResistance: Double
+    /// How readily the bot folds a clearly weak hand pre-flop (Texas) / in the
+    /// first round (Draw), even without a bet. 0 = plays any garbage; high = folds
+    /// trash with this probability. 0 by default = never trash-folds (old behaviour).
+    public let trashFoldTendency: Double
+
     // MARK: Five-Card Draw dimensions
     //
     // These three dials only bite in the Five-Card Draw engine (opening, the
@@ -58,6 +76,8 @@ public struct Personality: Equatable, Sendable {
                 positionAwareness: Double,
                 rationality: Double,
                 tiltReactivity: Double,
+                pressureResistance: Double = 1.0,
+                trashFoldTendency: Double = 0.0,
                 drawDiscipline: Double = 0.5,
                 drawBluffiness: Double = 0.3,
                 openingDiscipline: Double = 0.7) {
@@ -69,9 +89,31 @@ public struct Personality: Equatable, Sendable {
         self.positionAwareness = positionAwareness.clamped01
         self.rationality = rationality.clamped01
         self.tiltReactivity = tiltReactivity.clamped01
+        self.pressureResistance = pressureResistance.clamped01
+        self.trashFoldTendency = trashFoldTendency.clamped01
         self.drawDiscipline = drawDiscipline.clamped01
         self.drawBluffiness = drawBluffiness.clamped01
         self.openingDiscipline = openingDiscipline.clamped01
+    }
+
+    // MARK: - Pressure heuristic (pure, shared by both bots — D-048)
+
+    /// The bet-to-pot ratio above which a bet reads as a strong "I have it"
+    /// signal (60% of the pot). Below it, no extra equity is demanded.
+    public static let pressureSignalRatio = 0.6
+
+    /// The MULTIPLIER applied to the base call-equity threshold when facing a bet
+    /// of `betFraction` × the pot (D-048). Returns 1.0 (no change) for small bets;
+    /// for big bets it grows, inversely to `pressureResistance`, so a
+    /// pressure-shy bot needs much more equity to call while a stubborn one barely
+    /// budges. Capped so the threshold at most roughly doubles.
+    ///
+    /// Calibration (bet = 70% of the pot): pressureResistance 0.3 → ≈ +44% equity
+    /// demanded; 0.9 → ≈ +6%.
+    public static func callThresholdMultiplier(betFraction: Double, pressureResistance: Double) -> Double {
+        guard betFraction > pressureSignalRatio else { return 1.0 }
+        let growth = Swift.min(0.8, betFraction * (1.0 - pressureResistance) * 0.9)
+        return 1.0 + growth
     }
 }
 
@@ -88,6 +130,8 @@ public extension Personality {
         positionAwareness: 0.15,
         rationality: 0.30,      // fallible reads
         tiltReactivity: 0.80,   // rides its emotions
+        pressureResistance: 0.35, // scared off by big bets
+        trashFoldTendency: 0.30,  // undisciplined, but folds trash sometimes
         drawDiscipline: 0.25,   // chaotic exchange — keeps the wrong cards
         drawBluffiness: 0.15,   // draws honestly, doesn't scheme
         openingDiscipline: 0.50 // doesn't always realise it holds openers
@@ -104,6 +148,8 @@ public extension Personality {
         positionAwareness: 0.70,
         rationality: 0.90,      // sticks to the maths
         tiltReactivity: 0.10,   // hard to rattle
+        pressureResistance: 0.50, // respects strong signals, not easily bullied
+        trashFoldTendency: 0.90,  // folds junk pre-flop almost always
         drawDiscipline: 0.90,   // textbook-correct exchange
         drawBluffiness: 0.05,   // never misrepresents the draw
         openingDiscipline: 0.95 // opens only with provable openers
@@ -120,6 +166,8 @@ public extension Personality {
         positionAwareness: 0.20, // ignores position
         rationality: 0.55,
         tiltReactivity: 0.55,
+        pressureResistance: 0.75, // calls big bets out of pride
+        trashFoldTendency: 0.15,  // plays far too many hands
         drawDiscipline: 0.50,   // tactically sound, but bends it to deceive
         drawBluffiness: 0.80,   // stands pat / short-draws to fake strength
         openingDiscipline: 0.20 // gambles on opening light, risks exposure

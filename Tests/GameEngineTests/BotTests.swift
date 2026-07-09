@@ -158,20 +158,111 @@ final class BotTests: XCTestCase {
     // MARK: - Tilt (emotional reactivity)
 
     func testTiltLoosensAReactivePersonality() {
-        // Same marginal hand; with a hot tilt a highly reactive bot should
-        // continue more often than when calm. Count across seeds.
+        // Same marginal made hand; with a hot tilt a highly reactive bot should
+        // continue more often than when calm. Count across seeds. The bet is kept
+        // BELOW the 60%-pot pressure signal (D-048) and the spot is POST-flop, so
+        // this isolates tilt from the pressure fold and the pre-flop trash fold.
         let hole = Hand(card(.eight, .spades), card(.five, .spades)) // weak, marginal
+        let board = [card(.king, .clubs), card(.nine, .hearts), card(.four, .diamonds)]
         func continues(tilt: Double) -> Int {
             var count = 0
             for seed in UInt64(0)..<40 {
-                // A steep price relative to the pot, so a calm bot folds often.
-                let ctx = facingBet(hole: hole, toCall: 50, currentBet: 50, pot: 40, stack: 800, tilt: tilt)
+                // toCall 30 into a 90 pot ⇒ bet is 50% of the pot before it (< 60%),
+                // a marginal spot where a calm bot often folds this weak holding.
+                let ctx = facingBet(hole: hole, toCall: 30, currentBet: 30, pot: 90,
+                                    stack: 800, board: board, tilt: tilt)
                 if HeuristicBot(personality: .eagerNovice, seed: seed).decide(ctx) != .fold { count += 1 }
             }
             return count
         }
         XCTAssertGreaterThan(continues(tilt: 0.9), continues(tilt: 0.0),
                              "Tilt should make a reactive bot continue more often")
+    }
+
+    // MARK: - Pressure resistance (D-048)
+
+    func testCallThresholdMultiplierMatchesCalibration() {
+        // A small bet (≤ 60% of the pot) demands no extra equity.
+        XCTAssertEqual(Personality.callThresholdMultiplier(betFraction: 0.5, pressureResistance: 0.3), 1.0)
+        XCTAssertEqual(Personality.callThresholdMultiplier(betFraction: 0.6, pressureResistance: 0.3), 1.0)
+        // A 70%-pot bet: pressure-shy demands ≈ +44%, stubborn ≈ +6%.
+        let shy = Personality.callThresholdMultiplier(betFraction: 0.7, pressureResistance: 0.3)
+        XCTAssertGreaterThan(shy, 1.35); XCTAssertLessThan(shy, 1.50)
+        let stubborn = Personality.callThresholdMultiplier(betFraction: 0.7, pressureResistance: 0.9)
+        XCTAssertGreaterThan(stubborn, 1.02); XCTAssertLessThan(stubborn, 1.12)
+        XCTAssertLessThan(stubborn, shy, "a stubborn bot demands less extra equity than a shy one")
+    }
+
+    func testBigBetPressureMakesShyBotsFoldMoreThanStubbornOnes() {
+        // Marginal equity (ace-high) POST-flop facing a pot-sized bet (100%>60%).
+        let hole = Hand(card(.ace, .spades), card(.three, .diamonds))
+        let board = [card(.king, .clubs), card(.nine, .hearts), card(.four, .diamonds)]
+        func folds(_ p: Personality) -> Int {
+            var f = 0
+            for seed in UInt64(0)..<40 {
+                let ctx = facingBet(hole: hole, toCall: 100, currentBet: 100, pot: 200,
+                                    stack: 800, opponents: 1, board: board)
+                if HeuristicBot(personality: p, seed: seed).decide(ctx) == .fold { f += 1 }
+            }
+            return f
+        }
+        let aggressor = folds(.hotAggressor)   // pressureResistance 0.75 → calls out of pride
+        XCTAssertGreaterThan(folds(.conservativeRock), aggressor, "the rock folds to heavy pressure more than the aggressor")
+        XCTAssertGreaterThan(folds(.eagerNovice), aggressor, "the scared novice folds to heavy pressure more than the aggressor")
+    }
+
+    func testStrongHandsNeverFoldToPressure() {
+        // A monster (top set) never folds however big the bet — pressure only bites
+        // marginal hands (D-048).
+        let hole = Hand(card(.king, .spades), card(.king, .hearts))
+        let board = [card(.king, .diamonds), card(.nine, .hearts), card(.four, .clubs)]
+        for personality in Personality.starting {
+            for seed in UInt64(0)..<12 {
+                // Pot-sized bet: 300 into a 300 pot ⇒ potSize (incl. the bet) = 600.
+                let ctx = facingBet(hole: hole, toCall: 300, currentBet: 300, pot: 600,
+                                    stack: 1000, opponents: 1, board: board)
+                XCTAssertNotEqual(HeuristicBot(personality: personality, seed: seed).decide(ctx), .fold,
+                                  "\(personality.name) folded top set to pressure (seed \(seed))")
+            }
+        }
+    }
+
+    // MARK: - Trash fold (D-048)
+
+    func testTrashFoldTendencyApproximatesTheFoldRate() {
+        // A loose caller that would otherwise call any garbage, so the observed
+        // fold rate on 7-2o isolates trashFoldTendency. Small bet → no pressure.
+        func looseCaller(trash: Double) -> Personality {
+            Personality(name: "Loose", tightness: 0.10, aggression: 0.0, bluffFrequency: 0.0,
+                        riskTolerance: 0.90, positionAwareness: 0.0, rationality: 1.0,
+                        tiltReactivity: 0.0, pressureResistance: 1.0, trashFoldTendency: trash)
+        }
+        let trash = Hand(card(.seven, .clubs), card(.two, .diamonds))   // the worst hand
+        func foldRate(_ p: Personality) -> Double {
+            var folds = 0; let n = 300
+            for seed in UInt64(0)..<UInt64(n) {
+                let ctx = facingBet(hole: trash, toCall: 10, currentBet: 10, pot: 60, stack: 800)
+                if HeuristicBot(personality: p, seed: seed).decide(ctx) == .fold { folds += 1 }
+            }
+            return Double(folds) / Double(n)
+        }
+        // With trashFoldTendency 0.0 the loose caller never trash-folds (control).
+        XCTAssertEqual(foldRate(looseCaller(trash: 0.0)), 0.0, accuracy: 0.001)
+        XCTAssertEqual(foldRate(looseCaller(trash: 0.90)), 0.90, accuracy: 0.08)
+        XCTAssertEqual(foldRate(looseCaller(trash: 0.20)), 0.20, accuracy: 0.08)
+    }
+
+    func testTrashFoldDoesNotFoldDecentHands() {
+        // A strong hand is never trash-folded, whatever the tendency.
+        let aces = Hand(card(.ace, .spades), card(.ace, .hearts))
+        let p = Personality(name: "Disciplined", tightness: 0.5, aggression: 0.3, bluffFrequency: 0.1,
+                            riskTolerance: 0.3, positionAwareness: 0.5, rationality: 1.0,
+                            tiltReactivity: 0.0, trashFoldTendency: 1.0)
+        for seed in UInt64(0)..<20 {
+            let ctx = facingBet(hole: aces, toCall: 10, currentBet: 10, pot: 60, stack: 800)
+            XCTAssertNotEqual(HeuristicBot(personality: p, seed: seed).decide(ctx), .fold,
+                              "aces trash-folded (seed \(seed))")
+        }
     }
 
     // MARK: - Honest information

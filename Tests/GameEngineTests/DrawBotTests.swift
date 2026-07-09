@@ -45,6 +45,64 @@ final class DrawBotTests: XCTestCase {
         XCTAssertEqual(p.openingDiscipline, 0.7)
     }
 
+    // MARK: - Fold-propensity dimensions in the Draw (D-048)
+
+    /// Builds a facing-a-bet context for the given phase, pot and to-call.
+    private func facingBet(cards: [Card], phase: DrawPhase, currentBet: Int, potSize: Int) -> DrawBotContext {
+        let legal = DrawLegalActions(seatID: 0, canFold: true, canCheck: false, canCall: true,
+                                     callAmount: currentBet, canBet: false, canRaise: true,
+                                     betUnit: phase == .secondBet ? 40 : 20, raisesRemaining: 3, hasOpeners: true)
+        return DrawBotContext(heroSeatID: 0, cards: cards, phase: phase, potSize: potSize,
+                              currentBet: currentBet, toCall: currentBet, heroStack: 800, legal: legal,
+                              seats: [], activeOpponents: 1, lateness: 0.5)
+    }
+
+    func testSecondRoundBigBetPressureFoldsMoreForShyBots() {
+        // A modest made hand (low trips) facing a pot-sized big bet after the draw —
+        // strong enough to call a small bet, marginal against heavy pressure. Two
+        // personalities identical but for pressureResistance: the shy one folds more.
+        let hand = [c(.five, .spades), c(.five, .hearts), c(.five, .diamonds), c(.king, .clubs), c(.two, .spades)]
+        func personality(pressure: Double) -> Personality {
+            Personality(name: "P", tightness: 0.5, aggression: 0.3, bluffFrequency: 0.0,
+                        riskTolerance: 0.4, positionAwareness: 0.5, rationality: 1.0,
+                        tiltReactivity: 0.0, pressureResistance: pressure)
+        }
+        func folds(_ p: Personality) -> Int {
+            var f = 0
+            for seed in UInt64(0)..<40 {
+                // 100 into a 100 pot ⇒ potSize (incl. the bet) = 200, bet = 100% of pot.
+                let ctx = facingBet(cards: hand, phase: .secondBet, currentBet: 100, potSize: 200)
+                if HeuristicDrawBot(personality: p, seed: seed).decideAction(ctx) == .fold { f += 1 }
+            }
+            return f
+        }
+        XCTAssertGreaterThan(folds(personality(pressure: 0.3)), folds(personality(pressure: 0.9)),
+                             "a pressure-shy bot should fold the big post-draw bet more than a stubborn one")
+    }
+
+    func testFirstRoundTrashFoldFoldsGarbageMoreWhenDisciplined() {
+        // A clearly weak pre-draw hand (no pair, no draw) facing a first-round bet:
+        // the disciplined bot (high trashFoldTendency) folds it far more.
+        let garbage = [c(.two, .spades), c(.seven, .hearts), c(.nine, .diamonds), c(.jack, .clubs), c(.king, .spades)]
+        XCTAssertTrue(DrawStrategy.isPreDrawGarbage(garbage))
+        func personality(trash: Double) -> Personality {
+            Personality(name: "P", tightness: 0.1, aggression: 0.0, bluffFrequency: 0.0,
+                        riskTolerance: 0.9, positionAwareness: 0.0, rationality: 1.0,
+                        tiltReactivity: 0.0, pressureResistance: 1.0, trashFoldTendency: trash)
+        }
+        func foldRate(_ p: Personality) -> Double {
+            var f = 0; let n = 200
+            for seed in UInt64(0)..<UInt64(n) {
+                let ctx = facingBet(cards: garbage, phase: .firstBet, currentBet: 20, potSize: 120)
+                if HeuristicDrawBot(personality: p, seed: seed).decideAction(ctx) == .fold { f += 1 }
+            }
+            return Double(f) / Double(n)
+        }
+        XCTAssertEqual(foldRate(personality(trash: 0.0)), 0.0, accuracy: 0.02)
+        XCTAssertGreaterThan(foldRate(personality(trash: 0.9)), 0.75,
+                             "a disciplined bot folds most first-round garbage")
+    }
+
     // MARK: - Textbook discards (pure strategy)
 
     func testOptimalDiscardsStandsPatOnMadeHands() {

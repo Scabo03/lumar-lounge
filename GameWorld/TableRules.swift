@@ -52,16 +52,23 @@ public enum WorldPersonalities {
 
     /// Fast-table variants: aggression, bluff and risk UP, tightness DOWN — visibly
     /// looser and pushier, but rationality kept moderate so they aren't just stupid.
+    /// They are also MORE STUBBORN and showdown-bound than at the Classic table
+    /// (higher pressureResistance) and play even more junk (lower trashFoldTendency),
+    /// to keep the Fast table's dramatic-clash character (D-037/D-048). Slots map to
+    /// the novice / rock / aggressor characters in order.
     public static let fast: [Personality] = [
-        Personality(name: "Riverwood Gambler",
+        Personality(name: "Riverwood Gambler",   // novice slot
                     tightness: 0.15, aggression: 0.75, bluffFrequency: 0.55, riskTolerance: 0.70,
-                    positionAwareness: 0.20, rationality: 0.45, tiltReactivity: 0.75),
-        Personality(name: "Loose Rock",
+                    positionAwareness: 0.20, rationality: 0.45, tiltReactivity: 0.75,
+                    pressureResistance: 0.60, trashFoldTendency: 0.15),
+        Personality(name: "Loose Rock",          // rock slot
                     tightness: 0.50, aggression: 0.55, bluffFrequency: 0.30, riskTolerance: 0.55,
-                    positionAwareness: 0.65, rationality: 0.80, tiltReactivity: 0.30),
-        Personality(name: "Wild Aggressor",
+                    positionAwareness: 0.65, rationality: 0.80, tiltReactivity: 0.30,
+                    pressureResistance: 0.70, trashFoldTendency: 0.75),
+        Personality(name: "Wild Aggressor",      // aggressor slot
                     tightness: 0.20, aggression: 0.97, bluffFrequency: 0.72, riskTolerance: 0.92,
-                    positionAwareness: 0.20, rationality: 0.50, tiltReactivity: 0.60),
+                    positionAwareness: 0.20, rationality: 0.50, tiltReactivity: 0.60,
+                    pressureResistance: 0.90, trashFoldTendency: 0.05),
     ]
 }
 

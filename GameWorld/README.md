@@ -147,3 +147,22 @@ partita distribuiva le stesse identiche carte (bug scoperto al primo test su dev
 test unitari continuano a iniettare seed fissi e restano deterministici; nuovi test
 (`SeedRandomizationTests`) verificano che in produzione (seed nil) sessioni successive
 diano carte diverse e che una sessione lunga abbia mani e vincitori vari.
+
+## Calibrazione delle personalità per tavolo (D-048)
+
+I preset dei bot per stile di tavolo (`WorldPersonalities`) ora differenziano anche
+la **propensione al fold** (dimensioni `pressureResistance`/`trashFoldTendency`,
+definite in `GameEngine`, D-048). Il motore resta ignaro dei tavoli: riceve
+personalità già calibrate.
+
+| Archetipo | Classico (pR / tFT) | Rapido (pR / tFT) |
+|---|---|---|
+| Novice | 0.35 / 0.30 | 0.60 / 0.15 |
+| Rock | 0.50 / 0.90 | 0.70 / 0.75 |
+| Aggressor | 0.75 / 0.15 | 0.90 / 0.05 |
+
+Al **Classico** rock e novice foldano visibilmente su una pressione forte (il bluff
+funziona); al **Rapido** tutti più stubborn e propensi a giocare qualsiasi mano
+(scontro drammatico, D-037). Il tavolo Whiskey del Draw usa i preset Classico.
+Caratterizzato dai test in `FastTablePersonalityTests` (il Rapido folda meno del
+Classico su pressione).
