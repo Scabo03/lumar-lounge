@@ -56,6 +56,13 @@ public struct DrawBotContext: Sendable {
     public let lateness: Double
     /// Emotional temperature from the driver (0 = calm). Defaults to calm.
     public let emotionalTemperature: Double
+    /// CONTEXTUAL personality override the driver applies for a boosted (decisive)
+    /// hand (D-053): added to the bot's aggression this hand only. 0 = no boost. The
+    /// bot's permanent `Personality` is never changed — this is per-context.
+    public let aggressionBonus: Double
+    /// CONTEXTUAL scale on the bot's trashFoldTendency this hand only (D-053):
+    /// 1 = unchanged, 0.5 = folds half as much garbage. Per-context, not permanent.
+    public let trashFoldScale: Double
     /// Deterministic fingerprint of this public situation + the hero's cards.
     public let fingerprint: UInt64
 
@@ -70,7 +77,9 @@ public struct DrawBotContext: Sendable {
                 seats: [DrawPublicSeat],
                 activeOpponents: Int,
                 lateness: Double,
-                emotionalTemperature: Double = 0) {
+                emotionalTemperature: Double = 0,
+                aggressionBonus: Double = 0,
+                trashFoldScale: Double = 1) {
         self.heroSeatID = heroSeatID
         self.cards = cards
         self.phase = phase
@@ -83,6 +92,8 @@ public struct DrawBotContext: Sendable {
         self.activeOpponents = activeOpponents
         self.lateness = lateness
         self.emotionalTemperature = emotionalTemperature
+        self.aggressionBonus = aggressionBonus
+        self.trashFoldScale = trashFoldScale
 
         var fp: UInt64 = 0xcbf2_9ce4_8422_2325
         func feed(_ value: UInt64) { fp = botMix64(fp ^ value) }
@@ -98,7 +109,8 @@ public struct DrawBotContext: Sendable {
 
     /// Builds the redacted betting context for the seat on turn in `hand`, or
     /// `nil` if `hand` is not currently asking a seat to bet.
-    public init?(actingIn hand: FiveCardDrawHand, emotionalTemperature: Double = 0) {
+    public init?(actingIn hand: FiveCardDrawHand, emotionalTemperature: Double = 0,
+                 aggressionBonus: Double = 0, trashFoldScale: Double = 1) {
         guard let heroID = hand.actingSeatID, let legal = hand.legalActions() else { return nil }
         guard let hero = hand.seats.first(where: { $0.id == heroID }) else { return nil }
 
@@ -120,7 +132,8 @@ public struct DrawBotContext: Sendable {
                   potSize: hand.pot, currentBet: hand.currentBet, toCall: toCall,
                   heroStack: hero.stack, legal: legal, seats: publicSeats,
                   activeOpponents: opponents, lateness: lateness,
-                  emotionalTemperature: emotionalTemperature)
+                  emotionalTemperature: emotionalTemperature,
+                  aggressionBonus: aggressionBonus, trashFoldScale: trashFoldScale)
     }
 }
 

@@ -61,6 +61,14 @@ riscoprirle dalla conversazione. Il riassunto operativo per Claude Code sta in
   eventi speciali, blind dinamiche), queste vivono nel **driver di sessione di
   GameWorld** (non nel motore, che resta puro) e sono **trasparenti** al giocatore
   tramite **annunci espliciti** del croupier o della sintesi — mai regole nascoste.
+- **Le meccaniche di accelerazione del ritmo vivono nel driver come override
+  contestuali (D-037/D-052/D-053).** Mani decisive, boost di puntate, ante progressivo
+  e simili vivono nel **driver di sessione** di GameWorld come **override contestuali
+  della singola mano**, **mai** come modifiche al **motore** (che riceve solo parametri
+  di config — ante, bet, cap raise — additivi e con default neutri) né alle
+  **personalità permanenti** dei bot (il boost si passa **via contesto** al bot, non
+  cambiando la sua `Personality`). Il default dei parametri additivi riproduce sempre il
+  comportamento standard.
 
 ## 2. Lingua del codice e del dominio
 
@@ -219,6 +227,17 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     volta (mp3 con completion reale → poi sintesi), così non si sovrappongono; e
     **de-duplica** le voci once-per-evento-logico (es. il pot: il produttore può
     emettere più `potAwarded` per i side pot — la voce va detta **una volta sola**).
+  - **Voci semanticamente uniche per mano → deduplicate via lista dichiarata, non
+    caso per caso (D-051).** La deduplicazione once-per-hand è una **regola generale**
+    del `SpeechConductor`: una **lista dichiarata in un solo punto**
+    (`SpeechConductor.oncePerHandVoices`) elenca le voci croupier che rappresentano un
+    momento **semanticamente unico** della mano (showdown, pot, split, squalifica
+    openers, mano decisiva, e ogni futura); il conductor le deduplica **automaticamente**
+    (una ripetizione sopprime il lead croupier/fallback; una sintesi che varia per
+    chiamata parla comunque). Per rendere una nuova voce once-per-hand la si **aggiunge
+    alla lista** — niente logica ad hoc per evento. Corollario: un evento che ha **una
+    sola** riga parlata dichiara croupier **+ fallback**, **non** anche una sintesi con
+    lo stesso testo (o le due parlerebbero due volte — il bug di D-051).
   - **Due sistemi audio parlanti → domini separati, mai concorrenti (D-028,
     supera D-024).** Quando VoiceOver e voci pre-registrate (croupier/bot)
     coesistono, **non farli competere sullo stesso evento** e **non risolvere

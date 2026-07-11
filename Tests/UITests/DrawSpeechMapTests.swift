@@ -48,9 +48,19 @@ final class DrawSpeechMapTests: XCTestCase {
         XCTAssertEqual(passed.croupier, SoundCatalog.voPassAndOut)
         XCTAssertEqual(passed.croupierFallback, .passedIn)
 
+        // Disqualification: ONE spoken line — croupier + its fallback, NO separate
+        // synthesis (which used to duplicate the fallback text, the repeat bug D-051).
         let dq = DrawSpeechMap.plan(for: .openersDisqualified(seatID: 3), heroSeatID: 0, names: names)
         XCTAssertEqual(dq.croupier, SoundCatalog.voOpenersDisqualified)
-        XCTAssertEqual(dq.synthesis, .openersDisqualified(seat: 3))
+        XCTAssertEqual(dq.croupierFallback, .openersDisqualified(seat: 3))
+        XCTAssertNil(dq.synthesis, "no synthesis: the fallback already carries the whole line")
+
+        // The decisive-hand cue: croupier + "mano decisiva" fallback (D-053).
+        let decisive = DrawSpeechMap.plan(for: .decisiveHandStarted(smallBet: 40, bigBet: 80, maxRaises: 5),
+                                          heroSeatID: 0, names: names)
+        XCTAssertEqual(decisive.croupier, SoundCatalog.voHighStakesDraw)
+        XCTAssertEqual(decisive.croupierFallback, .decisiveHand)
+        XCTAssertNil(decisive.synthesis)
     }
 
     func testPotAwardedPicksSplitVsSingleAndHeroVsOther() {

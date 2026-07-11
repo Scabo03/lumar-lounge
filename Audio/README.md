@@ -114,3 +114,13 @@ resta usabile senza crash. La mappatura `AudioScore` e il consumo del flusso son
 testati in `Tests/UITests/` (`AudioScoreTests`: azioni **senza** voce croupier,
 eventi istituzionali **sempre** col croupier, determinismo, director su un'intera
 sessione); il coordinamento temporale in `SpeechCoordinatorTests`.
+
+## Rifinitura Draw — nuovo slot croupier + dedup (D-051/D-053)
+
+- **Nuovo slot non consegnato:** `vo_it_high_stakes_draw.mp3` — annuncio della **mano
+  decisiva** al tavolo Whiskey (D-053). Coperto da **fallback di sintesi** "mano
+  decisiva" (D-030) finché non viene prodotto e depositato in `Resources/Audio/`.
+- **Deduplicazione once-per-hand consolidata (D-051):** la lista delle voci croupier
+  deduplicate una-volta-per-mano è dichiarata in **un solo punto**
+  (`SpeechConductor.oncePerHandVoices` in `UI`): showdown, pot, split, **openers
+  squalificati**, **mano decisiva**. Le voci di questa natura vanno aggiunte lì.

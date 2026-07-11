@@ -32,9 +32,31 @@ public final class DrawSessionDriver {
     // MARK: Fixed configuration
 
     public let capacity: Int
+    /// The BASE ante (the progressive ante starts here and returns to it, D-052).
     public let ante: Int
     public let smallBet: Int
     public let bigBet: Int
+    /// Whether the progressive ante is on (Whiskey table, D-052).
+    public let progressiveAnte: Bool
+    /// Whether decisive hands are on (Whiskey table, D-053).
+    public let decisiveHands: Bool
+
+    // MARK: Whiskey-table pace tuning (D-052/D-053)
+
+    /// The ante grows by this factor after each pass-and-out (composed, D-052).
+    private static let anteGrowth = 1.2
+    /// Decisive hands double the bet sizes and lift the raise cap (D-053).
+    private static let decisiveBetMultiplier = 2
+    private static let decisiveRaiseCap = 5
+    private static let normalRaiseCap = 3
+    /// Per-hand bot override in a decisive hand (D-053): more aggression, less trash-folding.
+    private static let decisiveAggressionBonus = 0.15
+    private static let decisiveTrashFoldScale = 0.5
+    /// A decisive hand triggers every 5–8 PLAYED hands (random per interval, D-053)…
+    private static let decisiveIntervalMin = 5
+    private static let decisiveIntervalMax = 8
+    /// …or is FORCED after this many consecutive pass-and-outs, to break the cycle.
+    private static let forceDecisiveAfterPasses = 3
     /// The base seed. When set (tests), each deal derives a DETERMINISTIC per-deal
     /// seed from it. When `nil` (production), each deal draws a FRESH RANDOM seed
     /// from the system RNG, so every deal — and every session — plays differently
@@ -55,6 +77,16 @@ public final class DrawSessionDriver {
     public private(set) var carriedPot: Int = 0
     /// Consecutive deals passed in so far (resets to 0 when one is played).
     public private(set) var consecutivePassed: Int = 0
+    /// The ante for the NEXT deal: grows 20% per pass-and-out, resets to base after a
+    /// played deal (D-052). Starts at the base ante.
+    public private(set) var currentAnte: Int
+    /// PLAYED hands since the last decisive hand (pass-and-outs don't advance it).
+    private var playedSinceDecisive = 0
+    /// The randomised threshold (5–8) at which the next decisive hand triggers.
+    private var nextDecisiveThreshold: Int
+    /// RNG for the decisive-interval choice: seeded (deterministic) in tests, `nil`
+    /// (system-random) in production — mirrors the shuffle-seed policy (D-047).
+    private var decisiveRNG: SeededGenerator?
     public private(set) var isDealInProgress: Bool = false
     public private(set) var hasEnded: Bool = false
 
@@ -75,7 +107,9 @@ public final class DrawSessionDriver {
                 ante: Int,
                 smallBet: Int,
                 bigBet: Int,
-                seed: UInt64? = nil) {
+                seed: UInt64? = nil,
+                progressiveAnte: Bool = false,
+                decisiveHands: Bool = false) {
         precondition((2...7).contains(capacity), "A draw table seats 2–7.")
         precondition((0..<capacity).contains(buttonPosition), "Button position out of range.")
         precondition(ante > 0 && smallBet > 0 && bigBet >= smallBet, "Invalid ante/bet sizes.")
@@ -96,11 +130,34 @@ public final class DrawSessionDriver {
         self.ante = ante
         self.smallBet = smallBet
         self.bigBet = bigBet
+        self.progressiveAnte = progressiveAnte
+        self.decisiveHands = decisiveHands
         self.baseSeed = seed
         self.positions = ring
         self.providers = providerMap
         self.buttonPosition = buttonPosition
         self.handNumber = 0
+        self.currentAnte = ante
+        // Seed the decisive-interval RNG deterministically in tests, randomly in
+        // production, then roll the first 5–8 threshold.
+        var rng = seed.map { SeededGenerator(seed: $0 ^ 0xDEC1_5117_0DDF_1A6E) }
+        if var g = rng {
+            self.nextDecisiveThreshold = Self.decisiveIntervalMin + Int(g.next() % UInt64(Self.decisiveIntervalMax - Self.decisiveIntervalMin + 1))
+            rng = g
+        } else {
+            self.nextDecisiveThreshold = Int.random(in: Self.decisiveIntervalMin...Self.decisiveIntervalMax)
+        }
+        self.decisiveRNG = rng
+    }
+
+    /// A fresh 5–8 threshold for the next decisive hand (deterministic in tests).
+    private func nextDecisiveInterval() -> Int {
+        if var g = decisiveRNG {
+            let value = Self.decisiveIntervalMin + Int(g.next() % UInt64(Self.decisiveIntervalMax - Self.decisiveIntervalMin + 1))
+            decisiveRNG = g
+            return value
+        }
+        return Int.random(in: Self.decisiveIntervalMin...Self.decisiveIntervalMax)
     }
 
     // MARK: - Queries
@@ -180,20 +237,37 @@ public final class DrawSessionDriver {
         let buttonID = engineButtonPlayerID()
         let engineButtonIndex = participants.firstIndex { $0.id == buttonID }!
 
+        // Is this hand DECISIVE (D-053)? Forced after three straight pass-and-outs,
+        // otherwise every 5–8 played hands. The ante is the (possibly grown) current
+        // ante (D-052); a decisive hand doubles the bets and lifts the raise cap.
+        let isDecisive = decisiveHands
+            && (consecutivePassed >= Self.forceDecisiveAfterPasses || playedSinceDecisive >= nextDecisiveThreshold)
+        let dealAnte = currentAnte
+        let dealSmallBet = isDecisive ? smallBet * Self.decisiveBetMultiplier : smallBet
+        let dealBigBet = isDecisive ? bigBet * Self.decisiveBetMultiplier : bigBet
+        let dealMaxRaises = isDecisive ? Self.decisiveRaiseCap : Self.normalRaiseCap
+        let aggressionBonus = isDecisive ? Self.decisiveAggressionBonus : 0
+        let trashFoldScale = isDecisive ? Self.decisiveTrashFoldScale : 1
+
         var hand = FiveCardDrawHand(seats: engineSeats,
                                     buttonIndex: engineButtonIndex,
-                                    ante: ante, smallBet: smallBet, bigBet: bigBet,
-                                    seed: dealSeed(dealIndex), carryPot: carriedPot)
+                                    ante: dealAnte, smallBet: dealSmallBet, bigBet: dealBigBet,
+                                    seed: dealSeed(dealIndex), carryPot: carriedPot,
+                                    maxRaisesPerRound: dealMaxRaises)
         dealIndex += 1
 
-        // Deal announced: hand began, antes posted, cards dealt (public + private).
+        // Deal announced: hand began, antes posted, (decisive cue,) cards dealt.
         await emit(.handBegan(
             handNumber: handNumber, buttonPosition: buttonPosition, buttonSeatID: buttonID,
-            ante: ante, smallBet: smallBet, bigBet: bigBet, carriedPot: carriedPot,
+            ante: dealAnte, smallBet: dealSmallBet, bigBet: dealBigBet, carriedPot: carriedPot,
             seats: participants.map { DrawSeatSnapshot(seatID: $0.id, position: $0.position, chips: $0.chips) }))
         for i in participants.indices {
             let seat = hand.seats[i]   // engineSeats mirror participants order
             await emit(.antePosted(seatID: seat.id, amount: seat.totalBet, isAllIn: seat.isAllIn))
+        }
+        // After the antes, before the cards: the croupier announces the decisive hand.
+        if isDecisive {
+            await emit(.decisiveHandStarted(smallBet: dealSmallBet, bigBet: dealBigBet, maxRaises: dealMaxRaises))
         }
         for i in participants.indices {
             let seat = hand.seats[i]
@@ -204,7 +278,8 @@ public final class DrawSessionDriver {
         // Drive the deal: betting actions and the draw exchange, narrated.
         var phaseSeen: DrawPhase = hand.phase
         while !hand.isComplete {
-            if let ctx = DrawBotContext(actingIn: hand) {
+            if let ctx = DrawBotContext(actingIn: hand,
+                                        aggressionBonus: aggressionBonus, trashFoldScale: trashFoldScale) {
                 let actingID = ctx.heroSeatID
                 let index = hand.seats.firstIndex { $0.id == actingID }!
                 let stackBefore = hand.seats[index].stack
@@ -242,7 +317,7 @@ public final class DrawSessionDriver {
         }
 
         let result = hand.result!
-        return await finish(result, participants: participants)
+        return await finish(result, participants: participants, ante: dealAnte, wasDecisive: isDecisive)
     }
 
     /// Convenience loop: plays deals while it can and `shouldContinue` allows.
@@ -260,7 +335,8 @@ public final class DrawSessionDriver {
 
     // MARK: - Finishing a deal
 
-    private func finish(_ result: DrawResult, participants: [DrawSessionPlayer]) async -> DrawHandOutcome {
+    private func finish(_ result: DrawResult, participants: [DrawSessionPlayer],
+                        ante dealAnte: Int, wasDecisive: Bool) async -> DrawHandOutcome {
         // Update chips for every participant, detect busts.
         var busted: [Int] = []
         for participant in participants {
@@ -273,15 +349,19 @@ public final class DrawSessionDriver {
         switch result.outcome {
         case .passedIn:
             // Progressive pot grows; button and played-hand counter stay put (D-040).
+            // The next deal's ante grows 20% (composed) — the pass-and-out penalty (D-052).
             carriedPot = result.carriedPot
             consecutivePassed += 1
+            if progressiveAnte {
+                currentAnte = Int((Double(currentAnte) * Self.anteGrowth).rounded())
+            }
             await emit(.passedIn(carriedPot: carriedPot, consecutivePassed: consecutivePassed))
             await emit(.handEnded(handNumber: handNumber, outcome: .passedIn, chips: chipsByPlayer))
             for id in busted.sorted() { await emit(.playerBusted(playerID: id)) }
             return DrawHandOutcome(handNumber: handNumber, buttonPosition: buttonPosition,
                                    participantIDs: participants.map { $0.id }, result: result,
-                                   wasPlayed: false, carriedPot: carriedPot,
-                                   consecutivePassed: consecutivePassed,
+                                   wasPlayed: false, ante: dealAnte, wasDecisive: wasDecisive,
+                                   carriedPot: carriedPot, consecutivePassed: consecutivePassed,
                                    bustedThisHand: busted.sorted(), chipsByPlayer: chipsByPlayer)
 
         case .showdown, .foldOut:
@@ -306,10 +386,17 @@ public final class DrawSessionDriver {
             let playedNumber = handNumber
             let outcome = DrawHandOutcome(handNumber: playedNumber, buttonPosition: buttonPosition,
                                           participantIDs: participants.map { $0.id }, result: result,
-                                          wasPlayed: true, carriedPot: 0, consecutivePassed: 0,
+                                          wasPlayed: true, ante: dealAnte, wasDecisive: wasDecisive,
+                                          carriedPot: 0, consecutivePassed: 0,
                                           bustedThisHand: busted.sorted(), chipsByPlayer: chipsByPlayer)
             carriedPot = 0
             consecutivePassed = 0
+            currentAnte = ante                     // played → ante returns to base (D-052)
+            playedSinceDecisive += 1               // this counts as a played hand (D-053)
+            if wasDecisive {                       // a played decisive hand re-rolls the interval
+                playedSinceDecisive = 0
+                nextDecisiveThreshold = nextDecisiveInterval()
+            }
             handNumber += 1
             buttonPosition = (buttonPosition + 1) % capacity   // dead button, advance one
             return outcome

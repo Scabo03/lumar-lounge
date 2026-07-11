@@ -321,3 +321,11 @@
 /* ⚠️ TEMPORARY (D-050) — free-play mode badge, to remove with the flag */
 "debug.freeplay.badge" = "FREE PLAY";
 "debug.freeplay.a11y" = "Free-play test mode active";
+
+/* ------------------------------------------------------------------ */
+/* M1.9 refinement — progressive ante + decisive hands at the Whiskey (D-052/D-053) */
+"draw.ante.label" = "Ante: %d";
+"draw.ante.a11y" = "ante of %d chips";
+"draw.decisive.banner" = "DECISIVE HAND";
+"draw.decisive.a11y" = "decisive hand, bets doubled";
+"draw.announce.decisive" = "decisive hand";

@@ -51,6 +51,50 @@ final class SpeechConductorTests: XCTestCase {
         XCTAssertEqual(audio.log.filter { $0.id == SoundCatalog.voPotAwarded }.count, 2)
     }
 
+    // MARK: - Consolidated once-per-hand de-dup (D-051)
+
+    func testOpenersDisqualificationSpeaksOncePerHandEvenIfEmittedTwice() async {
+        // The mp3 isn't produced yet → the fallback speaks; two disqualification
+        // signals for the same hand must still speak it ONCE (D-051).
+        let (audio, _, conductor, synths) = makeRig()
+        audio.missing = [SoundCatalog.voOpenersDisqualified.rawValue]
+        conductor.handBegan()
+        conductor.say(lead: SoundCatalog.voOpenersDisqualified, fallback: "giocatore 3 squalificato", priority: .high)
+        conductor.say(lead: SoundCatalog.voOpenersDisqualified, fallback: "giocatore 3 squalificato", priority: .high)
+        await drain()
+        XCTAssertTrue(audio.log.isEmpty)
+        XCTAssertEqual(synths().filter { $0.contains("squalificato") }.count, 1,
+                       "the disqualification line must be spoken exactly once")
+    }
+
+    func testDecisiveHandCuePlaysOncePerHand() async {
+        let (audio, _, conductor, _) = makeRig()   // mp3 present in the rig
+        conductor.handBegan()
+        conductor.say(lead: SoundCatalog.voHighStakesDraw)
+        conductor.say(lead: SoundCatalog.voHighStakesDraw)
+        await drain()
+        XCTAssertEqual(audio.log.filter { $0.id == SoundCatalog.voHighStakesDraw }.count, 1)
+    }
+
+    func testOncePerHandListIsTheSingleDeclaredSource() async {
+        // Every once-per-hand voice is declared in ONE place and consulted by the
+        // conductor (D-051) — no per-event ad-hoc logic.
+        let list = SpeechConductor.oncePerHandVoices
+        XCTAssertTrue(list.isSuperset(of: [
+            SoundCatalog.voShowdown, SoundCatalog.voPotAwarded, SoundCatalog.voSplitPot,
+            SoundCatalog.voOpenersDisqualified, SoundCatalog.voHighStakesDraw,
+        ]))
+        // `admits` reflects that same list: admitted before, refused after playing.
+        let (_, _, conductor, _) = makeRig()
+        conductor.handBegan()
+        XCTAssertTrue(conductor.admits(SoundCatalog.voOpenersDisqualified))
+        conductor.say(lead: SoundCatalog.voOpenersDisqualified, fallback: "x", priority: .high)
+        await drain()
+        XCTAssertFalse(conductor.admits(SoundCatalog.voOpenersDisqualified))
+        // A voice NOT on the list is always admitted.
+        XCTAssertTrue(conductor.admits(SoundCatalog.voFlop))
+    }
+
     // MARK: - mp3 → synthesis fallback (D-030)
 
     func testFallbackSpeaksWhenMp3IsMissing() async {

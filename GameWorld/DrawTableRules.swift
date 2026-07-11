@@ -14,18 +14,27 @@ public struct DrawTableRules: Equatable, Sendable {
     public let bigBet: Int
     public let buyIn: Int
     public let personalities: [Personality]   // the three bots
+    /// Whether the ante grows after each pass-and-out (D-052).
+    public let progressiveAnte: Bool
+    /// Whether decisive hands are enabled (D-053).
+    public let decisiveHands: Bool
 
-    public init(ante: Int, smallBet: Int, bigBet: Int, buyIn: Int, personalities: [Personality]) {
+    public init(ante: Int, smallBet: Int, bigBet: Int, buyIn: Int, personalities: [Personality],
+                progressiveAnte: Bool = false, decisiveHands: Bool = false) {
         self.ante = ante
         self.smallBet = smallBet
         self.bigBet = bigBet
         self.buyIn = buyIn
         self.personalities = personalities
+        self.progressiveAnte = progressiveAnte
+        self.decisiveHands = decisiveHands
     }
 
-    /// The Riverwood's "Sala Whiskey": ante 10, 20/40 limit, 2000 buy-in, the
-    /// three starting personalities (which carry sensible draw dials, D-038).
+    /// The Riverwood's "Sala Whiskey": ante 10, 20/40 limit, 2000 buy-in, the three
+    /// starting personalities (D-038), plus the pace mechanics — a progressive ante
+    /// (D-052) and decisive hands (D-053) — to keep the traditional draw from dragging.
     public static let riverwoodWhiskey = DrawTableRules(
         ante: 10, smallBet: 20, bigBet: 40, buyIn: 2000,
-        personalities: [.eagerNovice, .conservativeRock, .hotAggressor])
+        personalities: [.eagerNovice, .conservativeRock, .hotAggressor],
+        progressiveAnte: true, decisiveHands: true)
 }

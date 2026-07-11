@@ -166,3 +166,24 @@ funziona); al **Rapido** tutti più stubborn e propensi a giocare qualsiasi mano
 (scontro drammatico, D-037). Il tavolo Whiskey del Draw usa i preset Classico.
 Caratterizzato dai test in `FastTablePersonalityTests` (il Rapido folda meno del
 Classico su pressione).
+
+## Rifinitura Draw: ante progressivo + mani decisive al Whiskey (D-052/D-053)
+
+Due meccaniche di ritmo, attive **solo** al tavolo Whiskey (flag di `DrawTableRules`),
+tutte nel `DrawSessionDriver` come override contestuali — il motore riceve solo
+parametri di config:
+
+- **Ante progressivo (D-052):** ogni pass-and-out fa crescere l'ante della mano dopo
+  del **20% composto** (base 20 → 24 → 29 → 35 → …); la mano giocata usa l'ante
+  cresciuto, poi si torna al base. `currentAnte` cresce/reset nel driver; il valore è
+  in `handBegan`/`DrawHandOutcome.ante`.
+- **Mani decisive (D-053):** ogni **5–8 mani giocate** (soglia casuale per intervallo,
+  deterministica coi test) — o **forzata** dopo **3 pass-and-out consecutivi** — una
+  mano è decisiva: **bet ×2**, **cap raise 3→5** (via `FiveCardDrawHand.maxRaisesPerRound`,
+  parametro additivo del motore), **bot boostati** (aggression +0.15, trashFold ×0.5)
+  passati **via `DrawBotContext`** (mai modificando la `Personality`). Evento nuovo
+  `decisiveHandStarted`; `DrawHandOutcome.wasDecisive`.
+
+Coperto da `DrawDecisiveHandTests` (crescita ante e ritorno al base, forzatura dopo 3
+pass, bet/cap raddoppiati, intervallo 5–8, disattivazione) e dal boost bot in
+`DrawBotTests`.

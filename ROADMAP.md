@@ -273,6 +273,15 @@ croupier** non ancora prodotti → **fallback di sintesi** (D-030). Motore/Texas
 toccati. 234 unit test + XCUITest del tavolo Draw + navigazione aggiornata.
 **Dipendenze:** M1.9, M2.1. **Note di design:** D-042, D-043, D-044 in `CLAUDE.md`.
 
+### ✅ Rifinitura post-M1.9 — ritmo del Whiskey + dedup vocale (D-051/052/053)
+Dopo il test reale: (1) fix della **squalifica per openers ripetuta** con
+**consolidamento** della deduplicazione once-per-hand come lista dichiarata unica del
+`SpeechConductor` (D-051); (2) **ante progressivo** (+20% per pass-and-out, ritorno al
+base dopo una mano giocata, D-052) e (3) **mani decisive** ogni 5–8 mani (o forzate dopo
+3 pass-and-out) con bet ×2, cap raise 3→5 e boost contestuale dei bot (D-053), tutto solo
+al tavolo Whiskey e tutto nel driver (motore ricevi parametri additivi). Nuovo slot audio
+`vo_it_high_stakes_draw` (fallback sintesi). 272 test verdi.
+
 > Prossimi sotto-mattoni M2 (residui): cassa/DLC per ricarica gettoni, produzione dei
 > file audio predisposti (ambient Riverwood + voci croupier del Draw), secondo casinò.
 

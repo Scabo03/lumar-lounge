@@ -105,6 +105,7 @@ struct DrawTableCenterView: View {
                 phaseIndicator
                 buttonIndicator
                 potView
+                if state.decisive { decisiveBanner }
                 if state.passedIn { passedBanner }
             }
             .padding(.horizontal, 12)
@@ -132,6 +133,12 @@ struct DrawTableCenterView: View {
             Text(verbatim: uiLocalized("pot.label", state.pot))
                 .font(.headline.monospacedDigit())
                 .foregroundStyle(TablePalette.primaryText)
+            if state.ante > 0 {
+                Text(verbatim: uiLocalized("draw.ante.label", state.ante))
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(TablePalette.secondaryText)
+                    .accessibilityIdentifier("drawtable.ante")
+            }
             if state.carriedPot > 0 {
                 Text(verbatim: uiLocalized("draw.pot.carried", state.carriedPot))
                     .font(.caption.monospacedDigit())
@@ -145,6 +152,16 @@ struct DrawTableCenterView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("drawtable.pot")
         .accessibilityLabel(Text(verbatim: potA11y))
+    }
+
+    private var decisiveBanner: some View {
+        Text(verbatim: uiLocalized("draw.decisive.banner"))
+            .font(.caption.weight(.heavy))
+            .foregroundStyle(.black)
+            .padding(.horizontal, 12).padding(.vertical, 4)
+            .background(Capsule().fill(TablePalette.redSuit).overlay(Capsule().fill(Color.orange.opacity(0.9))))
+            .accessibilityIdentifier("drawtable.decisive")
+            .accessibilityLabel(Text(verbatim: uiLocalized("draw.decisive.a11y")))
     }
 
     private var passedBanner: some View {
@@ -173,9 +190,10 @@ struct DrawTableCenterView: View {
         return uiLocalized("button.a11y", name)
     }
     private var potA11y: String {
-        state.carriedPot > 0
+        let base = state.carriedPot > 0
             ? uiLocalized("draw.pot.a11y.carried", state.pot, state.carriedPot)
             : uiLocalized("pot.a11y", state.pot)
+        return state.ante > 0 ? base + ", " + uiLocalized("draw.ante.a11y", state.ante) : base
     }
 }
 

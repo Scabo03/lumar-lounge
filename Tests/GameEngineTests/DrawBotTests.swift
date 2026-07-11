@@ -47,14 +47,55 @@ final class DrawBotTests: XCTestCase {
 
     // MARK: - Fold-propensity dimensions in the Draw (D-048)
 
-    /// Builds a facing-a-bet context for the given phase, pot and to-call.
-    private func facingBet(cards: [Card], phase: DrawPhase, currentBet: Int, potSize: Int) -> DrawBotContext {
+    /// Builds a facing-a-bet context for the given phase, pot and to-call, with an
+    /// optional decisive-hand boost (D-053).
+    private func facingBet(cards: [Card], phase: DrawPhase, currentBet: Int, potSize: Int,
+                           aggressionBonus: Double = 0, trashFoldScale: Double = 1) -> DrawBotContext {
         let legal = DrawLegalActions(seatID: 0, canFold: true, canCheck: false, canCall: true,
                                      callAmount: currentBet, canBet: false, canRaise: true,
                                      betUnit: phase == .secondBet ? 40 : 20, raisesRemaining: 3, hasOpeners: true)
         return DrawBotContext(heroSeatID: 0, cards: cards, phase: phase, potSize: potSize,
                               currentBet: currentBet, toCall: currentBet, heroStack: 800, legal: legal,
-                              seats: [], activeOpponents: 1, lateness: 0.5)
+                              seats: [], activeOpponents: 1, lateness: 0.5,
+                              aggressionBonus: aggressionBonus, trashFoldScale: trashFoldScale)
+    }
+
+    // MARK: - Decisive-hand contextual boost (D-053)
+
+    func testDecisiveBoostHalvesTrashFolding() {
+        // A loose caller that would otherwise call garbage, so the fold rate isolates
+        // trashFoldTendency; the decisive scale of 0.5 should roughly halve it.
+        let garbage = [c(.two, .spades), c(.seven, .hearts), c(.nine, .diamonds), c(.jack, .clubs), c(.king, .spades)]
+        let p = Personality(name: "P", tightness: 0.1, aggression: 0.0, bluffFrequency: 0.0,
+                            riskTolerance: 0.9, positionAwareness: 0.0, rationality: 1.0,
+                            tiltReactivity: 0.0, pressureResistance: 1.0, trashFoldTendency: 0.8)
+        func foldRate(scale: Double) -> Double {
+            var f = 0; let n = 300
+            for seed in UInt64(0)..<UInt64(n) {
+                let ctx = facingBet(cards: garbage, phase: .firstBet, currentBet: 20, potSize: 120, trashFoldScale: scale)
+                if HeuristicDrawBot(personality: p, seed: seed).decideAction(ctx) == .fold { f += 1 }
+            }
+            return Double(f) / Double(n)
+        }
+        XCTAssertEqual(foldRate(scale: 1.0), 0.80, accuracy: 0.08)   // normal
+        XCTAssertEqual(foldRate(scale: 0.5), 0.40, accuracy: 0.08)   // decisive: halved
+    }
+
+    func testDecisiveBoostRaisesTheValueRaiseRate() {
+        // A strong made hand facing a bet: with the aggression bonus the bot raises
+        // (rather than just calls) more often. No boost reproduces the base rate.
+        let strong = [c(.ace, .spades), c(.ace, .hearts), c(.ace, .diamonds), c(.king, .clubs), c(.king, .spades)] // full house
+        let p = Personality.eagerNovice
+        func raiseRate(bonus: Double) -> Int {
+            var r = 0
+            for seed in UInt64(0)..<60 {
+                let ctx = facingBet(cards: strong, phase: .secondBet, currentBet: 40, potSize: 120, aggressionBonus: bonus)
+                if HeuristicDrawBot(personality: p, seed: seed).decideAction(ctx) == .raise { r += 1 }
+            }
+            return r
+        }
+        XCTAssertGreaterThan(raiseRate(bonus: 0.15), raiseRate(bonus: 0.0),
+                             "the decisive aggression bonus should make the bot raise strong hands more")
     }
 
     func testSecondRoundBigBetPressureFoldsMoreForShyBots() {

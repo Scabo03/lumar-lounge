@@ -90,6 +90,11 @@ public final class DrawAudioDirector {
                                              : bed(SoundCatalog.ambRiverwoodCalm1, SoundCatalog.ambLoungeCalm1),
                                    duration: 0.8)
 
+        case .decisiveHandStarted:
+            // A decisive hand opens on the tense bed, like the Fast Texas table (D-037/D-053).
+            allInInPlay = true   // keep it tense until the pot is awarded (restore then)
+            audio.crossfadeAmbient(to: SoundCatalog.ambLoungeTense, duration: 0.8)
+
         case let .playerActed(_, action, _):
             if DrawSpeechMap.isAllIn(action), !allInInPlay {
                 allInInPlay = true

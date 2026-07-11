@@ -97,6 +97,11 @@ public enum DrawEventPayload: Equatable, Sendable {
     /// A seat posted its ante (all-in for less if short).
     case antePosted(seatID: Int, amount: Int, isAllIn: Bool)
 
+    /// This hand is DECISIVE (D-053): emitted after the antes and before the cards,
+    /// so the croupier can announce it and Audio can raise the tension. `smallBet`/
+    /// `bigBet` in the preceding `handBegan` already carry the boosted (doubled) sizes.
+    case decisiveHandStarted(smallBet: Int, bigBet: Int, maxRaises: Int)
+
     /// Public: seat X received its five cards (values withheld).
     case cardsDealt(seatID: Int)
     /// Private (audience `.player(seatID)`): the seat's own five cards.

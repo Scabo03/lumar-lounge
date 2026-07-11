@@ -47,6 +47,11 @@ public struct DrawHandOutcome: Sendable {
     public let result: DrawResult
     /// Whether the deal was actually played (false when passed in).
     public let wasPlayed: Bool
+    /// The ante every seat posted for this deal — grows with the progressive ante
+    /// after each pass-and-out, resets to base after a played deal (D-052).
+    public let ante: Int
+    /// Whether this deal was a DECISIVE hand (boosted bets/cap, D-053).
+    public let wasDecisive: Bool
     /// The progressive pot carried FORWARD after this deal (0 when a deal was
     /// played and its pot awarded).
     public let carriedPot: Int

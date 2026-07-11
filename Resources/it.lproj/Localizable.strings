@@ -322,3 +322,11 @@
 /* ⚠️ TEMPORANEO (D-050) — badge modalità gioco libero, da rimuovere col flag */
 "debug.freeplay.badge" = "GIOCO LIBERO";
 "debug.freeplay.a11y" = "Modalità test gioco libero attiva";
+
+/* ------------------------------------------------------------------ */
+/* M1.9 rifinitura — ante progressivo + mani decisive al Whiskey (D-052/D-053) */
+"draw.ante.label" = "Ante: %d";
+"draw.ante.a11y" = "ante di %d fiche";
+"draw.decisive.banner" = "MANO DECISIVA";
+"draw.decisive.a11y" = "mano decisiva, puntate raddoppiate";
+"draw.announce.decisive" = "mano decisiva";

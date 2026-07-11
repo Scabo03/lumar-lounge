@@ -33,6 +33,10 @@ public struct FiveCardDrawHand {
     public let ante: Int
     public let smallBet: Int
     public let bigBet: Int
+    /// Maximum RAISES allowed per betting round (the opening bet is not a raise).
+    /// Traditional draw caps at 3 (bet + 3 raises = 4 escalations); a table may pass
+    /// a higher cap for a boosted hand (config only — the engine stays rule-agnostic).
+    public let maxRaisesPerRound: Int
     /// Index (into `seats`) of the button/dealer.
     public let buttonIndex: Int
     /// Chips carried into this deal from prior passed-in deals (variant B). They
@@ -86,17 +90,20 @@ public struct FiveCardDrawHand {
                 smallBet: Int,
                 bigBet: Int,
                 seed: UInt64,
-                carryPot: Int = 0) {
+                carryPot: Int = 0,
+                maxRaisesPerRound: Int = 3) {
         precondition((2...7).contains(seatConfigs.count), "Five-Card Draw seats 2–7 players.")
         precondition(seatConfigs.indices.contains(buttonIndex), "Button index out of range.")
         precondition(ante > 0 && smallBet > 0 && bigBet >= smallBet, "Invalid ante/bet sizes.")
         precondition(seatConfigs.allSatisfy { $0.stack > 0 }, "Every seat must have a positive stack.")
         precondition(Set(seatConfigs.map(\.id)).count == seatConfigs.count, "Seat ids must be unique.")
         precondition(carryPot >= 0, "Carry pot cannot be negative.")
+        precondition(maxRaisesPerRound >= 1, "At least one raise must be allowed per round.")
 
         self.ante = ante
         self.smallBet = smallBet
         self.bigBet = bigBet
+        self.maxRaisesPerRound = maxRaisesPerRound
         self.buttonIndex = buttonIndex
         self.carryPot = carryPot
         self.seats = seatConfigs.map {
@@ -221,7 +228,7 @@ public struct FiveCardDrawHand {
         let toCall = max(0, currentBet - seat.streetBet)
         let maxTo = seat.streetBet + seat.stack
         let canReopen = !seat.hasActed || actionReopened
-        let underCap = aggressiveCount < 4
+        let underCap = aggressiveCount < maxRaisesPerRound + 1
 
         return DrawLegalActions(
             seatID: seat.id,
@@ -232,7 +239,7 @@ public struct FiveCardDrawHand {
             canBet: currentBet == 0 && seat.stack > 0,
             canRaise: currentBet > 0 && maxTo > currentBet && underCap && canReopen,
             betUnit: betUnit,
-            raisesRemaining: max(0, 4 - aggressiveCount),
+            raisesRemaining: max(0, maxRaisesPerRound + 1 - aggressiveCount),
             hasOpeners: FiveCardDrawHand.qualifies(seat.cards)
         )
     }
@@ -292,7 +299,7 @@ public struct FiveCardDrawHand {
 
     private mutating func applyRaise(_ index: Int) throws {
         guard currentBet > 0 else { throw DrawActionError.cannotRaiseNothingToRaise }
-        guard aggressiveCount < 4 else { throw DrawActionError.raiseCapReached }
+        guard aggressiveCount < maxRaisesPerRound + 1 else { throw DrawActionError.raiseCapReached }
         let maxTo = seats[index].streetBet + seats[index].stack
         guard maxTo > currentBet else { throw DrawActionError.cannotRaiseNothingToRaise }
         guard !seats[index].hasActed || actionReopened else { throw DrawActionError.actionNotReopened }

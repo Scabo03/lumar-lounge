@@ -137,7 +137,8 @@ public final class DrawTableViewModel: ObservableObject {
                                                                                 seed: UInt64(bot.id) * 101 &+ rootSeed)))
         }
         self.driver = DrawSessionDriver(capacity: 4, seats: assignments, buttonPosition: 0,
-                                        ante: rules.ante, smallBet: rules.smallBet, bigBet: rules.bigBet, seed: seed)
+                                        ante: rules.ante, smallBet: rules.smallBet, bigBet: rules.bigBet, seed: seed,
+                                        progressiveAnte: rules.progressiveAnte, decisiveHands: rules.decisiveHands)
 
         var names = [0: uiLocalized("seat.name.you")]
         for (bot, key) in zip(bots, nameKeys) { names[bot.id] = uiLocalized(key) }
@@ -224,12 +225,18 @@ public final class DrawTableViewModel: ObservableObject {
             state = DrawTableReducer.reduce(state, payload)
             speak(payload, "ante")
             if carriedPot > 0 {                       // the progressive pot grew (D-040)
+                // ONE line (D-051): the croupier voice, or its fallback until the mp3
+                // exists — not a synthesis too, which would double the same text.
                 conductor.say(lead: SoundCatalog.voCarriedPot,
-                              synthesis: DrawSpeechMap.text(for: .carriedPot(carriedPot)),
                               fallback: DrawSpeechMap.text(for: .carriedPot(carriedPot)),
                               priority: .high, reason: "carried-pot")
             }
             await pace(payload, human: DrawPacing.seconds(for: payload))
+
+        case .decisiveHandStarted:
+            state = DrawTableReducer.reduce(state, payload)
+            speak(payload, "decisive")            // croupier "mano decisiva" (once, D-053)
+            await pace(payload, human: 0.9)
 
         case let .privateCards(seatID, _) where seatID == heroSeatID:
             state = DrawTableReducer.reduce(state, payload)

@@ -36,11 +36,21 @@ public final class SpeechConductor {
     private var isBusy = false
     private var oncePerHandPlayed: Set<String> = []
 
-    private static let oncePerHand: Set<String> = [
-        SoundCatalog.voShowdown.rawValue,
-        SoundCatalog.voPotAwarded.rawValue,
-        SoundCatalog.voSplitPot.rawValue,
+    /// THE single declared list of croupier voices that represent a semantically
+    /// UNIQUE moment of the hand, and so are spoken at most ONCE per hand even when
+    /// the event that carries them is emitted several times (D-051, generalises the
+    /// D-029/D-045 pot fix). To make a new voice once-per-hand, add it HERE — no
+    /// per-event ad-hoc logic. On a repeat the croupier LEAD (its mp3, or the declared
+    /// fallback) is suppressed; a per-call synthesis that legitimately differs each
+    /// time (e.g. each player's hand read at showdown) still speaks.
+    public static let oncePerHandVoices: Set<SoundID> = [
+        SoundCatalog.voShowdown,
+        SoundCatalog.voPotAwarded,
+        SoundCatalog.voSplitPot,
+        SoundCatalog.voOpenersDisqualified,   // openers disqualification (D-051)
+        SoundCatalog.voHighStakesDraw,        // decisive-hand cue (D-053)
     ]
+    private static let oncePerHand: Set<String> = Set(oncePerHandVoices.map { $0.rawValue })
 
     public init(audio: AudioServicing, queue: AnnouncementQueue) {
         self.audio = audio

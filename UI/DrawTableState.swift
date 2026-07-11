@@ -77,11 +77,17 @@ public struct DrawTableState: Equatable, Sendable {
     public var passedIn: Bool
     /// The last consecutive-passed count reported (for the banner text).
     public var consecutivePassed: Int
+    /// True during a DECISIVE hand (doubled bets, higher cap — D-053), for a banner.
+    public var decisive: Bool
+    /// The ante posted this deal — grows with the progressive ante (D-052), shown so
+    /// the player sees the table getting more expensive after pass-and-outs.
+    public var ante: Int
 
     public init(seats: [DrawSeatPresentation] = [], pot: Int = 0, carriedPot: Int = 0,
                 buttonSeatID: Int? = nil, handNumber: Int? = nil, phase: DrawTablePhase = .idle,
                 heroSeatID: Int? = nil, heroCards: [Card]? = nil, activeSeatID: Int? = nil,
-                passedIn: Bool = false, consecutivePassed: Int = 0) {
+                passedIn: Bool = false, consecutivePassed: Int = 0, decisive: Bool = false,
+                ante: Int = 0) {
         self.seats = seats
         self.pot = pot
         self.carriedPot = carriedPot
@@ -93,6 +99,8 @@ public struct DrawTableState: Equatable, Sendable {
         self.activeSeatID = activeSeatID
         self.passedIn = passedIn
         self.consecutivePassed = consecutivePassed
+        self.decisive = decisive
+        self.ante = ante
     }
 
     public static let empty = DrawTableState()
@@ -124,8 +132,9 @@ public enum DrawTableReducer {
         case let .playerLeft(playerID):
             next.seats.removeAll { $0.id == playerID }
 
-        case let .handBegan(handNumber, _, buttonSeatID, _, _, _, carriedPot, seats):
+        case let .handBegan(handNumber, _, buttonSeatID, ante, _, _, carriedPot, seats):
             next.handNumber = handNumber
+            next.ante = ante
             next.pot = carriedPot
             next.carriedPot = carriedPot
             next.buttonSeatID = buttonSeatID
@@ -133,6 +142,7 @@ public enum DrawTableReducer {
             next.heroCards = nil
             next.activeSeatID = nil
             next.passedIn = false
+            next.decisive = false
             for snapshot in seats {
                 mutate(&next, snapshot.seatID) {
                     $0.chips = snapshot.chips
@@ -146,6 +156,9 @@ public enum DrawTableReducer {
                     $0.isButton = snapshot.seatID == buttonSeatID
                 }
             }
+
+        case .decisiveHandStarted:
+            next.decisive = true
 
         case let .antePosted(seatID, amount, isAllIn):
             mutate(&next, seatID) {

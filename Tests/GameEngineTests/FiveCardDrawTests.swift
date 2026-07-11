@@ -188,6 +188,25 @@ final class FiveCardDrawTests: XCTestCase {
         XCTAssertNoThrow(try hand.apply(.call))
     }
 
+    func testRaiseCapParameterAllowsMoreRaises() throws {
+        // A boosted hand (decisive) may lift the cap: bet + 5 raises = 6 escalations.
+        var hand = FiveCardDrawHand(seats: seats([1000, 1000, 1000, 1000]), buttonIndex: 0,
+                                    ante: 10, smallBet: 20, bigBet: 40, seed: 7, maxRaisesPerRound: 5)
+        try hand.apply(.bet)     // seat1 opens   (1) -> 20
+        try hand.apply(.raise)   // seat2         (2) -> 40
+        try hand.apply(.raise)   // seat3         (3) -> 60
+        try hand.apply(.raise)   // seat0         (4) -> 80
+        try hand.apply(.raise)   // seat1         (5) -> 100
+        try hand.apply(.raise)   // seat2 cap     (6) -> 120
+        XCTAssertEqual(hand.currentBet, 120)
+        let legal = hand.legalActions()!
+        XCTAssertFalse(legal.canRaise, "the 6th escalation is the cap for maxRaisesPerRound 5")
+        XCTAssertEqual(legal.raisesRemaining, 0)
+        XCTAssertThrowsError(try hand.apply(.raise)) {
+            XCTAssertEqual($0 as? DrawActionError, .raiseCapReached)
+        }
+    }
+
     // MARK: - The draw
 
     func testDrawReplacesDiscardedCards() throws {

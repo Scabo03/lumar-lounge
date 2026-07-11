@@ -82,6 +82,9 @@ public enum SoundCatalog {
     public static let voPassAndOut = SoundID("vo_it_pass_and_out")           // not delivered
     public static let voCarriedPot = SoundID("vo_it_carried_pot")            // not delivered
     public static let voOpenersDisqualified = SoundID("vo_it_openers_disqualified") // not delivered
+    /// Whiskey-table decisive-hand cue (D-053) — NOT delivered yet → synthesis
+    /// fallback "mano decisiva" declared in the UI mapping (D-030).
+    public static let voHighStakesDraw = SoundID("vo_it_high_stakes_draw")   // not delivered
 
     // MARK: Bot voices (7)
     public static let vobNoviceExcited = SoundID("vob_novice_excited_01")
@@ -120,7 +123,7 @@ public enum SoundCatalog {
         (voActionFold, .croupier), (voActionCheck, .croupier), (voActionCall, .croupier),
         (voActionRaise, .croupier), (voActionAllIn, .croupier), (voPotAwarded, .croupier), (voSplitPot, .croupier),
         (voAnte, .croupier), (voDrawPhase, .croupier), (voPassAndOut, .croupier),
-        (voCarriedPot, .croupier), (voOpenersDisqualified, .croupier),
+        (voCarriedPot, .croupier), (voOpenersDisqualified, .croupier), (voHighStakesDraw, .croupier),
         (vobNoviceExcited, .botVoice), (vobNoviceDisappointed, .botVoice), (vobNoviceNervous, .botVoice),
         (vobRockGrunt, .botVoice), (vobAggressorConfident, .botVoice), (vobAggressorTaunt, .botVoice),
         (vobAggressorBluffGiveaway, .botVoice),

@@ -53,6 +53,7 @@ final class DrawSessionEventTests: XCTestCase {
         case .playerLeft: return "playerLeft"
         case .handBegan: return "handBegan"
         case .antePosted: return "antePosted"
+        case .decisiveHandStarted: return "decisiveHandStarted"
         case .cardsDealt: return "cardsDealt"
         case .privateCards: return "privateCards"
         case .playerActed: return "playerActed"

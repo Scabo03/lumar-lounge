@@ -34,6 +34,11 @@ public struct HeuristicDrawBot: DrawBot {
     public func decideAction(_ context: DrawBotContext) -> DrawAction {
         let legal = context.legal
         let p = personality
+        // CONTEXTUAL boost for a decisive hand (D-053): more aggression and less
+        // trash-folding, applied to THIS decision only — the permanent Personality is
+        // untouched. No boost (bonus 0 / scale 1) reproduces the normal behaviour.
+        let aggression = (p.aggression + context.aggressionBonus).clamped01
+        let trashFold = (p.trashFoldTendency * context.trashFoldScale).clamped01
         var rng = SeededGenerator(seed: botMix64(seed ^ context.fingerprint))
 
         // Perceived strength: the made hand, coloured by fallibility and tilt.
@@ -46,11 +51,11 @@ public struct HeuristicDrawBot: DrawBot {
             ? Double(context.toCall) / Double(context.potSize + context.toCall)
             : 0
         let continueBar = (potOdds + (p.tightness - 0.5) * 0.30 - p.riskTolerance * 0.20 - tilt * 0.10).clamped01
-        let valueBar = clamp(0.72 - 0.32 * p.aggression - tilt * 0.10, low: 0.30, high: 0.95)
+        let valueBar = clamp(0.72 - 0.32 * aggression - tilt * 0.10, low: 0.30, high: 0.95)
 
         let roll = botUnit(&rng)
-        let raiseWhenStrong = 0.35 + 0.60 * p.aggression
-        let bluffChance = p.bluffFrequency * (0.25 + 0.75 * p.aggression)
+        let raiseWhenStrong = 0.35 + 0.60 * aggression
+        let bluffChance = p.bluffFrequency * (0.25 + 0.75 * aggression)
 
         // Pressure: a big bet (> ~60% of the pot) demands more equity to call,
         // inversely to pressureResistance — mostly bites in the big-bet second
@@ -63,8 +68,8 @@ public struct HeuristicDrawBot: DrawBot {
         // First-round trash fold: a clearly weak pre-draw hand facing a bet is
         // folded with probability trashFoldTendency (D-048). Drawn AFTER `roll` so
         // non-garbage decisions are unchanged.
-        if context.phase == .firstBet, context.currentBet > 0, p.trashFoldTendency > 0,
-           DrawStrategy.isPreDrawGarbage(context.cards), botUnit(&rng) < p.trashFoldTendency {
+        if context.phase == .firstBet, context.currentBet > 0, trashFold > 0,
+           DrawStrategy.isPreDrawGarbage(context.cards), botUnit(&rng) < trashFold {
             return .fold
         }
 

@@ -41,6 +41,8 @@ public enum DrawSynthLine: Equatable, Sendable {
     case yourTurnContext(toCall: Int, pot: Int)
     case drawPhase
     case passedIn
+    /// The decisive-hand announcement (D-053), until vo_it_high_stakes_draw.mp3 exists.
+    case decisiveHand
     /// A seat's revealed hand at showdown — spoken as its COMBINATION plus a
     /// relevant kicker, never card-by-card (D-045).
     case shown(who: String, category: HandCategory, bestFive: [Card])
@@ -91,9 +93,16 @@ public enum DrawSpeechMap {
                                   synthesis: .shown(who: name(seatID), category: category, bestFive: bestFive))
 
         case let .openersDisqualified(seatID):
+            // ONE spoken line (D-051): the croupier voice, or — until the mp3 exists —
+            // its declared synthesis fallback. NOT a separate synthesis too, or the
+            // fallback and the synthesis would both speak the same text (the repeat bug).
             return DrawSpeechPlan(croupier: SoundCatalog.voOpenersDisqualified,
-                                  synthesis: .openersDisqualified(seat: seatID),
                                   croupierFallback: .openersDisqualified(seat: seatID))
+
+        case .decisiveHandStarted:
+            // The croupier announces the decisive hand (D-053); mp3 not produced yet →
+            // synthesis fallback "mano decisiva". A once-per-hand voice (D-051).
+            return DrawSpeechPlan(croupier: SoundCatalog.voHighStakesDraw, croupierFallback: .decisiveHand)
 
         case let .potAwarded(_, _, winnerSeatIDs):
             let split = winnerSeatIDs.count > 1
@@ -141,6 +150,8 @@ public enum DrawSpeechMap {
             return uiLocalized("draw.announce.drawphase")
         case .passedIn:
             return uiLocalized("draw.announce.passedin")
+        case .decisiveHand:
+            return uiLocalized("draw.announce.decisive")
         case let .shown(who, category, bestFive):
             return uiLocalized("announce.shown", who, SpeechMap.handDescription(category: category, bestFive: bestFive))
         case let .openersDisqualified(seat):
@@ -182,7 +193,7 @@ public enum DrawSpeechMap {
     public static func priority(for line: DrawSynthLine) -> AnnouncementPriority {
         switch line {
         case .heroCards, .heroDrewCards, .yourTurnContext, .heroWon, .splitWon, .sessionWon, .sessionLost,
-             .openersDisqualified, .passedIn, .carriedPot:
+             .openersDisqualified, .passedIn, .carriedPot, .decisiveHand:
             return .high
         case .otherWon, .opponentAction, .opponentDrew, .shown, .ante, .drawPhase:
             return .medium

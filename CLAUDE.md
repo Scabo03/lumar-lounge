@@ -1166,3 +1166,58 @@ i test dell'economia già passano `freePlay: false` esplicitamente. **Test:** `P
 in free-play (reset a 5000 ignorando il salvato, buy-in ignorato, saldo pinnato); XCUITest
 `FreePlayUITests` (badge presente su Home e Riverwood, saldo 5000, tutti i tavoli — incluso
 il Draw da 2000 — entrabili). 260 test verdi.
+
+### D-051 — Deduplicazione once-per-hand come regola generale del `SpeechConductor` (fix squalifica ripetuta)
+La voce di **squalifica per openers** veniva detta **due volte** di fila. **Causa reale**
+(verificata, non due eventi): la `DrawSpeechMap.plan(.openersDisqualified)` dichiarava
+**sia** un `synthesis` **sia** un `croupierFallback` con lo **stesso testo** seat-specifico;
+col mp3 non ancora prodotto, il `SpeechConductor` diceva il fallback **e poi** la sintesi
+identica (stesso anti-pattern del pot in D-045). Stessa cosa scoperta e sistemata anche per
+la voce del **pot progressivo** (`carriedPot`), che aveva la stessa doppia dichiarazione.
+**Fix locale:** per questi eventi il piano ha **una sola** riga parlata — croupier + il suo
+fallback, **niente sintesi separata** che la duplichi. **Consolidamento:** la
+deduplicazione è ora una **lista dichiarata unica** `SpeechConductor.oncePerHandVoices`
+(showdown, pot, split, **openers disqualified**, **decisive-hand**), consultata
+automaticamente dal conductor — per rendere una voce once-per-hand basta **aggiungerla
+lì**, senza logica ad hoc per evento. Su una ripetizione il **lead** croupier (mp3 o
+fallback) è soppresso; una sintesi che varia legittimamente per chiamata (es. la mano di
+ogni giocatore allo showdown) parla comunque. **Principio in CONVENTIONS §4.** Solo `UI`.
+Test: due segnali di squalifica per la stessa mano → voce detta **una volta**; dedup della
+voce decisiva; la lista è la fonte unica (`admits` la rispetta). Vive nel `SpeechConductor`.
+
+### D-052 — Ante progressivo al tavolo Whiskey del Draw
+Il Draw tradizionale (ante fisso, limit, pass-and-out) ha un ritmo lento: mezz'ora senza
+bust. **Meccanica (solo Whiskey):** ogni **pass-and-out** fa crescere l'ante della mano
+successiva del **20% composto** rispetto all'ante corrente (base 20 → 24 → 29 → 35 → …,
+arrotondato); l'incremento continua finché una mano viene **giocata**, poi l'ante **torna
+al base** per la mano dopo. La mano giocata **usa** l'ante cresciuto (più drammatica). Il
+pot progressivo (D-040) di conseguenza cresce più in fretta. **Vive nel driver**
+(`DrawSessionDriver`, flag `progressiveAnte`): `currentAnte` cresce a ogni passed, si
+resetta a `ante` (base) dopo una giocata; il valore effettivo è nell'evento `handBegan` e
+nell'outcome (`ante`). Il motore riceve l'ante come parametro, non lo decide. La UI mostra
+"Ante: N" (cresce a vista). Test: crescita 20% per pass-and-out, ritorno al base dopo una
+mano giocata. Vive in `GameWorld`; motore non toccato.
+
+### D-053 — Mani decisive al tavolo Whiskey (innesco casuale + forzato, boost temporaneo)
+Per far volare le fiches senza snaturare le regole: ogni **5–8 mani giocate** (soglia
+**casuale** per intervallo, deterministica coi test come D-047) una mano è **decisiva**;
+inoltre **forzata** dopo **tre pass-and-out consecutivi** (rompe il ciclo). Struttura della
+mano decisiva: il croupier la annuncia dopo gli ante e prima delle carte
+(`vo_it_high_stakes_draw.mp3`, **non consegnato → fallback sintesi "mano decisiva"**, D-030);
+**bet raddoppiate** (small/big ×2), **cap raise da 3 a 5**, e i **bot boostati per quella
+sola mano** (aggression +0.15, trashFoldTendency ×0.5). Al termine si torna al normale.
+Interazione con l'ante progressivo (D-052): un pass-and-out **non** avanza il contatore
+delle mani giocate; una decisiva forzata dopo 3 pass **usa comunque** l'ante progressivo
+alto. Ambient teso (`amb_lounge_tense_01`) durante la decisiva, ritorno al calm dopo il pot
+(come il Rapido Texas D-037). **Architettura — tutto nel driver come override contestuale:**
+il contatore/innesco e i valori boostati vivono in `DrawSessionDriver` (flag
+`decisiveHands`); il **cap raise** è ora un **parametro additivo** del motore
+(`FiveCardDrawHand.maxRaisesPerRound`, default 3 → comportamento invariato); il **boost dei
+bot** è passato **via contesto** (`DrawBotContext.aggressionBonus`/`trashFoldScale`,
+additivi, default 0/1 → nessun cambio) e applicato dal `HeuristicDrawBot` alla singola
+decisione — la **`Personality` permanente non è mai modificata**. Nuovo evento
+`decisiveHandStarted`; UI mostra un banner "MANO DECISIVA". Test: forzatura dopo 3 pass,
+bet/cap raddoppiati, intervallo osservato in 5–8 su 20 seed, boost bot (trashFold dimezzato,
+raise aumentati), disattivazione. Solo `GameEngine` (parametri additivi) + `GameWorld`
+(logica) + `UI`/`Audio` (reazione); flusso eventi esteso di un caso, motore-regole non
+ristrutturato. 272 test verdi. **Slot audio nuovo:** `vo_it_high_stakes_draw` (fallback).
