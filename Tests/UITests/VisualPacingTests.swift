@@ -51,4 +51,35 @@ final class VisualPacingTests: XCTestCase {
         try? await Task.sleep(nanoseconds: 60_000_000)
         XCTAssertTrue(conductor.isIdle && queue.isQuiet, "a silent event doesn't stall the visuals")
     }
+
+    // MARK: - The safeguard: the visual wait is never unbounded (D-056)
+
+    func testSafeguardProceedsWhenTheChannelNeverGoesQuiet() async {
+        let start = Date()
+        // A channel that never reports quiet (the device stall: a lost mp3 completion,
+        // a queue item awaiting a notification that never arrives).
+        let quiet = await SpokenChannelPacing.awaitQuiet(isQuiet: { false }, maxWait: 0.3, step: 0.02)
+        let waited = Date().timeIntervalSince(start)
+        XCTAssertFalse(quiet, "the safeguard reports it proceeded WITHOUT the channel going quiet")
+        XCTAssertGreaterThanOrEqual(waited, 0.25, "it does wait up to the safeguard before proceeding")
+        XCTAssertLessThan(waited, 1.5, "but the UI never blocks indefinitely on a stuck spoken channel")
+    }
+
+    func testAwaitQuietReturnsImmediatelyWhenAlreadyQuiet() async {
+        let quiet = await SpokenChannelPacing.awaitQuiet(isQuiet: { true }, maxWait: 3.0)
+        XCTAssertTrue(quiet)
+    }
+
+    func testAwaitQuietStopsAsSoonAsTheChannelBecomesQuiet() async {
+        var ticks = 0
+        let quiet = await SpokenChannelPacing.awaitQuiet(isQuiet: { ticks += 1; return ticks > 3 },
+                                                         maxWait: 3.0, step: 0.02)
+        XCTAssertTrue(quiet, "it stops waiting the moment the channel is quiet, not at the safeguard")
+        XCTAssertLessThan(ticks, 20, "it did not spin all the way to the safeguard")
+    }
+
+    func testAwaitQuietHonoursCancellation() async {
+        let quiet = await SpokenChannelPacing.awaitQuiet(isQuiet: { false }, isCancelled: { true }, maxWait: 5.0)
+        XCTAssertFalse(quiet, "a cancelled task stops waiting at once")
+    }
 }

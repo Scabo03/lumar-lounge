@@ -117,15 +117,32 @@ public final class AudioEngine: NSObject, AudioServicing, AVAudioPlayerDelegate 
             return
         }
         player.volume = gain(for: category)
+        let key = ObjectIdentifier(player)
         if completion != nil {
             player.delegate = self
-            let key = ObjectIdentifier(player)
             completions[key] = completion
             completionPlayers[key] = player
         }
         player.prepareToPlay()
         SpokenLog.log("PLAY \(id.rawValue) [\(category.rawValue)]")
-        player.play()
+        let started = player.play()
+        // The completion MUST always fire, or a caller awaiting the sequence (the
+        // SpeechConductor, which holds the whole spoken channel while an mp3 plays)
+        // hangs forever — and with app VoiceOver mode ON the UI then blocks (D-056).
+        // The finish delegate is not guaranteed on device (a failed or interrupted
+        // play never calls it), so we back it with two safety nets:
+        //  • play() returned false → fire immediately;
+        //  • otherwise a timeout of the clip's duration + margin.
+        if completion != nil {
+            if !started {
+                DispatchQueue.main.async { [weak self] in self?.fireCompletionFallback(key) }
+            } else {
+                let timeout = max(0.5, player.duration) + 0.6
+                DispatchQueue.main.asyncAfter(deadline: .now() + timeout) { [weak self] in
+                    self?.fireCompletionFallback(key)
+                }
+            }
+        }
         oneShots.append(player)
         if oneShots.count > maxOverlap { oneShots.removeFirst() }
         if category.isSpoken {
@@ -169,10 +186,16 @@ public final class AudioEngine: NSObject, AudioServicing, AVAudioPlayerDelegate 
     // MARK: - AVAudioPlayerDelegate
 
     public func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        let key = ObjectIdentifier(player)
-        let done = completions.removeValue(forKey: key)
+        fireCompletionFallback(ObjectIdentifier(player))
+    }
+
+    /// Fires a registered completion at most once, whoever gets there first — the
+    /// finish delegate, the play()-failed path, or the duration timeout (D-056). The
+    /// dictionary lookup is the guard against a double-fire.
+    private func fireCompletionFallback(_ key: ObjectIdentifier) {
+        guard let done = completions.removeValue(forKey: key) else { return }
         completionPlayers.removeValue(forKey: key)
-        done?()
+        done()
     }
 
     /// Whether a sound's file is present in the bundle (fast, no decode). Drives

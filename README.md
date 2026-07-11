@@ -137,6 +137,15 @@ intatti. Cinque nuove voci di croupier del Draw sono predisposte con **fallback 
 sintesi** finché gli mp3 non verranno prodotti. **234 unit test verdi** più gli
 XCUITest del tavolo Draw e della navigazione.
 
+Dopo altri test su iPhone reale (Tavolo Rapido con VoiceOver), una **rifinitura del
+layer VoiceOver e audio** (D-054…D-058, tutta in `UI`/`Audio`): la pronuncia fonetica
+ora è **garantita su ogni pulsante** da un test che scandisce i sorgenti (chiuso il
+Check/Call idle); il turno umano è più asciutto (niente "per chiamare X" ridondante col
+pulsante Call); il ritmo adattivo con VoiceOver ON ha una **salvaguardia anti-blocco** e
+la voce del croupier ha la **completion garantita** (risolto il blocco pre-flop); ogni
+schermata e modale **atterra il focus VoiceOver** sul primo elemento a ogni transizione;
+e le voci dei bot **bustati** non si sentono più. **280 unit test verdi.**
+
 > **🏁 La prima fase è completa.** Il gioco base è funzionante end-to-end — motore
 > completo, bot credibili, sessione multi-mano, flusso di eventi, UI giocabile e
 > accessibile, e **audio pieno**: i 47 file mp3 consegnati (atmosfera, carte,

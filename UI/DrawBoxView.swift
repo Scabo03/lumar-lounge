@@ -20,15 +20,15 @@ struct DrawBoxView: View {
     @ObservedObject var model: DrawTableViewModel
     let box: DrawBoxState
 
-    @AccessibilityFocusState private var focused: Bool
-
     var body: some View {
         VStack(spacing: 16) {
             Text(verbatim: uiLocalized("draw.box.title"))
                 .font(.headline).foregroundStyle(TablePalette.primaryText)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityLabel(Text(verbatim: uiLocalized("draw.box.title.a11y", box.discardCount)))
-                .accessibilityFocused($focused)
+                // Land VoiceOver on the title (which reads the instruction + count) when
+                // the box opens (D-044, via the shared focus-landing pattern D-057).
+                .voiceOverFocusLanding()
 
             HStack(spacing: 8) {
                 ForEach(Array(box.cards.enumerated()), id: \.offset) { index, card in
@@ -60,7 +60,6 @@ struct DrawBoxView: View {
                     .strokeBorder(TablePalette.accent, lineWidth: 2)))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("drawbox")
-        .onAppear { DispatchQueue.main.async { focused = true } }
     }
 
     private func cardButton(_ card: Card, index: Int) -> some View {

@@ -268,6 +268,48 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     swipe esplicito
     (`−`, valore, `+`, all-in, poi conferma/annulla) e ogni elemento con
     identifier e label fonetica. Riusare questa forma per input analoghi.
+  - **La pronuncia curata copre OGNI elemento UI accessibile, non solo le voci
+    parlate (D-054).** La resa fonetica italiana dei termini poker vale per qualunque
+    cosa VoiceOver legga: pulsanti, badge, etichette di stato, non solo le sintesi
+    della `SpeechMap`. **Ogni accessibility label deve usare la chiave `.a11y`
+    fonetica**, mai la stringa *visibile* inglese (che l'italiano leggerebbe male —
+    "Raise"→"Ace"). `PhoneticsTests` non verifica solo il valore delle stringhe ma
+    **scandisce i sorgenti UI** (guardiano statico sugli action bar) per assicurare che
+    il codice cabli davvero le chiavi `.a11y` come label. Lista canonica dei termini in
+    §4/D-049. È la seconda volta che lo stesso termine sfugge in un contesto diverso: il
+    guardiano statico è la difesa strutturale contro il ripetersi.
+  - **Un annuncio contestuale dinamico non deve duplicare un pulsante visibile (D-055).**
+    Se un controllo mostra e pronuncia già un'informazione (il pulsante "Call X" dice la
+    cifra da chiamare quando VoiceOver ci arriva), **non** ripeterla in una sintesi
+    contestuale: è ridondante e rischia di interrompere l'utente mentre esplora altro
+    (es. le proprie carte). Il pulsante parla da sé; la sintesi tace su ciò che è già
+    sullo schermo e agganciabile.
+  - **Il ritmo adattivo con VoiceOver ON ha un timeout di salvaguardia (D-056).** Quando
+    la UI attende la fine del canale parlato prima di avanzare (modalità VoiceOver
+    dell'app ON, D-034), l'attesa **non è mai illimitata**: un tetto cumulativo
+    (`SpokenChannelPacing.awaitQuiet`, ~3 s) fa **procedere comunque** la UI se il canale
+    non si quieta (una completion audio persa, una notifica che non arriva). **L'usabilità
+    reale ha precedenza sulla perfezione della sintesi**: meglio un breve sovrapporsi di
+    annunci che una UI congelata che ruba una scelta all'utente. In parallelo, lo strato
+    audio **garantisce** che una completion (di cui un consumatore attende la sequenza)
+    scatti sempre — delegate di fine, `play()` fallito, o timeout — così la causa a monte
+    non si presenta.
+  - **Ogni schermata e ogni modale dichiara il proprio primo elemento di focus VoiceOver
+    (D-057).** A ogni cambio significativo di visualizzazione (schermata o modale/overlay)
+    il focus VoiceOver **atterra esplicitamente** sul primo elemento, così non resta
+    stranito su un elemento della schermata precedente (swipe → "tonk" di fine corsa).
+    Pattern riusabile `.voiceOverFocusLanding()`: `.screenChanged` per ri-scansionare +
+    `@AccessibilityFocusState` per portare il focus (deferito un runloop). Il
+    `.screenChanged` è **instradato dalla `AnnouncementQueue`** (unico punto che posta a
+    VoiceOver, D-032). Va **prima** degli eventuali annunci contestuali della coda (canale
+    separato: non competono).
+  - **Le voci caratteriali dei bot si scelgono dallo stato ATTUALE del tavolo, mai da uno
+    snapshot congelato (D-058).** Le `vob_` (e ogni voce/reazione di un partecipante) sono
+    selezionate **a ogni scelta** consultando i posti realmente in gioco nella mano
+    corrente (`handBegan.seats`) e quelli bustati (`.playerBusted`), **non** una lista
+    calcolata all'inizio della sessione: `handEnded.chips` continua a elencare i bustati a
+    0, quindi un confronto con uno start stantio li farebbe "reagire" per sempre. **Un bot
+    bustato non emette più alcuna voce.**
 
 ## 5. Testabilità
 

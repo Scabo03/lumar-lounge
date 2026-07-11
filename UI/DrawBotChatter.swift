@@ -18,6 +18,9 @@ final class DrawBotChatter {
     private let characters: [Int: BotCharacter]
     private var rng: SeededGenerator
     private var stacks: [Int: Int] = [:]
+    /// The seats playing the CURRENT hand — a voiceline is only chosen for a live
+    /// seat, so an eliminated bot is never voiced (D-058).
+    private var activeSeats: Set<Int> = []
     private var voicedLastAction: [Int: Bool] = [:]
 
     init(heroSeatID: Int, characters: [Int: BotCharacter], seed: UInt64) {
@@ -28,6 +31,7 @@ final class DrawBotChatter {
 
     func handBegan(seats: [DrawSeatSnapshot]) {
         for s in seats { stacks[s.seatID] = s.chips }
+        activeSeats = Set(seats.map { $0.seatID })
         voicedLastAction.removeAll()
     }
 
@@ -35,7 +39,7 @@ final class DrawBotChatter {
     func actionVoice(seat: Int, action: DrawActedAction) -> SoundID? {
         let stackBefore = stacks[seat] ?? 0
         stacks[seat, default: 0] -= committed(action)
-        guard seat != heroSeatID, let character = characters[seat] else { return nil }
+        guard seat != heroSeatID, activeSeats.contains(seat), let character = characters[seat] else { return nil }
         if voicedLastAction[seat] == true { voicedLastAction[seat] = false; return nil }
 
         let (candidate, probability) = candidate(for: character, action: action, stackBefore: stackBefore)

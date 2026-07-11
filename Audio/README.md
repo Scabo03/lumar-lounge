@@ -124,3 +124,14 @@ sessione); il coordinamento temporale in `SpeechCoordinatorTests`.
   deduplicate una-volta-per-mano è dichiarata in **un solo punto**
   (`SpeechConductor.oncePerHandVoices` in `UI`): showdown, pot, split, **openers
   squalificati**, **mano decisiva**. Le voci di questa natura vanno aggiunte lì.
+
+## Completion garantita del one-shot parlato (D-056)
+
+`AudioEngine.play(_:completion:)` **garantisce** che la completion scatti sempre, al più
+una volta, da chi arriva prima: il delegate `audioPlayerDidFinishPlaying`, il ramo
+`play()==false` (fire immediato), o un **timeout** = durata del clip + margine. Motivo: il
+`SpeechConductor` tiene l'intero canale parlato mentre un mp3 croupier suona e si sospende
+attendendo quella completion; sul device un `play()` fallito/interrotto **non** chiama il
+delegate, e senza garanzia il conductor restava appeso — bloccando la UI in modalità
+VoiceOver ON (il blocco pre-flop). Con la garanzia, la salvaguardia lato UI
+(`SpokenChannelPacing`, D-056) è solo una rete ulteriore.

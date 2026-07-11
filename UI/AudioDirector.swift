@@ -50,6 +50,14 @@ public final class AudioDirector {
     private var heroChips = 0
     private var allInInPlay = false
     private var showdownHushed = false
+    /// The seats actually PLAYING the current hand (from `handBegan`), and the seats
+    /// that have BUSTED. A bot's voiceline is only ever chosen for a seat that is
+    /// alive AND in the current hand — never a snapshot from the start of the session
+    /// (D-058). This is what keeps an eliminated bot from speaking in later hands:
+    /// `handEnded.chips` still lists busted seats (with 0), while `handBegan.seats`
+    /// does not, so filtering on the live set is the fix.
+    private var activeSeats: Set<Int> = []
+    private var bustedSeats: Set<Int> = []
     /// The table's base big blind; a hand whose blind exceeds it is decisive (D-037).
     private let baseBigBlind: Int
 
@@ -87,6 +95,7 @@ public final class AudioDirector {
             handNumber = number
             allInInPlay = false
             showdownHushed = false
+            activeSeats = Set(seats.map { $0.seatID })   // only these play this hand (D-058)
             for s in seats { startChips[s.seatID] = s.chips }
             audio.setAmbientScale(1.0, duration: 0.3)
             // A decisive hand (doubled blinds) opens on the tense bed (D-037).
@@ -109,6 +118,9 @@ public final class AudioDirector {
             heroChipDeltaFeedback(chips)
             botHandEndVoicelines(chips)
             allInInPlay = false
+
+        case let .playerBusted(playerID):
+            bustedSeats.insert(playerID)   // never voice this seat again (D-058)
 
         case .sessionEnded:
             audio.play(heroChips > 0 ? SoundCatalog.fxVictoryFinal : SoundCatalog.fxDefeatFinal, category: .effect)
@@ -149,8 +161,11 @@ public final class AudioDirector {
     }
 
     /// The novice reacts emotionally to winning/losing a hand (the others don't).
+    /// Only for a seat that actually PLAYED this hand and hasn't busted — a snapshot
+    /// of the seats would keep an eliminated bot reacting forever (D-058).
     private func botHandEndVoicelines(_ chips: [Int: Int]) {
-        for (seat, character) in characters where character == .novice {
+        for (seat, character) in characters
+        where character == .novice && activeSeats.contains(seat) && !bustedSeats.contains(seat) {
             guard let start = startChips[seat], let final = chips[seat] else { continue }
             if final > start, roll() < 0.5 {
                 audio.play(SoundCatalog.vobNoviceExcited, category: .botVoice)

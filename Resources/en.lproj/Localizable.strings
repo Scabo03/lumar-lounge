@@ -117,6 +117,7 @@
 
 /* Action buttons */
 "action.checkcall.idle" = "Check / Call";
+"action.checkcall.idle.a11y" = "check, call";
 "action.check" = "Check";
 "action.check.a11y" = "check";
 "action.call" = "Call %d";

@@ -21,6 +21,7 @@ struct HomeView: View {
                         .foregroundStyle(TablePalette.primaryText)
                         .accessibilityIdentifier("home.title")
                         .accessibilityAddTraits(.isHeader)
+                        .voiceOverFocusLanding()   // land VoiceOver here on entry (D-057)
                     Text(verbatim: uiLocalized("home.tagline"))
                         .font(.callout)
                         .foregroundStyle(TablePalette.secondaryText)

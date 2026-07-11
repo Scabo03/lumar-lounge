@@ -312,11 +312,14 @@ public final class DrawTableViewModel: ObservableObject {
         if mode.isEnabled { await awaitSpokenChannelQuiet() } else { await pause(human) }
     }
 
+    /// Bounded by a safeguard so a stuck voice can never freeze the UI (D-056).
     private func awaitSpokenChannelQuiet() async {
-        while !(conductor.isIdle && announcements.isQuiet) {
-            if Task.isCancelled { return }
-            try? await Task.sleep(nanoseconds: 25_000_000)
-        }
+        SpokenLog.log("visual WAIT begin (draw)")
+        let quiet = await SpokenChannelPacing.awaitQuiet(
+            isQuiet: { self.conductor.isIdle && self.announcements.isQuiet },
+            isCancelled: { Task.isCancelled },
+            label: "draw")
+        SpokenLog.log("visual WAIT end (draw) quiet=\(quiet)")
     }
 
     // MARK: - Speech
@@ -376,10 +379,10 @@ public final class DrawTableViewModel: ObservableObject {
         let info = DrawBettingTurn(from: context)
         bettingTurn = info
         state.activeSeatID = heroSeatID
-        let callContext: String? = info.toCall > 0
-            ? DrawSpeechMap.text(for: .yourTurnContext(toCall: info.toCall, pot: info.potSize)) : nil
+        // Just the "it's your turn" mp3 — no "to call X, pot Y" synthesis (D-055): the
+        // Call button shows and speaks the amount itself, so the context was redundant.
         conductor.flushPending()
-        conductor.say(lead: SoundCatalog.voYourTurn, synthesis: callContext, priority: .high, reason: "your-turn")
+        conductor.say(lead: SoundCatalog.voYourTurn, synthesis: nil, priority: .high, reason: "your-turn")
         await withCheckedContinuation { turnContinuation = $0 }
         bettingTurn = nil
         if state.activeSeatID == heroSeatID { state.activeSeatID = nil }

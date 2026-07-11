@@ -52,6 +52,11 @@ public final class DrawAudioDirector {
     private var basePot = 0
     private var allInInPlay = false
     private var showdownHushed = false
+    /// Seats playing the current hand, and seats that have busted — a bot voiceline is
+    /// only chosen for a live seat in the current hand, never a session-start snapshot,
+    /// so an eliminated bot goes quiet (D-058, as in the Texas `AudioDirector`).
+    private var activeSeats: Set<Int> = []
+    private var bustedSeats: Set<Int> = []
 
     public init(audio: AudioServicing, heroSeatID: Int, characters: [Int: BotCharacter],
                 seed: UInt64, fastMode: Bool = false) {
@@ -82,6 +87,7 @@ public final class DrawAudioDirector {
         case let .handBegan(_, _, _, _, _, _, carriedPot, seats):
             allInInPlay = false
             showdownHushed = false
+            activeSeats = Set(seats.map { $0.seatID })   // only these play this hand (D-058)
             for s in seats { startChips[s.seatID] = s.chips }
             audio.setAmbientScale(1.0, duration: 0.3)
             // A swollen progressive pot (more than double the base) raises the tension.
@@ -111,6 +117,9 @@ public final class DrawAudioDirector {
             heroChipDeltaFeedback(chips)
             botHandEndVoicelines(chips)
             allInInPlay = false
+
+        case let .playerBusted(playerID):
+            bustedSeats.insert(playerID)   // never voice this seat again (D-058)
 
         case .sessionEnded:
             let heroFinal = startChips[heroSeatID] ?? 0
@@ -151,7 +160,8 @@ public final class DrawAudioDirector {
     }
 
     private func botHandEndVoicelines(_ chips: [Int: Int]) {
-        for (seat, character) in characters where character == .novice {
+        for (seat, character) in characters
+        where character == .novice && activeSeats.contains(seat) && !bustedSeats.contains(seat) {
             guard let start = startChips[seat], let final = chips[seat] else { continue }
             if final > start, roll() < 0.5 {
                 audio.play(SoundCatalog.vobNoviceExcited, category: .botVoice)

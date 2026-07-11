@@ -23,6 +23,10 @@ final class BotChatter {
     private let characters: [Int: BotCharacter]
     private var rng: SeededGenerator
     private var stacks: [Int: Int] = [:]
+    /// The seats playing the CURRENT hand (from `handBegan`). A voiceline is only
+    /// chosen for a seat in this live set, so an eliminated bot — absent from later
+    /// `handBegan.seats` — is never voiced (D-058).
+    private var activeSeats: Set<Int> = []
     /// Whether a seat's previous action was voiced (anti-repeat).
     private var voicedLastAction: [Int: Bool] = [:]
 
@@ -34,6 +38,7 @@ final class BotChatter {
 
     func handBegan(seats: [SeatSnapshot]) {
         for s in seats { stacks[s.seatID] = s.chips }
+        activeSeats = Set(seats.map { $0.seatID })
         voicedLastAction.removeAll()
     }
 
@@ -42,7 +47,7 @@ final class BotChatter {
     func actionVoice(seat: Int, action: ActedAction) -> SoundID? {
         let stackBefore = stacks[seat] ?? 0
         stacks[seat, default: 0] -= committed(action)
-        guard seat != heroSeatID, let character = characters[seat] else { return nil }
+        guard seat != heroSeatID, activeSeats.contains(seat), let character = characters[seat] else { return nil }
         if voicedLastAction[seat] == true { voicedLastAction[seat] = false; return nil }
 
         let (candidate, probability) = candidate(for: character, action: action, stackBefore: stackBefore)

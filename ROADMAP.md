@@ -282,6 +282,17 @@ base dopo una mano giocata, D-052) e (3) **mani decisive** ogni 5–8 mani (o fo
 al tavolo Whiskey e tutto nel driver (motore ricevi parametri additivi). Nuovo slot audio
 `vo_it_high_stakes_draw` (fallback sintesi). 272 test verdi.
 
+### ✅ Rifinitura post-M2 — layer VoiceOver + audio dopo il test reale (D-054…D-058)
+Cinque fix dal test su iPhone (build 1783771001, Tavolo Rapido con VoiceOver), tutti in
+`UI`/`Audio`: (1) **copertura fonetica estesa ai pulsanti** — chiuso il buco del Check/Call
+idle, `PhoneticsTests` ora scandisce i sorgenti degli action bar (D-054); (2) rimosso
+l'**annuncio contestuale "per chiamare X"** al turno umano — il pulsante lo dice già
+(D-055); (3) **salvaguardia temporale del ritmo adattivo** (tetto ~3 s) + **completion del
+croupier garantita** in `AudioEngine`, che chiudono il **blocco pre-flop** con VoiceOver ON
+(D-056); (4) **pattern di atterraggio del focus VoiceOver** a ogni cambio schermata/modale
+(`.voiceOverFocusLanding()`, D-057); (5) **voci dei bot bustati filtrate** dallo stato
+attuale del tavolo (D-058). 280 test verdi. Motore/driver/flusso non toccati.
+
 > Prossimi sotto-mattoni M2 (residui): cassa/DLC per ricarica gettoni, produzione dei
 > file audio predisposti (ambient Riverwood + voci croupier del Draw), secondo casinò.
 

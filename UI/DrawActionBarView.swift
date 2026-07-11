@@ -42,7 +42,7 @@ struct DrawActionBarView: View {
         return turn.canCheck ? uiLocalized("action.check") : uiLocalized("action.call", turn.callAmount)
     }
     private func checkCallLabel(_ turn: DrawBettingTurn?) -> String {
-        guard let turn else { return uiLocalized("action.checkcall.idle") }
+        guard let turn else { return uiLocalized("action.checkcall.idle.a11y") }   // phonetic (D-054)
         return turn.canCheck ? uiLocalized("action.check.a11y") : uiLocalized("action.call.a11y", turn.callAmount)
     }
     private func betTitle(_ turn: DrawBettingTurn?) -> String {

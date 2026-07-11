@@ -47,7 +47,7 @@ struct ActionBarView: View {
     }
 
     private func checkCallLabel(_ turn: HumanTurnInfo?) -> String {
-        guard let turn else { return uiLocalized("action.checkcall.idle") }
+        guard let turn else { return uiLocalized("action.checkcall.idle.a11y") }   // phonetic (D-054)
         return turn.canCheck ? uiLocalized("action.check.a11y") : uiLocalized("action.call.a11y", turn.callAmount)
     }
 }
@@ -103,11 +103,6 @@ struct RaiseBoxView: View {
     @ObservedObject var model: TableViewModel
     let box: RaiseBoxState
 
-    /// Pulls VoiceOver focus onto the adjustable amount the moment the box opens,
-    /// so the reader immediately hears "Rilancio, N fiche, regolabile" instead of
-    /// staying on the now-hidden table behind it (D-027).
-    @AccessibilityFocusState private var focused: Bool
-
     var body: some View {
         VStack(spacing: 16) {
             Text(verbatim: box.isBet ? uiLocalized("raise.title.bet") : uiLocalized("raise.title.raise"))
@@ -135,7 +130,10 @@ struct RaiseBoxView: View {
                     // "Raise"/"Bet" — Italian VoiceOver reads "Raise" as "Ace".
                     .accessibilityLabel(Text(verbatim: box.isBet ? uiLocalized("raise.title.bet.a11y") : uiLocalized("raise.title.raise.a11y")))
                     .accessibilityValue(Text(verbatim: uiLocalized("announce.raise.value", box.value)))
-                    .accessibilityFocused($focused)
+                    // Land VoiceOver on the adjustable amount when the box opens, so the
+                    // reader immediately hears "reis, N fiche" instead of the now-hidden
+                    // table behind it (D-027, via the shared focus-landing pattern D-057).
+                    .voiceOverFocusLanding()
 
                 stepButton("+", identifier: "raise.plus",
                            a11yLabel: uiLocalized("raise.plus.a11y"),
@@ -176,8 +174,6 @@ struct RaiseBoxView: View {
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("raisebox")
-        // Defer one runloop so the element exists in the tree before we focus it.
-        .onAppear { DispatchQueue.main.async { focused = true } }
     }
 
     private var confirmTitle: String {
@@ -218,6 +214,7 @@ struct EndOverlay: View {
                     .foregroundStyle(TablePalette.primaryText)
                     .accessibilityIdentifier("endgame.message")
                     .accessibilityAddTraits(.isHeader)
+                    .voiceOverFocusLanding()   // land VoiceOver on the outcome (D-057)
 
                 Button(action: onReturn) {
                     Text(verbatim: uiLocalized("endgame.return"))

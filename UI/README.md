@@ -179,3 +179,30 @@ seleziona e conferma) più la navigazione aggiornata.
   i due segnali visivi (patina scura + X) sono sempre presenti e commutati con
   `opacity` (sottoalbero stabile), ogni carta è **un solo leaf** accessibile, e il
   trait `.isButton` ridondante è stato rimosso. Lo swipe VoiceOver scorre naturale.
+
+## Rifinitura VoiceOver + audio post-M2 (D-054…D-058)
+
+Cinque fix da test reale su iPhone (Tavolo Rapido, VoiceOver attivo), tutti in `UI`
+(+ `Audio` per la completion garantita), API pubbliche invariate:
+
+- **Copertura fonetica ai pulsanti (D-054).** Ogni accessibility label usa la chiave
+  `.a11y` fonetica. Buco chiuso: il Check/Call **idle** leggeva "Check / Call" grezzo →
+  `action.checkcall.idle.a11y` = "cek, col". `PhoneticsTests` ora **scandisce i sorgenti**
+  degli action bar per garantire che il codice cabli le chiavi `.a11y` come label.
+- **Turno umano asciutto (D-055).** Al proprio turno parte **solo** l'mp3
+  `vo_it_your_turn`; la sintesi "per chiamare X, pot Y" è rimossa (il pulsante Call la
+  dice già). Vale per Texas e Draw.
+- **Salvaguardia del ritmo adattivo (D-056).** `SpokenChannelPacing.awaitQuiet` (puro,
+  testabile) mette un **tetto** all'attesa del canale parlato in modalità ON (~3 s):
+  superato, la UI procede comunque — niente più blocco pre-flop. `SpokenLog` traccia
+  inizio/fine attesa e lo scatto. La causa a monte (completion croupier persa) è chiusa
+  in `AudioEngine`.
+- **Atterraggio del focus VoiceOver (D-057).** Modificatore riusabile
+  `.voiceOverFocusLanding()` (`.screenChanged` via `AnnouncementQueue.postScreenChanged()`
+  + `@AccessibilityFocusState`), applicato a Home, Riverwood, tavoli (stack dell'umano),
+  Impostazioni, overlay di fine partita; i box Raise/Draw lo riusano sul loro elemento di
+  focus. Test statico: ogni schermata lo dichiara.
+- **Voci dei bot bustati filtrate (D-058).** `AudioDirector`/`DrawAudioDirector` (e
+  `BotChatter`/`DrawBotChatter`) scelgono le `vob_` solo per posti **attivi nella mano
+  corrente** e **non bustati** (`activeSeats` da `handBegan`, `bustedSeats` da
+  `.playerBusted`), mai da uno snapshot iniziale.

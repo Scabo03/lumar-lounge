@@ -122,6 +122,7 @@ struct SettingsView: View {
                         .accessibilityIdentifier("settings.vomode.switch")
                         .accessibilityLabel(Text(uiLocalized("settings.vomode.a11y")))
                         .accessibilityHint(Text(uiLocalized("settings.vomode.hint")))
+                        .voiceOverFocusLanding()   // land VoiceOver on the first setting (D-057)
                 } footer: {
                     Text(uiLocalized("settings.vomode.desc") + "\n\n" + uiLocalized("settings.vomode.footer"))
                 }

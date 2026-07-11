@@ -117,6 +117,16 @@ public final class AnnouncementQueue {
     /// (the human turn) plays promptly.
     public func flushPending() { pending.removeAll() }
 
+    /// Asks VoiceOver to re-scan a newly appeared screen/modal and move focus (the
+    /// focus-landing pattern, D-057). This is NOT an announcement, but VoiceOver
+    /// posting lives ONLY here (the single-point rule, D-032), so focus landing routes
+    /// through this one method rather than posting directly.
+    public static func postScreenChanged() {
+        #if canImport(UIKit)
+        UIAccessibility.post(notification: .screenChanged, argument: nil)
+        #endif
+    }
+
     // MARK: - Croupier coordination (one spoken channel)
 
     /// The croupier is about to play an mp3: hold new announcements and wait for any

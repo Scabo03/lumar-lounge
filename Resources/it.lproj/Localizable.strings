@@ -117,6 +117,9 @@
 
 /* Action buttons (visible normal spelling; a11y phonetic) */
 "action.checkcall.idle" = "Check / Call";
+/* Phonetic a11y for the idle (not-your-turn) check/call button (D-054): VoiceOver
+   must not read the raw English "Check / Call". */
+"action.checkcall.idle.a11y" = "cek, col";
 "action.check" = "Check";
 "action.check.a11y" = "cek";
 "action.call" = "Call %d";

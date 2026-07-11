@@ -27,6 +27,7 @@ struct HeroZoneView: View {
                     .font(.title3.weight(.bold).monospacedDigit())
                     .foregroundStyle(TablePalette.accent)
                     .accessibilityLabel(Text(verbatim: uiLocalized("hero.stack.a11y", heroSeat?.chips ?? 0)))
+                    .voiceOverFocusLanding()   // land VoiceOver on the hero on table entry (D-057)
             }
         }
         .padding(.horizontal, 18)

@@ -333,11 +333,14 @@ public final class TableViewModel: ObservableObject {
     /// Blocks until the spoken channel is idle: the conductor has nothing left to
     /// play/hand off, and the announcement queue is not speaking or holding (D-034).
     /// Events that produced no announcement leave it idle, so they show at once.
+    /// Bounded by a safeguard so a stuck voice can never freeze the UI (D-056).
     private func awaitSpokenChannelQuiet() async {
-        while !(conductor.isIdle && announcements.isQuiet) {
-            if Task.isCancelled { return }
-            try? await Task.sleep(nanoseconds: 25_000_000)
-        }
+        SpokenLog.log("visual WAIT begin (texas)")
+        let quiet = await SpokenChannelPacing.awaitQuiet(
+            isQuiet: { self.conductor.isIdle && self.announcements.isQuiet },
+            isCancelled: { Task.isCancelled },
+            label: "texas")
+        SpokenLog.log("visual WAIT end (texas) quiet=\(quiet)")
     }
 
     private func eventLabel(_ payload: EventPayload) -> String {
@@ -428,15 +431,14 @@ public final class TableViewModel: ObservableObject {
         let info = HumanTurnInfo(from: context)
         humanTurn = info
         state.activeSeatID = heroSeatID
-        // The croupier says "it's your turn" (vo_it_your_turn); synthesis adds the
-        // call context only when there's something to call (D-029).
-        let callContext: String? = info.toCall > 0
-            ? SpeechMap.text(for: .yourTurnContext(toCall: info.toCall, pot: info.potSize))
-            : nil
+        // The croupier says "it's your turn" (vo_it_your_turn) — and that is ALL (D-055).
+        // No "to call X, pot Y" synthesis: the Call button already shows "Call X" and
+        // speaks the amount itself when VoiceOver reaches it, so the context line was
+        // redundant and cut across the user reaching for their own cards.
         // The turn is time-critical: drop any stale narration still queued so the
         // "your turn" mp3 plays promptly rather than behind a backlog (D-031).
         conductor.flushPending()
-        conductor.say(lead: SoundCatalog.voYourTurn, synthesis: callContext, priority: .high, reason: "your-turn")
+        conductor.say(lead: SoundCatalog.voYourTurn, synthesis: nil, priority: .high, reason: "your-turn")
         await withCheckedContinuation { turnContinuation = $0 }
         humanTurn = nil
         raiseBox = nil

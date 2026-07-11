@@ -1221,3 +1221,127 @@ bet/cap raddoppiati, intervallo osservato in 5–8 su 20 seed, boost bot (trashF
 raise aumentati), disattivazione. Solo `GameEngine` (parametri additivi) + `GameWorld`
 (logica) + `UI`/`Audio` (reazione); flusso eventi esteso di un caso, motore-regole non
 ristrutturato. 272 test verdi. **Slot audio nuovo:** `vo_it_high_stakes_draw` (fallback).
+
+### D-054 — La copertura fonetica dei termini poker vale per ogni elemento UI accessibile, non solo per le voci parlate (test reale, estende D-049)
+Al test su iPhone col Tavolo Rapido, VoiceOver leggeva ancora "Ace" — questa volta
+percepito **prima** di aprire il box Raise. **Verifica nel codice del build reale
+(1783771001 = HEAD 8866e2d, che *include* già D-049):** il pulsante Raise della barra
+azioni **usa già** `action.raise.a11y` = "reis" (via il parametro `a11yLabel` di
+`ActionButton`), così come tutti gli altri pulsanti azione (`action.fold.a11y`=fould,
+`action.call.a11y`=col, `draw.action.raise.a11y`, `draw.action.bet.a11y`…). Cioè
+**quel** pulsante era già foneticamente corretto nel build testato; la percezione "Ace"
+era transitoria o legata a un elemento diverso. **La lezione operativa vera** è che
+D-049 aveva controllato le *stringhe* (il valore `.a11y`) ma non aveva un guardiano che
+verificasse che il **codice UI usa davvero le chiavi `.a11y`** su ogni elemento letto da
+VoiceOver — è la seconda volta che lo stesso termine sfugge in un contesto nuovo.
+**Passata sistematica** su ogni `accessibilityLabel`/`a11yLabel:` dei sorgenti UI: tutti
+i pulsanti azione erano già a posto, **un buco reale trovato e sistemato** → il pulsante
+Check/Call in stato **idle** (non è il tuo turno) leggeva la sua stringa **visibile**
+`action.checkcall.idle` = "Check / Call" (inglese grezzo) come label: aggiunta
+`action.checkcall.idle.a11y` = "cek, col" e usata nei due action bar (Texas + Draw).
+**Guardiano nuovo (PhoneticsTests, D-054):** oltre alla tabella fonetica delle stringhe,
+un **test statico che scandisce i sorgenti** `ActionBarView.swift`/`DrawActionBarView.swift`
+ed estrae ogni chiave che finisce come **accessibility label** (argomento `a11yLabel:`,
+riga `.accessibilityLabel(...)`, e corpo delle funzioni helper `*Label`), verificando che
+**termini in `.a11y`** — così una futura regressione in cui una chiave *visibile* viene
+cablata come label (esattamente questo bug) fallisce in CI. **Principio permanente
+(CONVENTIONS §4):** la pronuncia curata copre **ogni elemento UI accessibile**, non solo
+le voci parlate; `PhoneticsTests` scandisce l'intera UI. Solo `UI` + localizzazione.
+
+### D-055 — Niente annuncio contestuale "per chiamare X" al turno umano: il pulsante parla da sé (test reale)
+Al turno umano, dopo l'mp3 `vo_it_your_turn`, la sintesi aggiungeva "per chiamare X, pot
+Y" (`SynthLine.yourTurnContext`). **Ridondante e dannoso:** il pulsante Call mostra già
+"Call X" e lo pronuncia da solo quando VoiceOver ci arriva con lo swipe; peggio, la
+sintesi partiva mentre l'utente cercava di agganciare lo slot delle proprie carte e lo
+**interrompeva**. **Fix:** il turno umano riproduce **solo** l'mp3 `vo_it_your_turn`,
+sintesi `nil` (Texas `TableViewModel.runHumanTurn` **e** Draw
+`DrawTableViewModel.runBettingTurn`). Il caso `yourTurnContext` resta **definito** nella
+mappa (capacità pura, ancora usato dai test di *rendering* di `text(for:)`), ma non è più
+prodotto al turno. **Principio (CONVENTIONS §4):** un annuncio dinamico contestuale
+(importi, pot, contatori) **non deve duplicare** un pulsante visibile che già lo comunica
+— il pulsante parla da sé. Solo `UI`.
+
+### D-056 — Il ritmo adattivo con VoiceOver ON ha un timeout di salvaguardia; e la completion del croupier è garantita (blocco pre-flop, test reale)
+Col Tavolo Rapido e la **modalità VoiceOver dell'app ON**, nel pre-flop capitava che dopo
+un'azione (es. Call) la UI si **bloccasse**; a un secondo tocco "di sblocco" collassava in
+un colpo conferma-azione + flop + turno post-flop, e il secondo tocco veniva interpretato
+come azione post-flop, **scippando** la scelta consapevole.
+**Causa reale, individuata nel codice (da confermare sul device col logging aggiunto):**
+il ritmo adattivo (D-034) fa attendere la UI finché il **canale parlato** non è quieto
+(`awaitSpokenChannelQuiet`: `conductor.isIdle && announcements.isQuiet`). Il
+`SpeechConductor`, mentre suona un mp3 croupier, **tiene l'intero canale** e si sospende
+su `await withCheckedContinuation { audio.play(lead) { cont.resume() } }`. Se la
+**completion dell'`AVAudioPlayer` non arriva mai** — sul device un `play()` fallito o
+interrotto **non** chiama `audioPlayerDidFinishPlaying` — la continuation non riprende, il
+conductor resta `isBusy` per sempre, e con la modalità ON la UI **si blocca all'infinito**;
+un'interazione successiva che innesca un altro `play`/pump del runloop fa poi cascare il
+backlog accumulato dal produttore (che gira una mano avanti) sul turno sbagliato. (Gli
+annunci *droppati* dalla coda **non** erano la causa: un drop rimuove dalla coda *pending*,
+non blocca `isQuiet`.)
+**Fix su due livelli:**
+- **`AudioEngine` — la completion è garantita (causa reale):** ogni `play(_:completion:)`
+  registra la completion e la fa scattare **al più una volta** da chi arriva prima — il
+  delegate di fine, il ramo `play()==false` (fire immediato), o un **timeout** = durata del
+  clip + margine. Così il conductor non può mai restare appeso su un callback perso.
+- **View model — salvaguardia temporale (rete di sicurezza):** `awaitSpokenChannelQuiet`
+  ora usa `SpokenChannelPacing.awaitQuiet` (UI, puro, testabile) con un **tetto cumulativo**
+  (`maxWait` 3 s): superato il tetto la UI **procede comunque**, loggando la salvaguardia.
+  Meglio un breve sovrapporsi di annunci che una UI congelata che ruba una scelta.
+  **L'usabilità reale ha precedenza sulla perfezione della sintesi.**
+- **Logging (D-056):** `SpokenLog` traccia inizio/fine attesa per evento (`visual WAIT
+  begin/end … quiet=…`) e lo scatto della salvaguardia, così il prossimo test sul device
+  mostra dove si accumula il ritardo. `AudioEngine` logga la completion di fallback.
+**Test:** `SpokenChannelPacing` con canale mai-quieto → procede entro il tetto (no blocco
+infinito), ritorna subito se già quieto, si ferma appena diventa quieto, rispetta la
+cancellazione. Solo `UI` + `Audio`; API pubbliche invariate; `GameEngine`/`SessionDriver`/
+flusso non toccati.
+
+### D-057 — Pattern generale di atterraggio del focus VoiceOver a ogni cambio di visualizzazione
+Cambiando schermata (Home→Riverwood, Riverwood→Tavolo, apertura di modali) il focus
+VoiceOver restava **agganciato all'elemento della schermata precedente** ormai inesistente:
+dopo la transizione l'outline era nel vuoto e uno swipe dava il "tonk" di fine corsa.
+**Pattern riusabile (`FocusLanding.swift`, D-057):** un modificatore
+`.voiceOverFocusLanding()` che, all'`onAppear` dell'elemento, (a) chiede a VoiceOver di
+**ri-scansionare** la schermata (`.screenChanged`) e (b) porta il focus **su quell'elemento**
+via `@AccessibilityFocusState` (deferito un runloop, come D-027). Il `.screenChanged` è
+**instradato** attraverso `AnnouncementQueue.postScreenChanged()` — la coda resta l'**unico**
+punto che posta a VoiceOver (D-032), così il guardiano statico anti-post-diretto non si
+rompe. **Applicato a:** Home (titolo), Riverwood (titolo), Tavolo Texas e Draw (lo stack
+dell'umano, sempre presente), Impostazioni (primo toggle), overlay di fine partita
+(messaggio d'esito); i due box modali (Raise, Draw) **riusano** lo stesso modificatore sul
+loro elemento di focus esistente (valore del box Raise per D-027; titolo del box Draw per
+D-044/D-046), sostituendo il plumbing manuale. **Coordinamento con la coda:** il
+`.screenChanged` (ri-scan + focus) scatta all'apparizione e non trasporta testo, quindi non
+compete con gli annunci contestuali della coda (canale separato). **Principio (CONVENTIONS
+§4):** ogni schermata principale e ogni modale/overlay dichiara esplicitamente il proprio
+primo elemento di focus. *Limite noto:* al **dismiss** di una modale il focus non viene
+ancora riportato esplicitamente sul tavolo (le modali gestiscono il focus in apertura); da
+affinare se emergerà al test. Test statico: ogni sorgente-schermata applica
+`.voiceOverFocusLanding()`. Solo `UI`.
+
+### D-058 — Le voci dei bot bustati sono filtrate dallo stato attuale del tavolo, non da uno snapshot iniziale (test reale)
+Un bot eliminato (es. il novice bustato) continuava **occasionalmente** a emettere la sua
+voceline (`vob_novice_disappointed`) nelle mani **successive** all'eliminazione. **Causa
+reale, verificata:** `AudioDirector.botHandEndVoicelines` reagiva confrontando
+`startChips[seat]` (aggiornato solo per i **partecipanti** in `handBegan.seats`) con
+`handEnded.chips[seat]`; ma `handEnded.chips` = **tutti** i giocatori, inclusi i bustati a
+0, mentre `handBegan.seats` **esclude** i bustati → per il bot bustato `startChips` restava
+il valore **stantio** dell'ultima mano giocata (es. 40) e `final=0 < 40` → "disappointed"
+di nuovo, ogni mano. **Fix (D-058):** il selezionatore consulta lo **stato attuale** dei
+partecipanti, non uno snapshot: `AudioDirector`/`DrawAudioDirector` tengono `activeSeats`
+(dai `handBegan.seats` correnti) e `bustedSeats` (dagli eventi `.playerBusted`, già nel
+flusso), e `botHandEndVoicelines` reagisce **solo** per un posto `activeSeats.contains(seat)
+&& !bustedSeats.contains(seat)`. Analogo guard additivo in `BotChatter`/`DrawBotChatter`
+(voce d'azione solo per un posto nel set attivo). La mano in cui il bot **busta** reagisce
+ancora una volta (il `.playerBusted` arriva dopo `handEnded`), poi silenzio. **Nessuna
+nuova iscrizione**: i director già consumano il flusso, si aggiunge solo la gestione di
+`.playerBusted`. **Principio (CONVENTIONS §4):** le voci caratteriali (`vob_`) sono scelte
+**a ogni scelta** consultando i partecipanti attuali, mai da snapshot congelati; un bot
+bustato non emette più voci. Test: un novice che busta → zero voci nelle mani seguenti
+(pur restando in `handEnded.chips` a 0); un novice attivo continua a reagire. Solo `UI`.
+
+**Sessione di rifinitura post-M2 (VoiceOver + audio):** 280 test verdi. Cinque fix da test
+reale su iPhone (build 1783771001), tutti in `UI`/`Audio`: copertura fonetica estesa ai
+pulsanti (D-054), annuncio turno più asciutto (D-055), salvaguardia anti-blocco del ritmo
+adattivo + completion audio garantita (D-056), atterraggio del focus VoiceOver (D-057),
+voci dei bot bustati filtrate (D-058).

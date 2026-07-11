@@ -22,6 +22,7 @@ struct RiverwoodView: View {
                         .foregroundStyle(TablePalette.primaryText)
                         .accessibilityIdentifier("riverwood.title")
                         .accessibilityAddTraits(.isHeader)
+                        .voiceOverFocusLanding()   // land VoiceOver here on entry (D-057)
                     Text(verbatim: uiLocalized("riverwood.tagline"))
                         .font(.callout).italic()
                         .foregroundStyle(TablePalette.secondaryText)
