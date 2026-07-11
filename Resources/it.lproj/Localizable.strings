@@ -256,6 +256,9 @@
 "draw.action.bet.a11y" = "bett %d";
 "draw.action.raise" = "Raise %d";
 "draw.action.raise.a11y" = "reis a %d";
+/* Spoken tail composed after the IPA-pronounced "reis" word (D-059): the number
+   pronounced normally, so it can't corrupt the word's pronunciation. */
+"draw.action.raise.amount.a11y" = " a %d";
 
 /* Draw box */
 "draw.box.title" = "Scegli le carte da scartare";

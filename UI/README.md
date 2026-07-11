@@ -189,6 +189,15 @@ Cinque fix da test reale su iPhone (Tavolo Rapido, VoiceOver attivo), tutti in `
   `.a11y` fonetica. Buco chiuso: il Check/Call **idle** leggeva "Check / Call" grezzo →
   `action.checkcall.idle.a11y` = "cek, col". `PhoneticsTests` ora **scandisce i sorgenti**
   degli action bar per garantire che il codice cabli le chiavi `.a11y` come label.
+- **Pronuncia dei pulsanti Raise via IPA (D-059).** Il grafema "reis" era applicato
+  correttamente (label a runtime = "reis", verificata con XCUITest) ma la voce italiana lo
+  leggeva "ace": un grafema inventato non è una specifica affidabile di un suono, e il
+  guardiano statico non può *sentire*. Fix deterministico: `PokerSpeech` allega l'**IPA**
+  esatto (`accessibilitySpeechPhoneticNotation`, /ˈreɪz/) alla label di entrambi i pulsanti
+  Raise (Texas secco e Draw con importo — qui la parola con IPA + il numero in un run a parte).
+  Guardiano rinforzato: `PokerSpeechTests` fissa l'IPA canonico, `PhoneticsTests` pretende che
+  i due call-site Raise passino l'IPA via `PokerSpeech.raiseLabel`, e `RaiseButtonLabelUITests`
+  blocca la label a runtime.
 - **Turno umano asciutto (D-055).** Al proprio turno parte **solo** l'mp3
   `vo_it_your_turn`; la sintesi "per chiamare X, pot Y" è rimossa (il pulsante Call la
   dice già). Vale per Texas e Draw.

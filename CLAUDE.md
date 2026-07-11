@@ -1345,3 +1345,57 @@ reale su iPhone (build 1783771001), tutti in `UI`/`Audio`: copertura fonetica es
 pulsanti (D-054), annuncio turno più asciutto (D-055), salvaguardia anti-blocco del ritmo
 adattivo + completion audio garantita (D-056), atterraggio del focus VoiceOver (D-057),
 voci dei bot bustati filtrate (D-058).
+
+### D-059 — Pronuncia dei pulsanti Raise via IPA, non via grafema indovinato (terzo intervento sulla stessa parola)
+Entrambi i pulsanti Raise (Texas secco che apre il box, Draw con importo fisso) leggevano
+ancora "ace" invece di "reis", nonostante D-049/D-054. **Diagnosi al fondo, empirica, non
+assunta:** ho letto la **label a runtime** dei due pulsanti con un XCUITest
+(`element.label`, cioè ciò che VoiceOver annuncia): Texas = **"reis"**, Draw = **"reis a 0"**.
+Quindi:
+- *Ipotesi 1 (nessuna chiave localizzata come label → niente da scandire)* → **FALSA**: entrambi
+  passano un `a11yLabel: uiLocalized("…​.a11y")` e la label È applicata a runtime.
+- *Ipotesi 3 (un solo call-site cablato, l'altro grezzo)* → **FALSA**: entrambi i call-site
+  reali (`ActionBarView` e `DrawActionBarView`) sono cablati e leggono "reis".
+- *Ipotesi 2 (la grafia "reis" viene comunque letta "ace" dalla voce italiana)* → **VERA**.
+  La narrazione parlata funziona perché usa il **verbo italiano** "rilancia" (parola reale); i
+  pulsanti tengono il termine inglese e ne spellano la pronuncia con un **grafema inventato**
+  ("reis"), e un grafema inventato **non è una specifica affidabile di un suono**: la voce
+  italiana lo pronuncia a modo suo ("ace").
+**Perché il guardiano statico era passato verde su un buco vivo:** `PhoneticsTests` verificava
+che la label usasse **la grafia fonetica dichiarata** ("reis"), non che quella grafia
+**suonasse** giusta — e nessun test statico può *sentire* il TTS. Ha quindi validato "reis"
+come "fonetico" mentre "reis" era esso stesso una grafia sbagliata.
+**Fix — pronuncia deterministica via IPA (`accessibilitySpeechPhoneticNotation`,
+`IPANotationAttribute`):** invece di indovinare lettere, si allega la **notazione IPA esatta**
+del suono. `PokerSpeech` (nuovo, `UI`) costruisce la label come `AttributedString` con
+`raiseIPA = "ˈreɪz"` (il suono di "raise"); VoiceOver pronuncia i fonemi esatti a prescindere
+dal grafema. **L'IPA non può essere "indovinato sbagliato" come un grafema** — è la specifica
+standardizzata del suono, ed è ciò che rende il fix definitivo dopo due tentativi grafemici
+falliti. **Pulsante Draw con importo:** la label è composta in **due run** — la parola con IPA
++ il numero (" a N") come run **normale**, così il numero non corrompe la pronuncia della
+parola (D-059). La stringa base resta "reis"/"reis a N" (fallback di spell-mode / se l'IPA non
+fosse onorato → **nessuna regressione** rispetto a oggi; su iOS 17+ l'IPA è onorato → corretto).
+**Rinforzo del guardiano (perché il buco non ripassi verde):** per il termine che continua a
+fallire si pretende ora l'unica cosa che un test *può* verificare senza orecchie — una
+**pronuncia IPA esplicita**. `PokerSpeechTests` fissa l'IPA canonico ("ˈreɪz") e verifica che
+la label del Raise porti quell'IPA sul run della parola (e **non** sul numero, nel Draw). Un
+guardiano sorgente in `PhoneticsTests` pretende che **entrambi** i call-site Raise passino
+`a11yAttributed` via `PokerSpeech.raiseLabel` (un ritorno al grafema nudo fallisce). Un
+XCUITest (`RaiseButtonLabelUITests`) blocca il cablaggio a runtime (label = "reis"/"reis …"
+su entrambi i pulsanti, così le ipotesi 1/3 non possono rigredire). **Catalogo canonico:** la
+pronuncia autorevole di "raise" è ora l'**IPA /ˈreɪz/** (in `PokerSpeech.raiseIPA` + nota in
+CONVENTIONS §4); "reis" resta solo come grafia di fallback. **Vincoli:** solo `UI` +
+localizzazione; nessuna modifica a `GameEngine`/flusso; nessuna chiamata diretta a
+`UIAccessibility.post`; narrazione "rilancia" non toccata. Scope limitato ai due pulsanti
+Raise (fold/call/check non toccati). **285 test verdi** + XCUITest. **Nota onesta:** l'IPA è
+il meccanismo sancito da Apple per la pronuncia e la sua correttezza è verificata
+*by construction* (l'IPA È il suono); la conferma *udibile* finale resta il test sul device.
+
+### ⚠️ Nota di autocritica per sessioni future — un guardiano che non può "sentire"
+Un test statico/unità **non può verificare che una grafia fonetica suoni giusta**: può solo
+verificare che *una* grafia sia presente. Per i termini la cui pronuncia conta (poker inglese
+letto da voce italiana), non affidarsi a grafemi inventati "verificati a occhio": specificare
+la pronuncia con **IPA** (deterministica) e far verificare al guardiano la *presenza dell'IPA*,
+non la plausibilità del grafema. Se un termine legge male sul device nonostante il verde, la
+prima mossa è **leggere `element.label` a runtime con un XCUITest** per distinguere "label non
+applicata" (ipotesi 1/3) da "grafia mispronunciata" (ipotesi 2) — come fatto qui.

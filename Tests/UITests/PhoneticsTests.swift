@@ -104,6 +104,29 @@ final class PhoneticsTests: XCTestCase {
         }
     }
 
+    // MARK: - D-059: the Raise buttons must carry an EXPLICIT IPA pronunciation
+
+    /// The blind spot that let "raise" read "ace" through two sessions and a green
+    /// guardian: the previous guardian only checked that a label used the declared
+    /// phonetic GRAPHEME ("reis") — it could not hear that the grapheme itself is
+    /// mispronounced. A static test can never hear TTS, so for the term that keeps
+    /// failing we require the one thing a test CAN verify unambiguously: an explicit
+    /// IPA pronunciation. This guards that both Raise action buttons are wired through
+    /// `PokerSpeech.raiseLabel` (which attaches the IPA) and never fall back to a bare
+    /// grapheme label. A revert to a plain string label fails here.
+    func testBothRaiseButtonsAreWiredWithExplicitIPA() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        for rel in ["UI/ActionBarView.swift", "UI/DrawActionBarView.swift"] {
+            let src = try String(contentsOf: root.appendingPathComponent(rel), encoding: .utf8)
+            XCTAssertTrue(src.contains("\"action.raise\""),
+                          "\(rel): expected the Raise button (identifier action.raise)")
+            XCTAssertTrue(src.contains("a11yAttributed:") && src.contains("PokerSpeech.raiseLabel"),
+                "\(rel): the Raise button must drive its VoiceOver label through "
+                + "PokerSpeech.raiseLabel (explicit IPA), never a bare grapheme string (D-059).")
+        }
+    }
+
     /// The localization keys that become a VoiceOver accessibility LABEL in a source
     /// file: the key passed as the `a11yLabel:` argument (only that argument — a
     /// same-line `title:` visible key must NOT be swept in), every key inside a

@@ -278,6 +278,26 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     il codice cabli davvero le chiavi `.a11y` come label. Lista canonica dei termini in
     §4/D-049. È la seconda volta che lo stesso termine sfugge in un contesto diverso: il
     guardiano statico è la difesa strutturale contro il ripetersi.
+  - **Pronuncia dei termini che contano: IPA, non grafemi indovinati (D-059).** Un grafema
+    fonetico inventato (es. "reis" per *raise*) **non è una specifica affidabile di un suono**:
+    la voce italiana di VoiceOver può leggerlo comunque sbagliato ("ace"), e **nessun test
+    statico può *sentire* il TTS** — può solo verificare che *una* grafia sia presente (ecco
+    perché "raise" ha attraversato tre sessioni). Per i termini la cui pronuncia conta e che
+    falliscono sul device, si specifica la pronuncia con la **notazione IPA esatta**
+    (`accessibilitySpeechPhoneticNotation` su un `AttributedString`, via il pattern
+    `PokerSpeech`): l'IPA è la specifica standardizzata del suono, non può essere "indovinata
+    sbagliata". Il guardiano allora pretende la **presenza dell'IPA** (cosa verificabile), non
+    la plausibilità del grafema. **Catalogo canonico:** la pronuncia autorevole di *raise* è
+    l'IPA **/ˈreɪz/** (`PokerSpeech.raiseIPA`); l'eventuale grafia `.a11y` ("reis") resta solo
+    come fallback di spell-mode. **Diagnosi prima del fix:** se un termine legge male malgrado il
+    verde, leggi `element.label` a runtime con un XCUITest per distinguere "label non applicata"
+    da "grafia mispronunciata".
+  - **Pulsante con termine parlato + valore dinamico: IPA sul termine, numero in un run a parte
+    (D-059).** Quando la label di un pulsante mescola un termine da pronunciare via IPA e un
+    valore dinamico (es. "Raise 40" → "reis a quaranta"), componi un `AttributedString` in **due
+    run**: la parola con la notazione IPA, il valore come run **normale**. Così il numero è
+    pronunciato dalla voce senza corrompere la pronuncia della parola, e l'IPA resta scoped al
+    solo termine. Riusare questa forma per input analoghi con valore (blackjack, roulette).
   - **Un annuncio contestuale dinamico non deve duplicare un pulsante visibile (D-055).**
     Se un controllo mostra e pronuncia già un'informazione (il pulsante "Call X" dice la
     cifra da chiamare quando VoiceOver ci arriva), **non** ripeterla in una sintesi
