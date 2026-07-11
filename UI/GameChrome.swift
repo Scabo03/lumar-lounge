@@ -7,6 +7,7 @@
 // settings button and wallet are consistent everywhere.
 
 import SwiftUI
+import GameWorld
 
 /// A labelled action for the chrome's leading slot (back, leave table, …).
 public struct ChromeAction {
@@ -62,6 +63,8 @@ public struct GameChrome<Content: View>: View {
                 Spacer().frame(width: 1)
             }
             Spacer()
+            // ⚠️ TEMPORANEO (D-050): visible badge whenever free-play test mode is on.
+            if DebugFlags.freePlay { freePlayBadge }
             Button { showingSettings = true } label: {
                 Image(systemName: "gearshape.fill")
                     .font(.title2)
@@ -76,6 +79,19 @@ public struct GameChrome<Content: View>: View {
         }
         .padding(.horizontal, 12)
         .padding(.top, 4)
+    }
+
+    /// ⚠️ TEMPORANEO (D-050): the free-play indicator. Non-invasive, high-contrast,
+    /// and VoiceOver-announceable ("Modalità test gioco libero attiva").
+    private var freePlayBadge: some View {
+        Text(verbatim: uiLocalized("debug.freeplay.badge"))
+            .font(.caption2.weight(.heavy))
+            .padding(.horizontal, 8).padding(.vertical, 3)
+            .background(Capsule().fill(Color.orange))
+            .foregroundStyle(.black)
+            .accessibilityElement()
+            .accessibilityIdentifier("debug.freeplay.badge")
+            .accessibilityLabel(Text(uiLocalized("debug.freeplay.a11y")))
     }
 
     private func chipsBar(_ chips: Int) -> some View {

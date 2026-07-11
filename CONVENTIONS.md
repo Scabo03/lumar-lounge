@@ -283,3 +283,12 @@ accessibilità e localizzazione. Vedi [`ROADMAP.md`](ROADMAP.md).
   sessione.
 - Il signing e l'upload TestFlight passano da Fastlane Match e dalle lane
   `setup_signing` / `testflight_upload` (dettagli in [`README.md`](README.md)).
+- **Ogni flag di modalità test/debug deve essere ben visibile, temporaneo e tracciato
+  fino alla rimozione (D-050).** Un flag che altera il comportamento per il testing (es.
+  `DebugFlags.freePlay`) va: (a) definito in un punto **evidente** con intestazione/commenti
+  che lo marcano "⚠️ TEMPORANEO — rimuovere prima del rilascio pubblico"; (b) reso **visibile
+  a runtime** con un indicatore non invasivo quando attivo (badge nel chrome, con label
+  VoiceOver); (c) **elencato nel README** nella sezione "Modalità di sviluppo attualmente
+  attive" **finché non viene rimosso**. I test che coprono il comportamento **reale** (non
+  quello di debug) devono disattivare esplicitamente il flag, così restano validi dopo la
+  rimozione.

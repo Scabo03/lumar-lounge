@@ -129,6 +129,9 @@
 /* Raise box */
 "raise.title.raise" = "Raise";
 "raise.title.bet" = "Bet";
+/* English keeps the normal spelling (the phonetic override is only for Italian, D-049). */
+"raise.title.raise.a11y" = "raise";
+"raise.title.bet.a11y" = "bet";
 "raise.minus.a11y" = "minus";
 "raise.plus.a11y" = "plus";
 "raise.allin" = "All-in";
@@ -313,3 +316,8 @@
 /* Split pot: the same combination for every winner */
 "announce.split.won" = "split between %1$@, both with %2$@";
 "announce.split.won.nohand" = "split between %@";
+
+/* ------------------------------------------------------------------ */
+/* ⚠️ TEMPORARY (D-050) — free-play mode badge, to remove with the flag */
+"debug.freeplay.badge" = "FREE PLAY";
+"debug.freeplay.a11y" = "Free-play test mode active";

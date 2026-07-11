@@ -8,6 +8,18 @@ App iOS / iPadOS di giochi di carte e da casinò, scritta in Swift e SwiftUI.
 > [`ROADMAP.md`](ROADMAP.md), le regole del progetto in
 > [`CONVENTIONS.md`](CONVENTIONS.md).
 
+## ⚠️ Modalità di sviluppo attualmente attive
+
+Flag temporanei attivi in questa build, **da rimuovere prima del rilascio pubblico**:
+
+- **`DebugFlags.freePlay` — Gioco libero (D-050).** Attivo. Il **buy-in è ignorato**
+  (ci si siede a qualsiasi tavolo a prescindere dal saldo), il saldo gettoni è
+  **ripristinato a 5000 a ogni avvio** e non si muove giocando, così si può testare
+  all'infinito. L'app mostra un badge arancione **"GIOCO LIBERO"** in alto in ogni
+  schermata. Definito in [`GameWorld/DebugFlags.swift`](GameWorld/DebugFlags.swift);
+  per disattivarlo, mettere `freePlay = false`. Introdotto per la fase di test post-M2.1
+  (calibrazione delle personalità dei bot).
+
 ## Stato di sviluppo
 
 Il progetto è passato dalla pura impalcatura ai primi contenuti reali, ma il

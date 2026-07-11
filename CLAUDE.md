@@ -1123,3 +1123,46 @@ motore/driver/flusso/UI non toccati. **Test:** moltiplicatore puro sui tre scena
 trash-fold la cui frequenza approssima `trashFoldTendency`; caratterizzazione Classico
 (rock/novice foldano più dell'aggressor su pressione) e Classico-vs-Rapido (il Rapido folda
 meno); analoghi per il Draw; mani forti mai foldate. 255 test verdi.
+
+### D-049 — Verifica sistematica delle rese fonetiche dei termini poker (fix "Raise"→"Ace")
+Al test reale, VoiceOver italiano pronunciava **"Raise" come "Ace"**: la resa fonetica
+corretta è **"reis"** (CONVENTIONS §4). **Causa reale:** l'elemento *valore* del box
+Raise (su cui atterra il focus all'apertura) aveva come `accessibilityLabel` la stringa
+**visibile** `raise.title.raise` = "Raise" (parola inglese grezza), non la resa fonetica
+— così il focus leggeva "Ace, N fiche". **Fix (solo localizzazione + UI):** nuove chiavi
+`raise.title.raise.a11y` = "reis" / `raise.title.bet.a11y` = "bett", usate come label
+dell'elemento valore. **Passata di scansione completa** di tutti i termini canonici su
+**ogni stringa parlata** (label `*.a11y` + annunci `announce.*`/`draw.announce.*`), con la
+lista di riferimento: fold→"fould", check→"cek", call→"col", raise→"reis", blind→"blaind",
+button→"bàtton", flop→"flop", turn→"tern", river→"river", all-in→"ol-in",
+showdown→"sciodaun" (solo mp3 croupier, mai sintetizzato), small/big blind. **Buchi trovati
+e sistemati: 3 live** — (1) box Raise "Raise"/"Bet"→"reis"/"bett"; (2) `action.fold.a11y`
+"fold"→"fould"; (3) `seat.a11y.folded` "fold"→"fould" — più 2 stringhe morte M1.6 allineate
+per coerenza. Gli altri termini erano già foneticamente resi (le azioni avversarie usano
+verbi italiani "passa/chiama/rilancia", i blind/button/all-in erano già "blaind/bàtton/ol-in").
+La **lista canonica sopra resta come reference** per le sessioni future e per i nuovi giochi.
+**Test (`PhoneticsTests`):** legge il vero file `it.lproj` da disco (le `.strings` non si
+caricano sotto `swift test`) e verifica la tabella fonetica canonica per completezza; un
+**guardiano** assicura che **nessuna** stringa parlata contenga la parola grezza "raise" o
+un "fold" senza la 'u'. Solo `UI`/localizzazione; motore/driver/logica intatti.
+
+### D-050 — Flag `DebugFlags.freePlay` (gioco libero) temporaneo per la fase di test post-M2.1
+L'utente ha **esaurito i gettoni** testando le calibrazioni dei bot (D-048) e non poteva
+più sedersi ai tavoli. Introdotto un flag di **modalità gioco libero** — `DebugFlags.freePlay`
+in `GameWorld` — **attivo di default in questa build**. Quando attivo: **buy-in ignorato**
+(ci si siede a qualsiasi tavolo a prescindere dal saldo), saldo **ripristinato a 5000 a ogni
+avvio** e **pinnato** (buy-in/cash-out no-op → ogni test parte fresco), tavoli sempre
+entrabili. Implementazione **tutta in `PlayerAccount`** (parametro `freePlay: Bool =
+DebugFlags.freePlay` che modula `canAfford`/`buyIn`/`cashOut`/init): `AppState`,
+`RiverwoodView` e i driver **non cambiano** (leggono `canAfford`/`buyIn` come sempre; il
+motore riceve stack/buy-in come parametri e ignora la restrizione a monte). **Visibilità
+del temporaneo:** file `DebugFlags.swift` con intestazione "⚠️ TEMPORANEO — rimuovere prima
+del rilascio pubblico", commenti D-050 su ogni ramo in `PlayerAccount`, un **badge arancione
+"GIOCO LIBERO"** nel `GameChrome` (ogni schermata, non invasivo, con label VoiceOver
+"Modalità test gioco libero attiva"), e una sezione **"Modalità di sviluppo attualmente
+attive"** nel README principale. **Rimozione:** in una sessione dedicata al rilascio si
+mette `freePlay = false` (o si toglie il flag) — il badge sparisce e l'economia torna reale;
+i test dell'economia già passano `freePlay: false` esplicitamente. **Test:** `PlayerAccount`
+in free-play (reset a 5000 ignorando il salvato, buy-in ignorato, saldo pinnato); XCUITest
+`FreePlayUITests` (badge presente su Home e Riverwood, saldo 5000, tutti i tavoli — incluso
+il Draw da 2000 — entrabili). 260 test verdi.

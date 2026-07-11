@@ -58,7 +58,7 @@
 "seat.a11y.shows" = "mostra %@";
 "seat.a11y.holding" = "ha due carte coperte";
 "seat.a11y.allIn" = "è ol-in";
-"seat.a11y.folded" = "ha fatto fold";
+"seat.a11y.folded" = "ha fatto fould";
 "seat.a11y.busted" = "eliminato";
 
 /* Table + centre: button holder, board, pot */
@@ -83,7 +83,7 @@
 "announce.blind.small" = "%1$@ mette lo smòl blaind di %2$d";
 "announce.blind.big" = "%1$@ mette il big blaind di %2$d";
 "announce.hole.dealt" = "Carte distribuite";
-"announce.action.folded" = "%@ fa fold";
+"announce.action.folded" = "%@ fa fould";
 "announce.action.checked" = "%@ fa cek";
 "announce.action.called" = "%1$@ fa col di %2$d";
 "announce.action.called.allin" = "%1$@ fa col ed è ol-in con %2$d";
@@ -122,13 +122,17 @@
 "action.call" = "Call %d";
 "action.call.a11y" = "col %d";
 "action.fold" = "Fold";
-"action.fold.a11y" = "fold";
+"action.fold.a11y" = "fould";
 "action.raise" = "Raise";
 "action.raise.a11y" = "reis";
 
 /* Raise box */
 "raise.title.raise" = "Raise";
 "raise.title.bet" = "Bet";
+/* Phonetic VoiceOver renders of the raise-box title (D-049): the Italian voice reads
+   "Raise" as "Ace", so the accessibility label uses "reis" (and "bett" for Bet). */
+"raise.title.raise.a11y" = "reis";
+"raise.title.bet.a11y" = "bett";
 "raise.minus.a11y" = "meno";
 "raise.plus.a11y" = "più";
 "raise.allin" = "All-in";
@@ -169,7 +173,7 @@
 "announce.session.lost" = "hai perso la sessione";
 
 /* Confirmation of the human's own action (D-028), phonetic poker terms */
-"announce.you.folded" = "fai fold";
+"announce.you.folded" = "fai fould";
 "announce.you.checked" = "fai cek";
 "announce.you.called" = "fai col di %d";
 "announce.you.called.allin" = "fai col e vai ol-in con %d";
@@ -313,3 +317,8 @@
 /* Pareggio (split pot): stessa combinazione per tutti i vincitori */
 "announce.split.won" = "pareggio tra %1$@, entrambi %2$@";
 "announce.split.won.nohand" = "pareggio tra %@";
+
+/* ------------------------------------------------------------------ */
+/* ⚠️ TEMPORANEO (D-050) — badge modalità gioco libero, da rimuovere col flag */
+"debug.freeplay.badge" = "GIOCO LIBERO";
+"debug.freeplay.a11y" = "Modalità test gioco libero attiva";

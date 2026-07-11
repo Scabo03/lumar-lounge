@@ -131,7 +131,9 @@ struct RaiseBoxView: View {
                     .frame(minWidth: 90)
                     .accessibilityElement()
                     .accessibilityIdentifier("raise.value")
-                    .accessibilityLabel(Text(verbatim: box.isBet ? uiLocalized("raise.title.bet") : uiLocalized("raise.title.raise")))
+                    // PHONETIC label (D-049): "reis"/"bett", never the visible English
+                    // "Raise"/"Bet" — Italian VoiceOver reads "Raise" as "Ace".
+                    .accessibilityLabel(Text(verbatim: box.isBet ? uiLocalized("raise.title.bet.a11y") : uiLocalized("raise.title.raise.a11y")))
                     .accessibilityValue(Text(verbatim: uiLocalized("announce.raise.value", box.value)))
                     .accessibilityFocused($focused)
 

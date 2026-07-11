@@ -13,7 +13,7 @@ final class AppStateTests: XCTestCase {
     }
     private func app(startingChips: Int? = nil) -> AppState {
         let store = MemStore(); store.value = startingChips
-        return AppState(account: PlayerAccount(store: store))
+        return AppState(account: PlayerAccount(store: store, freePlay: false))
     }
 
     func testSitDownDeductsBuyInAndNavigatesToTheTable() {

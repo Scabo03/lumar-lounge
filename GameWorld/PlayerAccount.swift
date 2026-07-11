@@ -41,10 +41,19 @@ public final class PlayerAccount {
 
     public private(set) var chips: Int
     private let store: ChipsStore
+    /// ⚠️ TEMPORANEO (D-050): free-play test mode — buy-in ignored, balance pinned
+    /// to the starting stake and reset every launch. Default is `DebugFlags.freePlay`.
+    private let freePlay: Bool
 
-    public init(store: ChipsStore = UserDefaultsChipsStore()) {
+    public init(store: ChipsStore = UserDefaultsChipsStore(), freePlay: Bool = DebugFlags.freePlay) {
         self.store = store
-        if let saved = store.loadChips() {
+        self.freePlay = freePlay
+        if freePlay {
+            // Debug free play: always start fresh at the starting stake, ignoring
+            // whatever was saved — so the balance never shows zero mid-test (D-050).
+            self.chips = Self.startingChips
+            store.saveChips(self.chips)
+        } else if let saved = store.loadChips() {
             self.chips = saved
         } else {
             self.chips = Self.startingChips
@@ -52,13 +61,15 @@ public final class PlayerAccount {
         }
     }
 
-    /// Whether the player can cover a buy-in.
-    public func canAfford(_ buyIn: Int) -> Bool { chips >= buyIn }
+    /// Whether the player can cover a buy-in. Always true in free-play mode (D-050).
+    public func canAfford(_ buyIn: Int) -> Bool { freePlay || chips >= buyIn }
 
     /// Takes a buy-in out of the account (chips → table fiches). Returns false and
-    /// changes nothing if the player can't afford it.
+    /// changes nothing if the player can't afford it. In free-play mode the buy-in
+    /// is IGNORED: it always succeeds and the balance stays put (D-050).
     @discardableResult
     public func buyIn(_ amount: Int) -> Bool {
+        if freePlay { return true }
         guard amount >= 0, chips >= amount else { return false }
         chips -= amount
         store.saveChips(chips)
@@ -66,8 +77,10 @@ public final class PlayerAccount {
     }
 
     /// Returns remaining table fiches to the account (fiches → chips). A bust
-    /// cashes out 0, so nothing is credited.
+    /// cashes out 0, so nothing is credited. In free-play mode the balance is pinned,
+    /// so cash-out is a no-op (every session starts fresh at 5000, D-050).
     public func cashOut(_ amount: Int) {
+        if freePlay { return }
         guard amount > 0 else { return }
         chips += amount
         store.saveChips(chips)
