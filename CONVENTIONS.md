@@ -313,6 +313,16 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     ascoltati fa da **rilevatore di modifica** senza dichiararli corretti, così un cambio
     costringe a ri-ascoltare. Diagnosi: se un termine legge male malgrado il verde, prima
     `element.label` a runtime (label applicata?), poi l'ascolto del campione (grafia giusta?).
+    **Avvertenza sull'IPA (misurata, D-060 chiusura):** l'attributo IPA
+    (`accessibilitySpeechPhoneticNotation` / `AVSpeechSynthesisIPANotationAttribute`) **è
+    onorato dalla sintesi e ne cambia davvero la pronuncia** (verificato: `T` piano ≠ `T`+IPA;
+    il contenuto dell'IPA conta; vale anche per termini nuovi tipo "Skypool") — **non** è
+    indistinguibile dal testo piano. Ciò che **non** è mai stato verificato end-to-end è se
+    **iOS VoiceOver sul telefono** onori quell'attributo quando arriva da una
+    `.accessibilityLabel(Text(AttributedString))` di SwiftUI (il ponte app→VoiceOver, non l'IPA
+    in sé). Perciò: **preferire sempre una grafia piana verificata all'orecchio** (device-safe);
+    ricorrere all'IPA solo se nessuna grafia piana dà il suono voluto, e **verificarlo sul device
+    reale** prima di considerarlo affidabile.
   - **Un annuncio contestuale dinamico non deve duplicare un pulsante visibile (D-055).**
     Se un controllo mostra e pronuncia già un'informazione (il pulsante "Call X" dice la
     cifra da chiamare quando VoiceOver ci arriva), **non** ripeterla in una sintesi

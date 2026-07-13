@@ -1457,6 +1457,39 @@ la stessa voce di VoiceOver iOS (**Alice it-IT compact**, via `AVSpeechSynthesiz
   la conferma acustica dell'utente sui campioni `FINAL_*` — non prima.** I campioni vivono in
   `~/Desktop/lumar-phonetics/`. **Supera D-059** sull'approccio (IPA → grafia piana verificata).
 
+### D-060 (chiusura) — Resa finale cablata + comportamento REALE dell'IPA, verificato empiricamente
+Chiusura formale di D-060. **Resa finale cablata (verificata byte-identica ai campioni approvati
+dall'utente):** pulsante **Raise** = parola inglese piana **"Raise"** su **entrambi** i call-site
+(Texas `action.raise.a11y`, box valore `raise.title.raise.a11y`, conferma `raise.confirm.a11y`;
+Draw `draw.action.raise.a11y` = "Raise a %d") — identica al campione `raise_02`; pulsante **Fold**
+= grafia piana ASCII **"fohld"** (Alice la legge /ˈfold/) — identica al campione `fold_03`.
+Nessuna discrepanza tra codice e ascolto; nessuna dipendenza da IPA (grafie piane → device-safe).
+**Il punto oscuro del riepilogo M1.10 chiarito (misurato, non ipotizzato).** La frase "una grafia
+piana risultava byte-identica alla notazione IPA" era **ambigua e NON significa che l'IPA sia
+inutile**. Matrice empirica su Alice it-IT (`AVSpeechSynthesisIPANotationAttribute`, lo stesso a
+cui mappa `accessibilitySpeechPhoneticNotation`; md5 dell'audio):
+- **L'IPA È onorato e CAMBIA la pronuncia:** `"reis"` piano ≠ `"reis"`+IPA/ˈreɪz/ (DIVERSI);
+  `"Skypool"` piano ≠ `"Skypool"`+IPA/ˈskaɪpuːl/ (DIVERSI, **su un termine nuovo**);
+  `"fold"` piano ≠ `"fold"`+IPA/ˈfold/ (DIVERSI).
+- **Il CONTENUTO dell'IPA conta**, non solo la sua presenza: `"fold"`+IPA/ˈfold/ ≠
+  `"fold"`+IPA-assurdo/təˈmɑːtoʊ/ (DIVERSI).
+- **La "byte-identità" di D-060 era una COINCIDENZA fra due input diversi che danno lo stesso
+  output**, non "IPA == testo piano": la grafia piana **"fohld"** (senza attributo) produce audio
+  **identico** a `"fold"`+IPA/ˈfold/. Due input diversi → stesso suono. È per questo che abbiamo
+  potuto **sostituire** l'IPA con una grafia piana per Fold, non perché l'IPA fallisse.
+**Conclusione operativa (informazione permanente, ci servirà per "Skypool" e il nuovo casinò):**
+1. **A livello di sintesi, l'IPA è affidabile ed efficace** — dimostrato per reis, Skypool, fold.
+2. **Il vero anello NON verificato non è l'IPA ma il percorso app→device:** se iOS VoiceOver
+   onori davvero l'attributo IPA quando è su una `.accessibilityLabel(Text(AttributedString))` di
+   SwiftUI **sul telefono reale** non è mai stato confermato end-to-end (la sintesi lo onora — via
+   `AVSpeechSynthesizer`, lo stesso motore — ma il ponte SwiftUI→VoiceOver no; questa build di
+   D-060 spedisce **grafie piane**, quindi non testa nemmeno quel percorso).
+3. **Regola per i termini futuri (es. "Skypool"):** provare **prima** una **grafia piana
+   verificata all'orecchio** (device-safe, nessuna dipendenza dal percorso IPA di SwiftUI); usare
+   l'IPA **solo** se nessuna grafia piana produce il suono voluto, e in quel caso **verificarlo
+   sul device reale**. L'IPA è uno strumento affidabile; il dubbio è la **consegna** SwiftUI→
+   VoiceOver, non l'IPA in sé.
+
 ### ⚠️ Metodo canonico per la fonetica (da D-060) — ASCOLTARE prima di dichiarare
 Per qualunque termine la cui pronuncia conta: **(1)** genera un campione audio reale con la
 **voce di destinazione** (Alice it-IT) e più candidati (parola inglese piana, grafie, IPA);
