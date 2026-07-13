@@ -23,7 +23,16 @@ import Audio
 enum SpokenChannelPacing {
 
     /// After this long the UI proceeds even if the spoken channel hasn't gone quiet.
-    static let defaultMaxWait: TimeInterval = 3.0
+    /// This is a HANG BACKSTOP, not a normal-speech budget: it must sit ABOVE the
+    /// longest normal per-event spoken time so it never trips during real narration.
+    /// Raised to 8 s when the real (longer, more verbose) Skypool croupier voices
+    /// landed (D-068): a full croupier line + its content synthesis can run ~5–6 s, and
+    /// the previous 3 s cap fired systematically mid-speech in VoiceOver-ON adaptive
+    /// mode, desyncing eye and ear. A genuine hang is caught far sooner by the
+    /// AudioEngine's per-clip completion timeout (duration + margin, D-056) and the
+    /// announcement queue's own cap, so this only fires if BOTH of those also fail.
+    /// (VoiceOver-OFF mode never uses this path — it keeps its fixed human pauses.)
+    static let defaultMaxWait: TimeInterval = 8.0
     /// Polling granularity while waiting.
     static let defaultStep: TimeInterval = 0.025
 

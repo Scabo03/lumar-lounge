@@ -278,10 +278,15 @@ Un casinò nuovo eredita il croupier **senza toccare il percorso audio**. Catalo
 - **Calibrazione comparativa Riverwood ↔ Skypool:** tarare le differenze di difficoltà/
   carattere tra i due casinò **dopo** che l'utente ha giocato entrambi. Il Riverwood **non**
   è stato ricalibrato.
-- **File audio Skypool + cablaggio voci di colore urbane:** produrre i file di
-  `Skypool_audio_catalog.md` (ElevenLabs voci croupier + `vob_sky_*`, StableAudio ambient) e
-  cablare le `vob_sky_*` quando arrivano (oggi ambientali → silenzio). Il croupier per-casinò
-  è **fatto** (D-067): i file, quando arrivano, suonano automaticamente al posto della sintesi.
+- **✅ File audio Skypool cablati (D-068):** l'utente ha prodotto i file su ElevenLabs/
+  StableAudio; **cablati** senza modifiche alla logica (deposito asset + rinomine). **Fatto:**
+  12/14 croupier, 4/4 ambient, 6/7 colore-bot — lo Skypool ha la sua voce vera e i bot urbani si
+  sentono. **Restano scoperti (fallback attivo):** `vo_it_sky_hand_start` (chime → silenzio),
+  `vo_it_sky_pot_limit` (riservato), `vob_sky_aggressor_bluff_giveaway_01` (in Downloads c'era un
+  `aggressor_nervous` ambiguo, **non** cablato — rinominarlo e ricablare in una passata futura).
+- **Voci del Riverwood ancora non prodotte** (quadro nel catalogo): `vo_it_role_button`,
+  `vo_it_high_stakes`, croupier Draw (`vo_it_ante`/…/`vo_it_high_stakes_draw`), ambient
+  `amb_home_neutral`/`amb_riverwood_calm_*`, `ui_navigation`, e i 2 storici.
 - **M2.2 — Cassa / DLC:** ricarica dei gettoni quando finiscono (acquisti, bonus).
 - **M2.3 — Ambient Riverwood:** produzione dei file audio dedicati al posto dei fallback.
 - **M2.7 — NPC narrativi:** avversari ricorrenti con nome/carattere/storia (non definiti).

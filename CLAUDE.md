@@ -105,10 +105,11 @@ Whiskey); allo **Skypool** Texas (Classico/Rapido) e **Omaha Pot Limit** (Marble
 contiene **tre motori**, tutti e tre ora con driver, UI e audio (Omaha via lo Skypool). Navigazione
 Home → Casinò → Tavolo con gettoni persistenti e barriera economica.
 
-**Slot audio da produrre** (dichiarati, con fallback nel frattempo):
-- **Skypool (D-066):** croupier proprio `vo_it_sky_*` (informativi → sintesi), ambient
-  `amb_skypool_*` (→ fallback lounge), e le voci di colore dei tre bot urbani `vob_sky_*`
-  (**ambientali → silenzio**). Spec completa in `Skypool_audio_catalog.md`.
+**Slot audio** (stato reale, dettaglio in `Skypool_audio_catalog.md`):
+- **Skypool (D-068): file reali PRODOTTI e CABLATI** — croupier 12/14, ambient 4/4, colore-bot
+  6/7. Lo Skypool **parla con la sua voce vera** e i bot urbani si sentono. Restano scoperti (col
+  fallback): `vo_it_sky_hand_start` (chime→silenzio), `vo_it_sky_pot_limit` (riservato),
+  `vob_sky_aggressor_bluff_giveaway_01` (file `aggressor_nervous` ambiguo, non cablato).
 - **Storici ancora aperti:** mondo M2 (`amb_home_neutral`, `amb_riverwood_calm_*`,
   `vo_it_high_stakes`, `ui_navigation`), croupier Draw (`vo_it_ante`, `vo_it_draw_phase`,
   `vo_it_pass_and_out`, `vo_it_carried_pot`, `vo_it_openers_disqualified`, `vo_it_high_stakes_draw`),
@@ -1745,3 +1746,54 @@ i tavoli (Texas + Omaha, via `hosting`); informativa→sintesi / ambientale→si
 conductor; **palette data-driven** → un casinò nuovo eredita il meccanismo senza toccare il percorso
 audio. Catalogo `Skypool_audio_catalog.md` **rigenerato** contro l'architettura nuova. **343 test
 verdi.** Solo `UI` (+ stringhe di registro). Motori/driver/flusso/`Audio` intatti.
+
+### D-068 — Cablaggio dei file audio reali dello Skypool: lo Skypool prende voce (M2)
+L'utente ha prodotto su ElevenLabs/StableAudio i file dello Skypool e li ha messi in Downloads;
+questa sessione li cabla. **Il cablaggio NON ha richiesto modifiche alla logica** (come previsto da
+D-030/D-067): gli slot esistevano già, `AudioEngine.isAvailable` rileva la presenza del file, e il
+cablaggio è stato **deposito di asset + rinomine** in `Resources/Audio/` (gruppo sincronizzato →
+auto-bundled). Nessun tocco a SpeechMap/conductor/CasinoAudio.
+- **Riscontro catalogo↔Downloads:** **22 cablati** (12 croupier, 4 ambient, 6 colore bot), **1
+  lasciato fuori** (ambiguo), **3 slot non prodotti** (fallback attivo). **Rinomine dichiarate:**
+  `vo_it_sky_big_blind→blind_big`, `small_blind→blind_small`, `amb_skypool_tense→tense_01`,
+  `water→water_01`, e per **tutti** i colore-bot rimozione dell'`it_` di troppo + normalizzazione
+  `_01` (`vob_it_sky_*→vob_sky_*_01`). **Ambiguo, non indovinato** (regola del prompt): in Downloads
+  `vob_it_sky_aggressor_nervous.mp3` non ha uno slot `aggressor_nervous`; **probabilmente** è
+  `aggressor_bluff_giveaway` ("risatina nervosa") ma il nome non è *evidentemente* riconducibile →
+  lasciato fuori, slot silenzioso, dichiarato. **Non prodotti:** `vo_it_sky_hand_start` (chime →
+  silenzio), `vo_it_sky_pot_limit` (riservato), `vob_sky_aggressor_bluff_giveaway_01`.
+- **D-051 verificato ora che i file esistono:** con l'mp3 presente il conductor **suona l'mp3 e
+  ignora il fallback di registro** (la sintesi di contenuto — carte/vincitore — è separata e diversa,
+  nessuna doppia riproduzione). Nessuna voce dichiara `synthesis` e `croupierFallback` con lo **stesso**
+  testo (il registro è la "parola" del croupier, la sintesi è il contenuto). Test:
+  `SkypoolAudioCablingTests` (mp3 presente → il fallback tace).
+- **Coordinamento canale ambientale ↔ informativo (verificato + principio in CONVENTIONS §4):** ora
+  che i colore-bot **suonano davvero**, verificato che (a) il colore va sul **canale audio** (`.botVoice`,
+  `audio.play`) e **mai** in `AnnouncementQueue` come testo — solo l'**attribuzione informativa**
+  ("giocatore N rilancia") è annuncio; (b) il colore d'azione passa dal `SpeechConductor` che, via
+  `beginExternalSpeech`, **aspetta la fine di un annuncio in corso** prima di partire → **non copre né
+  interrompe** l'informazione (le proprie carte, il turno). Test: il colore-bot suona come audio e
+  **non** entra in coda. *Residuo dichiarato:* il colore di **fine-mano** (novice win/lose, in
+  `AudioDirector`) è fire-and-forget (come al Riverwood, già validato) e può brevemente sovrapporsi
+  alla conclusione del pot; **non toccato** perché è comportamento condiviso col Riverwood (che non si
+  tocca) — eventuale rifinitura è per entrambi i casinò, fuori scope.
+- **Ritmo con voci reali più lunghe (D-056):** il croupier Skypool è più verboso (linee 1.5–3.2 s;
+  showdown/stakes-up ~3.16 s) e con la sintesi di contenuto un evento può arrivare a ~5–6 s. Il tetto
+  di safeguard del ritmo adattivo (VoiceOver-ON) era **3 s** e sarebbe scattato **sistematicamente** a
+  metà voce, desincronizzando occhio e orecchio. **Alzato a 8 s** (`SpokenChannelPacing.defaultMaxWait`):
+  è un **backstop anti-freeze**, non un budget di parlato normale, e deve stare **sopra** la voce più
+  lunga. Il freeze vero resta preso **prima** dal timeout di completamento per-clip dell'`AudioEngine`
+  (durata + margine, D-056, già adattivo alla durata) e dal tetto della coda annunci — l'8 s scatta solo
+  se **entrambi** falliscono. **VoiceOver-OFF (default) NON usa questo path** → ritmo invariato. Nessun
+  tocco al produttore (`SessionDriver` non conosce il ritmo). I `CheckedContinuation` che attendono una
+  riproduzione hanno il loro timeout (D-056), verificato adeguato alle durate reali.
+- **Ambient reale:** i letti `amb_skypool_*` (loop da 3 minuti) sostituiscono i fallback lounge via
+  `isAvailable` — lo Skypool ora ha **davvero** la sua aria; il crossfade dinamico (calm↔tense, hush
+  allo showdown) è invariato. **NON sanata** l'incoerenza dichiarata dei letti Texas (lounge diretti)
+  vs Draw (riverwood-preferred): resta residuo, e non produce sorprese (Draw è solo al Riverwood).
+- **Riverwood:** **non toccato**. Nessuna voce del Riverwood tra i file consegnati; nessun suo slot
+  cablato. La palette identità resta invariata (pin `CasinoAudioTests` verde). L'unico cambio
+  trasversale è il tetto di safeguard 3→8 s, che agisce **solo** in VoiceOver-ON adaptive e **solo**
+  come backstop anti-freeze (migliora la sincronia, non cambia il suono; VoiceOver-OFF invariato).
+**347 test verdi** (343 + 4 nuovi di cablaggio/canale/anti-double). Solo `UI`/`Audio` + asset; motori/
+driver/flusso intatti. **Lo Skypool ora parla con la sua voce vera; i bot urbani si sentono.**

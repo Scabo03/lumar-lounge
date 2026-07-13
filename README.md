@@ -178,6 +178,15 @@ cinico) e il **suo** ambient su **tutti** i suoi tavoli. Il **Riverwood è la pa
 identità/default** → invariato per costruzione (regressione pinnata). Un casinò nuovo eredita
 il croupier senza toccare il percorso audio. **343 unit test verdi.**
 
+**Lo Skypool prende voce: file audio reali cablati (D-068).** L'utente ha prodotto i file su
+ElevenLabs/StableAudio e sono stati **cablati senza toccare la logica** (solo deposito asset +
+rinomine, `AudioEngine.isAvailable` fa il resto): croupier 12/14, ambient 4/4, colore-bot 6/7. Lo
+Skypool ora **parla con la sua voce vera** e i bot urbani si sentono. Il colore dei bot resta sul
+**canale ambientale** (audio, mai in coda annunci) e, coordinato dal conductor, non copre
+l'informazione di gioco. Il ritmo adattivo (VoiceOver-ON) è stato rilassato (tetto safeguard 3→8 s)
+perché le voci vere, più lunghe, non facessero scattare il backstop a metà parlato. Riverwood
+invariato. **347 unit test verdi.**
+
 > **🏁 La prima fase è completa.** Il gioco base è funzionante end-to-end — motore
 > completo, bot credibili, sessione multi-mano, flusso di eventi, UI giocabile e
 > accessibile, e **audio pieno**: i 47 file mp3 consegnati (atmosfera, carte,

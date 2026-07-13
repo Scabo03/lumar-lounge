@@ -239,6 +239,21 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     vuoti → comportamento invariato per costruzione, così la regressione è garantita), e un
     **luogo nuovo si aggiunge come dato** senza toccare le SpeechMap, il conductor o i director.
     Il croupier di un luogo nuovo cambia **voce E registro** (testi propri), non solo il file.
+  - **Canale ambientale (colore dei bot) vs canale informativo: mai coprire l'informazione
+    (D-068).** Il colore dei bot (`vob_`, categoria `.botVoice`, ambientale) e l'informazione
+    di gioco (croupier + sintesi VoiceOver, informativa) sono **due cose diverse** e vanno
+    tenute separate:
+    - Il colore **non passa mai** dalla `AnnouncementQueue` come testo: è **audio**
+      (`audio.play(.botVoice)`), non un annuncio. Solo l'**attribuzione informativa** di
+      un'azione ("giocatore N rilancia") è annuncio.
+    - Il colore **non deve sovrapporsi né interrompere** l'informazione **quando il giocatore
+      sta ascoltando qualcosa che gli serve** (le proprie carte, il proprio turno, la
+      conclusione del pot). Un colore che copre l'annuncio delle proprie carte è un **difetto
+      grave di accessibilità**, non un dettaglio di missaggio. Il colore d'azione passa quindi
+      dal `SpeechConductor`, che via `beginExternalSpeech` **attende la fine di un annuncio in
+      corso** prima di suonare → serializzato con l'informazione, mai sopra.
+    Regola: una voce ambientale che si accende vicino a informazione critica **cede il passo**
+    (o tace); l'informazione non aspetta mai il colore.
   - **Annunci di ruolo personalizzati sul giocatore umano, non generici (D-031).**
     A inizio mano il croupier annuncia **solo il ruolo del giocatore umano** se ne ha
     uno (small blind / big blind / button), e resta **in silenzio** se non ne ha:

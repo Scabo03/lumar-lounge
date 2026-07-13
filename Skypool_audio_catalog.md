@@ -13,6 +13,27 @@ e — per l'ambient — il **carattere sonoro**. Deposita in `Resources/Audio/` 
 **esattamente** questi nomi (consegna `.mp3`). Finché mancano, il gioco funziona coi
 fallback descritti (nessuna regressione).
 
+## Stato di cablaggio reale (D-068 — aggiornato dopo la consegna dei file)
+L'utente ha prodotto e depositato i file; sono stati cablati in `Resources/Audio/`.
+**Legenda:** ✅ prodotto e cablato · ⬜ non ancora prodotto (attivo il fallback).
+- **Croupier:** ✅ 12/14 (`blind_small`, `blind_big`, `role_button`, `your_turn`, `flop`,
+  `turn`, `river`, `showdown`, `action_all_in`, `pot_awarded`, `split_pot`, `stakes_up`).
+  ⬜ `vo_it_sky_hand_start` (stacco/chime → resta silenzioso), ⬜ `vo_it_sky_pot_limit`
+  (riservato/non cablato).
+- **Ambient:** ✅ 4/4 (`calm_01`, `calm_02`, `tense_01`, `water_01`).
+- **Colore bot:** ✅ 6/7 (`novice_excited`, `novice_disappointed`, `novice_nervous`,
+  `rock_grunt`, `aggressor_confident`, `aggressor_taunt`). ⬜
+  `vob_sky_aggressor_bluff_giveaway_01` — **non cablato**: in Downloads c'era
+  `vob_it_sky_aggressor_nervous.mp3`, che **probabilmente** è questa battuta (la
+  descrizione è "risatina nervosa"), ma il nome non è **evidentemente** riconducibile
+  allo slot, quindi **non l'ho indovinato**: resta fuori (slot silenzioso). Rinominalo in
+  Downloads come `vob_sky_aggressor_bluff_giveaway_01` (o confermami la corrispondenza) e
+  lo cablo.
+- **Rinomine fatte** (dichiarate): `big_blind→blind_big`, `small_blind→blind_small`,
+  `amb_skypool_tense→tense_01`, `amb_skypool_water→water_01`, e per **tutti** i colore-bot
+  la rimozione dell'`it_` di troppo e la normalizzazione del suffisso `_01`
+  (`vob_it_sky_*→vob_sky_*_01`).
+
 ## Identità sonora dello Skypool
 Casinò **cittadino, moderno, freddo**: marmo, cemento, **acqua** (una piscina), vetro,
 **discoteca** in lontananza. L'opposto del Riverwood (legno, whiskey, calore rustico).
