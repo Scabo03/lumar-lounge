@@ -204,6 +204,8 @@ struct RaiseBoxView: View {
 struct EndOverlay: View {
     let outcome: GameOutcome
     let onReturn: () -> Void
+    /// The "return to <casino>" button label — casino-specific (D-065).
+    var returnLabel: String = uiLocalized("endgame.return")
 
     var body: some View {
         ZStack {
@@ -218,7 +220,7 @@ struct EndOverlay: View {
                     .voiceOverFocusLanding()   // land VoiceOver on the outcome (D-057)
 
                 Button(action: onReturn) {
-                    Text(verbatim: uiLocalized("endgame.return"))
+                    Text(verbatim: returnLabel)
                         .font(.headline.weight(.bold))
                         .padding(.horizontal, 28).padding(.vertical, 14)
                         .foregroundStyle(.black)

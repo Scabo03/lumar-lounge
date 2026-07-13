@@ -84,6 +84,8 @@ public final class DrawTableViewModel: ObservableObject {
 
     public let names: [Int: String]
     public let heroSeatID = 0
+    /// The end-of-game overlay's "return to <casino>" label — casino-specific (D-065).
+    public let returnLabel: String
 
     private let driver: DrawSessionDriver
     private let human = HumanDrawActionProvider()
@@ -116,11 +118,13 @@ public final class DrawTableViewModel: ObservableObject {
                 audio: AudioServicing = NullAudioService(),
                 mode: AppVoiceOverMode,
                 rules: DrawTableRules = .riverwoodWhiskey,
+                returnLabel: String,
                 onLeave: @escaping (Int) -> Void = { _ in }) {
         self.fastMode = fastMode
         self.audio = audio
         self.mode = mode
         self.rules = rules
+        self.returnLabel = returnLabel
         self.onLeave = onLeave
 
         // Concrete root seed for bots/audio (random per session in production); the

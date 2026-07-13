@@ -83,30 +83,35 @@ nei file collegati.
   mai a tempo — D-064). **Solo motore+bot+driver: nessuna UI, nessun audio, nessun casinò
   ospitante.** 311 test verdi; Texas e Draw invariati.
 
-**🏁 Fase 1 (M1) completa; Fase 2 (M2) in corso.** Girano end-to-end **due giochi
-completi**: Texas Hold'em No Limit (Classico e Rapido) e **Five-Card Draw** (Sala
-Whiskey), dentro la navigazione Home → Riverwood → Tavolo con gettoni persistenti.
-`GameEngine` contiene ora **tre motori**; Texas e Draw hanno driver, UI e audio, mentre
-**Omaha è motore+bot+driver ma non ancora giocabile** (mancano UI, audio, casinò). L'app bundle contiene 51 mp3;
-oltre ai 2 storici (`amb_crowd_distant`, `fx_hand_neutral`) mancano ora **5 slot M2**
-e **5 nuovi slot croupier del Draw**, tutti predisposti con fallback (vedi sotto), da
-produrre e depositare in `Resources/Audio/`.
+- **`GameWorld`/`UI` M2 Skypool:** **secondo casinò** e **Omaha giocabile** (D-065/D-066). Il
+  pattern casinò è **generalizzato** (`Casino`/`CasinoTable`/`CasinoGame` + registry `Casinos`,
+  lobby generica `CasinoLobbyView`, temi per casinò), col **Riverwood invariato**. Lo **Skypool**
+  (cittadino, marmo/acqua, freddo) ospita Texas Classico/Rapido con **bot urbani** (tre personalità
+  come entità proprie) e la sua specialità **Omaha Pot Limit "Marble"** — ora **giocabile**
+  (`OmahaTableView`: quattro carte private lette **per seme**, box raise **Pot Limit** senza shove).
+  Accesso **solo economico** (buy-in Skypool ~5×, scala Fast 5000 < Classic 6000 < Marble 10000).
+  Novità audio: **due categorie di voce** (informativa→sintesi, ambientale→silenzio); slot Skypool
+  dichiarati (nessun file), catalogo in `Skypool_audio_catalog.md`.
 
-**Slot audio da produrre** (dichiarati nel catalogo, con fallback nel frattempo):
-- **M2 mondo:** `amb_home_neutral`, `amb_riverwood_calm_01`, `amb_riverwood_calm_02`
-  (→ fallback lounge_calm), `vo_it_high_stakes` (→ fallback sintesi "mano decisiva"),
-  `ui_navigation` (→ silenzio).
-- **Croupier Five-Card Draw (M2.4):** `vo_it_ante`, `vo_it_draw_phase`,
-  `vo_it_pass_and_out`, `vo_it_carried_pot`, `vo_it_openers_disqualified` — tutti con
-  **fallback di sintesi VoiceOver** dichiarato nella `DrawSpeechMap` (D-030), così
-  parlano finché l'mp3 non viene consegnato.
+**🏢 Fase 1 (M1) completa; Fase 2 (M2) in corso.** Girano end-to-end **tre giochi** in **due
+casinò**: al **Riverwood** Texas Hold'em No Limit (Classico/Rapido) e **Five-Card Draw** (Sala
+Whiskey); allo **Skypool** Texas (Classico/Rapido) e **Omaha Pot Limit** (Marble). `GameEngine`
+contiene **tre motori**, tutti e tre ora con driver, UI e audio (Omaha via lo Skypool). Navigazione
+Home → Casinò → Tavolo con gettoni persistenti e barriera economica.
 
-**Prossimo passo.** Prossimi sotto-mattoni M2 (vedi [`ROADMAP.md`](ROADMAP.md)): cassa/
-DLC per ricarica gettoni, ambient dedicati Riverwood e voci croupier del Draw
-(produzione dei file audio elencati sopra), secondo casinò più lussuoso, NPC narrativi.
-**Per Omaha (M1.10, motore pronto):** UI (`OmahaTableView` giocabile), audio (voce
-croupier + `OmahaSpeechMap`), e il **secondo casinò** che lo ospiterà come specialità
-— quel mondo non esiste ancora e non è stato anticipato in questa sessione.
+**Slot audio da produrre** (dichiarati, con fallback nel frattempo):
+- **Skypool (D-066):** croupier proprio `vo_it_sky_*` (informativi → sintesi), ambient
+  `amb_skypool_*` (→ fallback lounge), e le voci di colore dei tre bot urbani `vob_sky_*`
+  (**ambientali → silenzio**). Spec completa in `Skypool_audio_catalog.md`.
+- **Storici ancora aperti:** mondo M2 (`amb_home_neutral`, `amb_riverwood_calm_*`,
+  `vo_it_high_stakes`, `ui_navigation`), croupier Draw (`vo_it_ante`, `vo_it_draw_phase`,
+  `vo_it_pass_and_out`, `vo_it_carried_pot`, `vo_it_openers_disqualified`, `vo_it_high_stakes_draw`),
+  e i 2 storici (`amb_crowd_distant`, `fx_hand_neutral`).
+
+**Prossimo passo** (vedi [`ROADMAP.md`](ROADMAP.md)): **calibrazione comparativa** Riverwood↔Skypool
+(dopo che l'utente ha giocato entrambi); **produzione dei file audio Skypool** e **cablaggio delle
+voci di colore urbane** quando arrivano; cassa/DLC per ricarica gettoni; **NPC narrativi**;
+piscina/discoteca come luoghi. Il **terzo casinò non è anticipato**.
 
 **Stato completo, sempre aggiornato:** sezione *Stato di sviluppo* in
 [`README.md`](README.md).
@@ -1604,3 +1609,89 @@ aperto (esplicito):** mancano **UI** (niente `OmahaTableView`/viste/SwiftUI), **
 voce croupier, nessun file, nessuna estensione `SpeechMap`), e il **casinò ospitante** (secondo
 casinò, mattone successivo con identità e decisioni ancora aperte — non anticipato). 311 test
 verdi; Texas e Draw invariati. Niente TestFlight (nulla di giocabile da testare).
+
+### D-065 — Generalizzazione del pattern casinò (Casino/CasinoTable/CasinoGame) — Riverwood invariato (M2 Skypool)
+Con l'arrivo del **secondo casinò** il Riverwood, che era cablato come blocco specifico
+(`RiverwoodView`, `AppState.Screen` con casi `.riverwood`/`.table(TableFormat)`/`.drawTable`,
+metodi `openRiverwood`/`sitDownDraw`), non regge: due casinò copiati a mano. Estratto **ora**
+(prima di duplicare) un **pattern riusabile** in `GameWorld`:
+- **`CasinoGame`** = enum `texas(TableRules)`/`draw(DrawTableRules)`/`omaha(OmahaTableRules)`:
+  ogni tavolo porta le regole complete del suo gioco (i tre tipi di regole restano distinti — i
+  motori sono paralleli, D-038/D-061). `buyIn` è la sola barriera economica.
+- **`CasinoTable`** = id stabile (anche identifier d'accessibilità e chiave di navigazione) +
+  chiavi localizzate titolo/sottotitolo + `game`.
+- **`Casino`** = id + displayName (nome proprio, non localizzato) + chiavi tagline/blurb/return + tavoli.
+- **`Casinos`** registry: `riverwood`, `skypool`, `all`. Aggiungere un casinò è un **cambio di dati** qui.
+- **UI generalizzata:** `CasinoLobbyView(casino:)` **generica** sostituisce `RiverwoodView` (una sola
+  lobby per ogni casinò, tematizzata); `HomeView` elenca `Casinos.all`; `AppState.Screen` diventa
+  `.home`/`.casino(Casino)`/`.table(CasinoTable)`; `AppRootView` costruisce la schermata giusta dal
+  `game`; il ritorno dal tavolo va al casinò di provenienza (label per-casinò via `returnLabelKey`).
+- **Tema per casinò** (`CasinoTheme`): palette + tipografia. Il Riverwood conserva **esattamente** la
+  veste precedente (feltro verde, ottone, serif); lo Skypool ha la sua (pietra/blu, sans). Il feltro
+  del tavolo resta verde (superficie di gioco condivisa) tranne la specialità Marble (feltro marmo).
+**Vincolo assoluto RISPETTATO:** il Riverwood si comporta **esattamente come prima** — stessi tavoli,
+buy-in (1000/1000/2000), personalità, determinismo. Test di regressione `CasinoTests` lo pinna; gli
+identifier XCUITest (`home.casino.riverwood`, `riverwood.table.*`, `chrome.back`) sono preservati.
+`AppStateTests` è stato **migrato alla nuova API** conservando **identiche** asserzioni di wallet/
+navigazione (migrazione meccanica, non cambio di comportamento). Solo `GameWorld` + `UI`.
+
+### D-066 — Skypool Casinò: identità, tre personalità urbane come entità proprie, Omaha giocabile, due categorie di voce (M2)
+Secondo casinò: **Skypool**, cittadino e moderno — marmo, cemento, acqua (piscina), discoteca;
+freddo e austero, l'**opposto** del Riverwood (non una sua versione più ricca). Specialità: **Omaha
+Pot Limit** al tavolo **Marble** (nome deciso, non negoziabile). Ospita anche i due Texas generici
+(Classico/Rapido) con i **suoi** bot. **Accesso puramente economico** (D-065): se hai i gettoni ti
+siedi, nessuno sblocco narrativo. Buy-in ~**5×** i corrispondenti del Riverwood, in scala crescente:
+**Fast 5000 < Classic 6000 < Marble 10000** (la specialità costa di più). Con `DEBUG_FREE_PLAY` ON i
+buy-in sono invisibili; la logica economica è testata con il flag **OFF** (`CasinoTests`), spina
+dorsale della progressione quando il flag sparirà.
+- **Tre personalità urbane come ENTITÀ PROPRIE** (`WorldPersonalities.skypool`, + `skypoolFast` per
+  il tavolo veloce), **non varianti parametriche** di quelle del Riverwood: literal completi.
+  Motivazione: **continuità di carattere, cambio d'ambiente** — gli stessi tre archetipi trasferiti in
+  città (rock urbano ancora più freddo/professionale ma con un filo d'affabilità; aggressivo urbano
+  più avvezzo al rischio, denaro dietro; novizio urbano meno ingenuo ma poco oculato). Dichiararle
+  come entità proprie è **deliberato**: possono divergere nel tempo senza toccare il Riverwood. Girate
+  **solo leve esistenti** (incl. `omahaCoordination`/`omahaNuttiness` di D-063), nessuna nuova.
+  **Retrocompatibilità additiva verificata** (girare le leve Omaha non cambia una decisione Texas) e
+  comportamento **riconoscibilmente diverso** dalla frontiera (`SkypoolPersonalityTests`). Il
+  **Riverwood NON è ricalibrato** — la calibrazione comparativa è un mattone successivo (giudizio del
+  giocatore dopo aver giocato entrambi).
+- **Omaha giocabile end-to-end** (`OmahaTableView` & c., specchio di Texas/Draw): stato/reduce puri
+  (`OmahaTableState`/`OmahaTableReducer`), VM (`OmahaTableViewModel`), viste, tutto accessibile
+  (identifier, focus landing D-057, ordine di lettura). **Quattro carte private**: la mano dell'umano è
+  letta **raggruppata per seme** ("asso e re di picche; dieci di fiori; …", `OmahaSpeechMap.
+  omahaHoleSpoken`), così il cieco coglie la **suitedness** (potenziale nut-flush, valore chiave di
+  Omaha) senza affogare in quattro carte piatte. **Box raise Pot Limit** (`OmahaRaiseBoxView`):
+  riusa `RaiseBoxState`/`RaiseCurve` su `min/maxTo` — dove `maxTo` è il **tetto pot-limit** che il
+  motore riporta, spesso **sotto** lo stack. Conferma sempre `.bet/.raise(value)` (il motore rende
+  all-in da sé se `value == stack`); **niente shove** quando lo stack supera il piatto: il pulsante
+  massimo dice **"Piatto"** (non "All-in"), una caption mostra il tetto e VoiceOver lo annuncia — la
+  distinzione PL resa comprensibile visivamente **e** acusticamente. Il tavolo usa la palette **marmo**
+  fredda come firma. Cablato nel casinò via `CasinoGame.omaha` → `OmahaTableScreen`.
+- **Due categorie di voce (novità architetturale, principio permanente in CONVENTIONS §4):** una
+  voce parlata dichiara la sua **categoria** e ne eredita il **fallback** quando l'mp3 non è ancora
+  prodotto. **Informativa** (croupier: stato di gioco che serve) → fallback a **sintesi VoiceOver**.
+  **Ambientale** (commenti di colore dei bot, `vob_`) → fallback al **SILENZIO**, mai sintesi: un
+  colore mancante non deve diventare un annuncio intrusivo che interrompe l'ascolto del cieco (colore
+  ≠ informazione). Implementato su `SoundCategory.fallsBackToSynthesis` (true solo per `.croupier`),
+  consultato dal `SpeechConductor`; testato (`AmbientVoiceFallbackTests`). Evita anche l'anti-pattern
+  D-051 (mai `synthesis` **e** `croupierFallback` con lo stesso testo).
+- **Audio Skypool: solo slot dichiarati, nessun file prodotto** (D-030). Croupier proprio dello
+  Skypool (`vo_it_sky_*`, informativi → sintesi), ambient (`amb_skypool_*` → fallback lounge), e le
+  **voci di colore dei tre bot urbani** (`vob_sky_*`, **ambientali → silenzio**). Il tavolo Omaha li
+  usa già; i Texas dello Skypool per ora riusano il croupier/ambient condivisi (unificazione croupier
+  per-casinò e cablaggio delle `vob_sky_*` = residui dichiarati in ROADMAP, da fare alla consegna dei
+  file). Catalogo di produzione completo in `Skypool_audio_catalog.md`.
+- **Fonetica di "Skypool" e "Marble"** (D-060): campioni Alice it-IT generati in
+  `~/Desktop/lumar-phonetics/skypool-marble/` (grafia piana + varianti + IPA), da **ascoltare e
+  approvare** prima di cablare qualcosa di diverso dalla grafia piana attuale (device-safe).
+**Vincoli:** motori invariati; nessun import incrociato; eventi descrittivi; `BotContext` redatto;
+nessun `UIAccessibility.post` diretto; ogni continuation con timeout (riuso `SpokenChannelPacing`);
+cache dallo stato corrente; Personality additiva; determinismo dato seed, casuale in produzione (D-047).
+**337 test verdi** (311 + 26 nuovi) + XCUITest Skypool/Omaha. Riverwood invariato.
+
+**🏢 M2 — Skypool Casinò giocabile.** Girano end-to-end **tre giochi** in **due casinò**: Texas
+(Classico/Rapido) e Five-Card Draw al Riverwood; Texas (Classico/Rapido) e **Omaha Pot Limit
+(Marble)** allo Skypool. Il pattern casinò è generalizzato e riusabile. **Residui aperti (dichiarati
+in ROADMAP):** calibrazione comparativa Riverwood↔Skypool; produzione dei file audio Skypool
+(`Skypool_audio_catalog.md`) e cablaggio delle voci di colore urbane; NPC narrativi; piscina/discoteca
+come luoghi; terzo casinò. **Nessuna anticipazione del terzo casinò.**

@@ -49,6 +49,9 @@ public final class SpeechConductor {
         SoundCatalog.voSplitPot,
         SoundCatalog.voOpenersDisqualified,   // openers disqualification (D-051)
         SoundCatalog.voHighStakesDraw,        // decisive-hand cue (D-053)
+        SoundCatalog.voSkyShowdown,           // Skypool Omaha showdown (D-066)
+        SoundCatalog.voSkyPotAwarded,         // Skypool Omaha pot (D-066)
+        SoundCatalog.voSkySplitPot,           // Skypool Omaha split pot (D-066)
     ]
     private static let oncePerHand: Set<String> = Set(oncePerHandVoices.map { $0.rawValue })
 
@@ -106,8 +109,11 @@ public final class SpeechConductor {
                     audio.play(lead, category: item.leadCategory) { cont.resume() }
                 }
                 queue.endExternalSpeech()
-            } else if let fallback = item.fallback {
-                // The mp3 isn't in the bundle yet → speak the declared fallback (D-030).
+            } else if let fallback = item.fallback, item.leadCategory.fallsBackToSynthesis {
+                // The mp3 isn't in the bundle yet → speak the declared fallback (D-030),
+                // but ONLY for INFORMATIVE voices (croupier). An AMBIENT voice (bot
+                // colour) falls back to SILENCE, never synthesis (D-066): a missing
+                // colour line must never become an intrusive announcement.
                 queue.enqueue(fallback, priority: item.priority)
             }
         }

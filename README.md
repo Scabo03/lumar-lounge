@@ -153,9 +153,22 @@ esteso, non sostituito), **betting Pot Limit** col tetto calcolato dal vivo, sid
 determinismo; bot che lo giocano da Omaha (euristica a quattro carte + equity Monte Carlo
 vincolata a costo misurato e contenuto) con due nuove leve di personalità; e un
 `OmahaSessionDriver` in `GameWorld` con **accelerazione di sessione a conteggio-mani**
-(blind escalation, mai a tempo — accessibilità). Mancano **UI, audio e il casinò ospitante**:
-Omaha è motore+bot+driver, non ancora un tavolo giocabile. **311 unit test verdi**, Texas e
-Draw invariati.
+(blind escalation, mai a tempo — accessibilità). Mancavano UI, audio e il casinò ospitante,
+tutti aggiunti in M2.5 (sotto). **311 unit test verdi**, Texas e Draw invariati.
+
+**Skypool Casinò + Omaha giocabile; pattern casinò generalizzato (M2.5, D-065/D-066).** Con
+l'arrivo del **secondo casinò** il pattern è stato **generalizzato**: un `Casino` ospita
+`CasinoTable` che dichiarano gioco/buy-in/personalità/regole (`Casino`/`CasinoTable`/
+`CasinoGame` + registry `Casinos`), con una **lobby generica** e temi per casinò — il
+**Riverwood invariato** (regressione testata). Lo **Skypool** (cittadino, marmo/acqua/blu,
+freddo) ospita Texas Classico/Rapido con **bot urbani** (tre personalità come **entità
+proprie**) e la sua specialità **Omaha Pot Limit "Marble"**, ora **giocabile** (`OmahaTableView`:
+quattro carte lette **per seme**, box raise **Pot Limit** senza shove). Accesso **solo
+economico** (buy-in Skypool ~5×: Fast 5000 < Classic 6000 < Marble 10000; logica testata con
+`DEBUG_FREE_PLAY` off). Novità audio: **due categorie di voce** — informativa (croupier) →
+sintesi, ambientale (colore dei bot) → **silenzio** — con slot Skypool dichiarati ma **nessun
+file prodotto** (catalogo in `Skypool_audio_catalog.md`). **337 unit test verdi** + XCUITest
+Skypool/Omaha; motori invariati.
 
 > **🏁 La prima fase è completa.** Il gioco base è funzionante end-to-end — motore
 > completo, bot credibili, sessione multi-mano, flusso di eventi, UI giocabile e

@@ -36,4 +36,14 @@ public struct OmahaTableRules: Equatable, Sendable {
         smallBlind: 5, bigBlind: 10, buyIn: 1000,
         personalities: [.eagerNovice, .conservativeRock, .hotAggressor],
         escalation: StakeEscalation(interval: 12, factor: 1.5))
+
+    /// The Skypool's "Marble" table — the casino's SPECIALITY (D-065/D-066). Pot Limit
+    /// Omaha with the urban roster and the highest buy-in of the three Skypool tables
+    /// (sensibly above both Texas tables). Blinds escalate on a played-hands schedule
+    /// so a Pot-Limit session tightens and ends (D-064). 25/50 blinds match the deeper
+    /// 10000 buy-in (a 200 big-blind stack, standard for PLO).
+    public static let skypoolMarble = OmahaTableRules(
+        smallBlind: 25, bigBlind: 50, buyIn: 10000,
+        personalities: WorldPersonalities.skypool,
+        escalation: StakeEscalation(interval: 12, factor: 1.5))
 }

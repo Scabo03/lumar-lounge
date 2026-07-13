@@ -44,6 +44,17 @@ public enum SoundCategory: String, CaseIterable, Sendable {
     /// tracks them so VoiceOver can wait for them to finish (D-028).
     public var isSpoken: Bool { self == .croupier || self == .botVoice }
 
+    /// The FALLBACK POLICY of a spoken voice whose mp3 isn't bundled yet (D-066).
+    /// There are two distinct kinds of voice:
+    ///  • INFORMATIVE (`.croupier`): communicates game state the player NEEDS — its
+    ///    fallback is VoiceOver SYNTHESIS, because that information cannot go missing.
+    ///  • AMBIENT (`.botVoice`): the bots' colour comments — its fallback is SILENCE.
+    ///    A missing colour line simply doesn't play; synthesising it would turn
+    ///    atmosphere into an intrusive announcement that cuts across a blind player's
+    ///    listening. Colour is not information (see CONVENTIONS §4).
+    /// Every future voice declares its category and inherits the right fallback.
+    public var fallsBackToSynthesis: Bool { self == .croupier }
+
     /// Default gain 0…1 for the category (tuned to be present but not invasive).
     public var defaultVolume: Float {
         switch self {

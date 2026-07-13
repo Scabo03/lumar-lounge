@@ -215,3 +215,21 @@ Cinque fix da test reale su iPhone (Tavolo Rapido, VoiceOver attivo), tutti in `
   `BotChatter`/`DrawBotChatter`) scelgono le `vob_` solo per posti **attivi nella mano
   corrente** e **non bustati** (`activeSeats` da `handBegan`, `bustedSeats` da
   `.playerBusted`), mai da uno snapshot iniziale.
+
+## Skypool + Omaha giocabile; due categorie di voce (M2.5, D-065/D-066)
+
+- **Lobby generica per casinò (`CasinoLobbyView`) + `CasinoTheme`.** Una sola lobby rende
+  qualunque `Casino` (Riverwood serif/verde, Skypool sans/blu-marmo); `HomeView` elenca
+  `Casinos.all`; `AppState.Screen` è `.home`/`.casino`/`.table`. Il Riverwood è invariato.
+- **`OmahaTableView` & c.** — tavolo Omaha Pot Limit giocabile, specchio di Texas/Draw:
+  stato/reduce puri (`OmahaTableState`/`OmahaTableReducer`), VM, viste accessibili (focus
+  landing D-057). **Quattro carte private** lette **raggruppate per seme** (suitedness →
+  potenziale nut-flush) via `OmahaSpeechMap.omahaHoleSpoken`. **Box raise Pot Limit**
+  (`OmahaRaiseBoxView`): max = tetto del piatto, **niente shove** oltre il piatto (pulsante
+  "Piatto", caption e annuncio VoiceOver del tetto).
+- **Due categorie di voce (D-066).** Informativa (croupier) → fallback a **sintesi**;
+  ambientale (colore dei bot) → fallback al **SILENZIO** (mai sintesi). Regola su
+  `SoundCategory.fallsBackToSynthesis`, consultata dal `SpeechConductor`; testata in
+  `AmbientVoiceFallbackTests`. Layer parlato/non-parlato Omaha dedicati (`OmahaSpeechMap`,
+  `OmahaAudioScore`/`OmahaAudioDirector`, `OmahaBotChatter`) con slot Skypool (croupier
+  informativi → sintesi, colore bot → silenzio).

@@ -13,11 +13,13 @@ final class FocusLandingTests: XCTestCase {
         // source file → the screen/modal it hosts.
         let hosts = [
             "UI/HomeView.swift": "Home",
-            "UI/RiverwoodView.swift": "Riverwood",
+            "UI/CasinoLobbyView.swift": "Casino lobby (Riverwood / Skypool)",
             "UI/GameChrome.swift": "Settings",
             "UI/HeroZoneView.swift": "Texas table (hero)",
             "UI/DrawTableView.swift": "Draw table (hero)",
+            "UI/OmahaTableView.swift": "Omaha table (hero)",
             "UI/ActionBarView.swift": "Raise box + end-of-game overlay",
+            "UI/OmahaActionBarView.swift": "Omaha Pot-Limit raise box",
             "UI/DrawBoxView.swift": "Draw exchange box",
         ]
         for (rel, what) in hosts {

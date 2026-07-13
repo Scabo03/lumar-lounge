@@ -339,3 +339,49 @@
 "draw.decisive.banner" = "MANO DECISIVA";
 "draw.decisive.a11y" = "mano decisiva, puntate raddoppiate";
 "draw.announce.decisive" = "mano decisiva";
+
+/* ================================================================== */
+/* D-065/D-066 — Skypool Casinò, Omaha Pot Limit "Marble" */
+
+/* Skypool casino identity */
+"skypool.tagline" = "Marmo, acqua, cemento. Il gioco freddo della città.";
+"home.skypool.blurb" = "Un casinò cittadino: marmo, piscina, discoteca. Specialità: Omaha Pot Limit.";
+"endgame.return.skypool" = "Torna allo Skypool";
+
+/* Omaha table row (lobby) */
+"table.omaha.title" = "Omaha Pot Limit";
+"table.omaha.marble" = "Marble";
+
+/* Omaha table */
+"omaha.table.a11y" = "Tavolo di Omaha Pot Limit";
+"omaha.potlimit.tag" = "Pot Limit";
+"omaha.hero.cards.a11y" = "le tue quattro carte: %@";
+"omaha.nocards.a11y" = "nessuna carta in mano";
+/* Four hole cards, grouped by suit so suitedness (nut-flush potential) is audible */
+"omaha.cards.rankjoin" = " e ";
+
+/* Stakes escalation (D-064) */
+"omaha.stakes.banner" = "POSTE AUMENTATE";
+"omaha.stakes.a11y" = "le poste sono aumentate: piccolo buio %1$d, grande buio %2$d";
+"omaha.announce.stakes" = "le poste salgono a %1$d e %2$d";
+
+/* Pot Limit raise box: the max is the POT, not the whole stack (no shove) */
+"omaha.raise.max.pot" = "Piatto";
+"omaha.raise.max.pot.a11y" = "punta il massimo consentito, il piatto";
+"omaha.raise.cap.caption" = "Tetto Pot Limit: %d";
+"omaha.raise.cap.a11y" = "tetto pot limit, %d fiche";
+"omaha.raise.value.a11y" = "%d fiche";
+
+/* Omaha spoken layer (croupier fallbacks + synthesis) */
+"omaha.announce.hero.cards" = "le tue quattro carte: %@";
+"omaha.announce.community" = "%@";
+"announce.opp.bet" = "giocatore %1$d punta a %2$d";
+"omaha.announce.role.sb" = "sei in smòl blaind";
+"omaha.announce.role.bb" = "sei in big blaind";
+"omaha.announce.street.flop" = "flop";
+"omaha.announce.street.turn" = "tern";
+"omaha.announce.street.river" = "river";
+"seat.name.sky.novice" = "Il Ragazzo";
+"seat.name.sky.rock" = "Il Professionista";
+"seat.name.sky.aggressor" = "Lo Squalo";
+"omaha.announce.yourturn" = "è il tuo turno";

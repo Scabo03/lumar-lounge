@@ -212,6 +212,19 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     mappatura stessa**, invece di tacere. Quando il file arriva, viene rilevato e
     usato, e il fallback si silenzia. Questo permette **produzione audio graduale**
     (nuove voci di croupier, nuove personalità di bot) senza rompere l'esperienza.
+  - **Due categorie di voce → fallback diverso: informativa→sintesi, ambientale→
+    silenzio (D-066).** Non tutte le voci sono uguali. Ogni voce parlata dichiara la
+    sua **categoria**, che ne decide il fallback quando l'mp3 non è ancora prodotto:
+    - **Informativa** (croupier: stato di gioco che il giocatore **deve** avere — turno,
+      street, showdown, pot, ruolo, poste): fallback a **sintesi VoiceOver**, perché
+      quell'informazione non può mancare.
+    - **Ambientale** (commenti di colore dei bot, `vob_`: atmosfera, **non** informazione):
+      fallback al **SILENZIO**, mai sintesi. Un colore mancante semplicemente non si sente;
+      sintetizzarlo lo trasformerebbe in un **annuncio intrusivo** che interrompe l'ascolto
+      del giocatore cieco. **Colore ≠ informazione.**
+    La regola vive **sulla categoria** (`SoundCategory.fallsBackToSynthesis`, true solo per
+    `.croupier`), così **ogni voce futura eredita il fallback giusto** dichiarando la sua
+    categoria; il `SpeechConductor` la consulta. Vale per ogni voce futura del progetto.
   - **Annunci di ruolo personalizzati sul giocatore umano, non generici (D-031).**
     A inizio mano il croupier annuncia **solo il ruolo del giocatore umano** se ne ha
     uno (small blind / big blind / button), e resta **in silenzio** se non ne ha:

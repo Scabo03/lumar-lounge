@@ -27,6 +27,15 @@ public enum SoundCatalog {
     public static let ambRiverwoodCalm1 = SoundID("amb_riverwood_calm_01")   // not delivered
     public static let ambRiverwoodCalm2 = SoundID("amb_riverwood_calm_02")   // not delivered
 
+    /// Skypool ambient beds (D-066) — cool urban stone/water. NOT delivered yet; each
+    /// falls back to a lounge bed until the real files are produced (StableAudio).
+    public static let ambSkypoolCalm1 = SoundID("amb_skypool_calm_01")       // not delivered
+    public static let ambSkypoolCalm2 = SoundID("amb_skypool_calm_02")       // not delivered
+    public static let ambSkypoolTense = SoundID("amb_skypool_tense_01")      // not delivered
+    /// A continuous low water/crowd layer for the Skypool (its pool). Not delivered →
+    /// no layer (silent) until produced.
+    public static let ambSkypoolWater = SoundID("amb_skypool_water_01")      // not delivered
+
     // MARK: UI (10)
     public static let uiButtonTap = SoundID("ui_button_tap")
     public static let uiButtonTapSoft = SoundID("ui_button_tap_soft")
@@ -86,6 +95,39 @@ public enum SoundCatalog {
     /// fallback "mano decisiva" declared in the UI mapping (D-030).
     public static let voHighStakesDraw = SoundID("vo_it_high_stakes_draw")   // not delivered
 
+    // MARK: Croupier voices — Skypool (D-066, NOT delivered yet)
+    // The Skypool's own croupier — a distinct, cooler urban voice. None produced yet;
+    // each is INFORMATIVE, so it falls back to VoiceOver synthesis (D-030) declared in
+    // OmahaSpeechMap until the mp3 is dropped into Resources/Audio/ (ElevenLabs).
+    public static let voSkyHandStart = SoundID("vo_it_sky_hand_start")            // not delivered
+    public static let voSkyBlindSmall = SoundID("vo_it_sky_blind_small")          // not delivered
+    public static let voSkyBlindBig = SoundID("vo_it_sky_blind_big")              // not delivered
+    public static let voSkyRoleButton = SoundID("vo_it_sky_role_button")          // not delivered
+    public static let voSkyYourTurn = SoundID("vo_it_sky_your_turn")              // not delivered
+    public static let voSkyFlop = SoundID("vo_it_sky_flop")                       // not delivered
+    public static let voSkyTurn = SoundID("vo_it_sky_turn")                       // not delivered
+    public static let voSkyRiver = SoundID("vo_it_sky_river")                     // not delivered
+    public static let voSkyShowdown = SoundID("vo_it_sky_showdown")               // not delivered
+    public static let voSkyActionAllIn = SoundID("vo_it_sky_action_all_in")       // not delivered
+    public static let voSkyPotAwarded = SoundID("vo_it_sky_pot_awarded")          // not delivered
+    public static let voSkySplitPot = SoundID("vo_it_sky_split_pot")              // not delivered
+    /// Omaha-specific: the croupier reminds the Pot Limit cap on the human's turn.
+    public static let voSkyPotLimit = SoundID("vo_it_sky_pot_limit")              // not delivered
+    /// Session acceleration (D-064): the blinds ratcheted up.
+    public static let voSkyStakesUp = SoundID("vo_it_sky_stakes_up")              // not delivered
+
+    // MARK: Bot voices — Skypool urban (D-066, NOT delivered yet)
+    // AMBIENT colour of the three URBAN archetypes. Each is category `.botVoice`, so a
+    // missing file falls back to SILENCE, never synthesis (D-066): a missing colour
+    // line simply doesn't play — it must never become an intrusive announcement.
+    public static let vobSkyNoviceExcited = SoundID("vob_sky_novice_excited_01")            // not delivered
+    public static let vobSkyNoviceDisappointed = SoundID("vob_sky_novice_disappointed_01")  // not delivered
+    public static let vobSkyNoviceNervous = SoundID("vob_sky_novice_nervous_01")            // not delivered
+    public static let vobSkyRockGrunt = SoundID("vob_sky_rock_grunt_01")                    // not delivered
+    public static let vobSkyAggressorConfident = SoundID("vob_sky_aggressor_confident_01")  // not delivered
+    public static let vobSkyAggressorTaunt = SoundID("vob_sky_aggressor_taunt_01")          // not delivered
+    public static let vobSkyAggressorBluffGiveaway = SoundID("vob_sky_aggressor_bluff_giveaway_01") // not delivered
+
     // MARK: Bot voices (7)
     public static let vobNoviceExcited = SoundID("vob_novice_excited_01")
     public static let vobNoviceDisappointed = SoundID("vob_novice_disappointed_01")
@@ -111,6 +153,7 @@ public enum SoundCatalog {
         (ambLoungeCalm1, .ambient), (ambLoungeCalm2, .ambient), (ambLoungeTense, .ambient),
         (ambCrowdDistant, .ambient), (ambSilenceTension, .ambient),
         (ambHomeNeutral, .ambient), (ambRiverwoodCalm1, .ambient), (ambRiverwoodCalm2, .ambient),
+        (ambSkypoolCalm1, .ambient), (ambSkypoolCalm2, .ambient), (ambSkypoolTense, .ambient), (ambSkypoolWater, .ambient),
         (uiButtonTap, .ui), (uiButtonTapSoft, .ui), (uiBoxOpen, .ui), (uiBoxClose, .ui),
         (uiRaisePlus, .ui), (uiRaiseMinus, .ui), (uiAllInTrigger, .ui), (uiConfirm, .ui), (uiCancel, .ui),
         (uiNavigation, .ui),
@@ -124,9 +167,17 @@ public enum SoundCatalog {
         (voActionRaise, .croupier), (voActionAllIn, .croupier), (voPotAwarded, .croupier), (voSplitPot, .croupier),
         (voAnte, .croupier), (voDrawPhase, .croupier), (voPassAndOut, .croupier),
         (voCarriedPot, .croupier), (voOpenersDisqualified, .croupier), (voHighStakesDraw, .croupier),
+        (voSkyHandStart, .croupier), (voSkyBlindSmall, .croupier), (voSkyBlindBig, .croupier),
+        (voSkyRoleButton, .croupier), (voSkyYourTurn, .croupier), (voSkyFlop, .croupier),
+        (voSkyTurn, .croupier), (voSkyRiver, .croupier), (voSkyShowdown, .croupier),
+        (voSkyActionAllIn, .croupier), (voSkyPotAwarded, .croupier), (voSkySplitPot, .croupier),
+        (voSkyPotLimit, .croupier), (voSkyStakesUp, .croupier),
         (vobNoviceExcited, .botVoice), (vobNoviceDisappointed, .botVoice), (vobNoviceNervous, .botVoice),
         (vobRockGrunt, .botVoice), (vobAggressorConfident, .botVoice), (vobAggressorTaunt, .botVoice),
         (vobAggressorBluffGiveaway, .botVoice),
+        (vobSkyNoviceExcited, .botVoice), (vobSkyNoviceDisappointed, .botVoice), (vobSkyNoviceNervous, .botVoice),
+        (vobSkyRockGrunt, .botVoice), (vobSkyAggressorConfident, .botVoice), (vobSkyAggressorTaunt, .botVoice),
+        (vobSkyAggressorBluffGiveaway, .botVoice),
         (fxWinHand, .effect), (fxLoseHand, .effect), (fxHandNeutral, .effect), (fxAllInDramatic, .effect),
         (fxBustPlayer, .effect), (fxBustHero, .effect), (fxVictoryFinal, .effect), (fxDefeatFinal, .effect),
     ]

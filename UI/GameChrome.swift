@@ -25,20 +25,25 @@ public struct GameChrome<Content: View>: View {
     /// The chips balance to show under the bar (nil at the table, where fiches show).
     let chips: Int?
     let leading: ChromeAction?
+    /// The full-screen backdrop — themed per casino so each place has its own surround
+    /// (D-066). Defaults to the app's dark base (Home / Riverwood, unchanged).
+    let background: Color
     @State private var showingSettings = false
     private let content: Content
 
     public init(voMode: AppVoiceOverMode, chips: Int? = nil, leading: ChromeAction? = nil,
+                background: Color = Color(red: 0.05, green: 0.06, blue: 0.08),   // = TablePalette.background
                 @ViewBuilder content: () -> Content) {
         self.voMode = voMode
         self.chips = chips
         self.leading = leading
+        self.background = background
         self.content = content()
     }
 
     public var body: some View {
         ZStack(alignment: .top) {
-            TablePalette.background.ignoresSafeArea()
+            background.ignoresSafeArea()
             VStack(spacing: 0) {
                 topBar
                 if let chips { chipsBar(chips) }

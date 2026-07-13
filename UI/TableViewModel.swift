@@ -70,6 +70,8 @@ public final class TableViewModel: ObservableObject {
 
     public let names: [Int: String]
     public let heroSeatID = 0
+    /// The end-of-game overlay's "return to <casino>" label — casino-specific (D-065).
+    public let returnLabel: String
 
     private let driver: SessionDriver
     private let human = HumanActionProvider()
@@ -120,11 +122,13 @@ public final class TableViewModel: ObservableObject {
                 audio: AudioServicing = NullAudioService(),
                 mode: AppVoiceOverMode,
                 rules: TableRules = .classic,
+                returnLabel: String,
                 onLeave: @escaping (Int) -> Void = { _ in }) {
         self.fastMode = fastMode
         self.audio = audio
         self.mode = mode
         self.rules = rules
+        self.returnLabel = returnLabel
         self.onLeave = onLeave
         // A concrete root seed for the bots and audio: fixed in tests, random per
         // session in production. The DRIVER gets the optional `seed` directly, so a

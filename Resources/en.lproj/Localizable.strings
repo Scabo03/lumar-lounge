@@ -330,3 +330,48 @@
 "draw.decisive.banner" = "DECISIVE HAND";
 "draw.decisive.a11y" = "decisive hand, bets doubled";
 "draw.announce.decisive" = "decisive hand";
+
+/* ================================================================== */
+/* D-065/D-066 — Skypool Casino, Omaha Pot Limit "Marble" */
+
+/* Skypool casino identity */
+"skypool.tagline" = "Marble, water, concrete. The cold city game.";
+"home.skypool.blurb" = "A city casino: marble, a pool, a nightclub. Speciality: Pot Limit Omaha.";
+"endgame.return.skypool" = "Back to the Skypool";
+
+/* Omaha table row (lobby) */
+"table.omaha.title" = "Pot Limit Omaha";
+"table.omaha.marble" = "Marble";
+
+/* Omaha table */
+"omaha.table.a11y" = "Pot Limit Omaha table";
+"omaha.potlimit.tag" = "Pot Limit";
+"omaha.hero.cards.a11y" = "your four cards: %@";
+"omaha.nocards.a11y" = "no cards in hand";
+"omaha.cards.rankjoin" = " and ";
+
+/* Stakes escalation (D-064) */
+"omaha.stakes.banner" = "STAKES UP";
+"omaha.stakes.a11y" = "stakes increased: small blind %1$d, big blind %2$d";
+"omaha.announce.stakes" = "stakes rise to %1$d and %2$d";
+
+/* Pot Limit raise box: the max is the POT, not the whole stack (no shove) */
+"omaha.raise.max.pot" = "Pot";
+"omaha.raise.max.pot.a11y" = "bet the maximum allowed, the pot";
+"omaha.raise.cap.caption" = "Pot Limit cap: %d";
+"omaha.raise.cap.a11y" = "pot limit cap, %d chips";
+"omaha.raise.value.a11y" = "%d chips";
+
+/* Omaha spoken layer (croupier fallbacks + synthesis) */
+"omaha.announce.hero.cards" = "your four cards: %@";
+"omaha.announce.community" = "%@";
+"announce.opp.bet" = "player %1$d bets %2$d";
+"omaha.announce.role.sb" = "you are in the small blind";
+"omaha.announce.role.bb" = "you are in the big blind";
+"omaha.announce.street.flop" = "flop";
+"omaha.announce.street.turn" = "turn";
+"omaha.announce.street.river" = "river";
+"seat.name.sky.novice" = "The Kid";
+"seat.name.sky.rock" = "The Pro";
+"seat.name.sky.aggressor" = "The Shark";
+"omaha.announce.yourturn" = "your turn";

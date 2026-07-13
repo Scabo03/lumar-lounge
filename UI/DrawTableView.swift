@@ -20,11 +20,12 @@ import Audio
 struct DrawTableScreen: View {
     @StateObject private var model: DrawTableViewModel
 
-    init(rules: DrawTableRules, audio: AudioEngine, mode: AppVoiceOverMode, onLeave: @escaping (Int) -> Void) {
+    init(rules: DrawTableRules, audio: AudioEngine, mode: AppVoiceOverMode,
+         returnLabel: String = uiLocalized("endgame.return"), onLeave: @escaping (Int) -> Void) {
         let fastMode = ProcessInfo.processInfo.arguments.contains("-uiTesting")
         // No seed → fresh random cards every deal in production (D-047).
-        _model = StateObject(wrappedValue: DrawTableViewModel(fastMode: fastMode,
-                                                              audio: audio, mode: mode, rules: rules, onLeave: onLeave))
+        _model = StateObject(wrappedValue: DrawTableViewModel(fastMode: fastMode, audio: audio, mode: mode,
+                                                              rules: rules, returnLabel: returnLabel, onLeave: onLeave))
     }
 
     var body: some View {
@@ -56,7 +57,8 @@ struct DrawTableScreen: View {
                 }
 
                 if let outcome = model.outcome {
-                    EndOverlay(outcome: outcome, onReturn: { model.returnToCasino() })
+                    EndOverlay(outcome: outcome, onReturn: { model.returnToCasino() },
+                               returnLabel: model.returnLabel)
                 }
             }
         }

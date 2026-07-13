@@ -1,13 +1,15 @@
 // HomeView.swift
 // =====================================================================
-// The app's entry screen (D-035): the game name, a tagline, and the list of
-// casinos. For now only the Riverwood is enterable; other casinos are visible but
-// "coming soon" placeholders. Wrapped by GameChrome (settings + chips) at the root.
+// The app's entry screen (D-035, generalised D-065): the game name, a tagline, and
+// the list of CASINOS drawn from the registry (`Casinos.all`). Each casino is an
+// enterable card; adding a casino is a data change, not a new card here. No
+// "coming soon" placeholders — future casinos aren't anticipated (a later brick).
 //
-// Deliberately plain and typographic — SwiftUI only, no image assets yet (they
-// arrive later). A classic serif face sets the tone.
+// Deliberately plain and typographic — SwiftUI only, no image assets yet. A classic
+// serif face sets the app's tone (the individual casinos carry their own identity).
 
 import SwiftUI
+import GameWorld
 
 struct HomeView: View {
     @ObservedObject var app: AppState
@@ -33,12 +35,9 @@ struct HomeView: View {
                     .foregroundStyle(TablePalette.secondaryText)
                     .accessibilityAddTraits(.isHeader)
 
-                casinoCard(name: "Riverwood Casinò", blurb: uiLocalized("home.riverwood.blurb"),
-                           identifier: "home.casino.riverwood", available: true) {
-                    app.openRiverwood()
+                ForEach(Casinos.all) { casino in
+                    casinoCard(casino)
                 }
-                comingSoon(name: "Velvet Palace", identifier: "home.casino.velvet")
-                comingSoon(name: "Aurea Lounge", identifier: "home.casino.aurea")
             }
             .padding(.horizontal, 18)
             .padding(.bottom, 24)
@@ -46,50 +45,31 @@ struct HomeView: View {
         }
     }
 
-    private func casinoCard(name: String, blurb: String, identifier: String,
-                            available: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+    private func casinoCard(_ casino: Casino) -> some View {
+        let theme = CasinoTheme.theme(for: casino)
+        let blurb = uiLocalized(casino.blurbKey)
+        return Button { app.openCasino(casino) } label: {
             VStack(alignment: .leading, spacing: 4) {
-                Text(verbatim: name)
-                    .font(.system(.title2, design: .serif).weight(.semibold))
-                    .foregroundStyle(TablePalette.primaryText)
+                Text(verbatim: casino.displayName)
+                    .font(.system(.title2, design: theme.titleDesign).weight(.semibold))
+                    .foregroundStyle(theme.primaryText)
                 Text(verbatim: blurb)
                     .font(.subheadline)
-                    .foregroundStyle(TablePalette.secondaryText)
+                    .foregroundStyle(theme.secondaryText)
                     .multilineTextAlignment(.leading)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(TablePalette.felt.opacity(0.55))
+                    .fill(theme.panel.opacity(0.55))
                     .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(TablePalette.accent.opacity(0.7), lineWidth: 1))
+                        .strokeBorder(theme.panelEdge.opacity(0.7), lineWidth: 1))
             )
         }
-        .accessibilityIdentifier(identifier)
+        .accessibilityIdentifier("home.casino.\(casino.id)")
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(verbatim: uiLocalized("home.casino.a11y", name, blurb)))
+        .accessibilityLabel(Text(verbatim: uiLocalized("home.casino.a11y", casino.displayName, blurb)))
         .accessibilityHint(Text(verbatim: uiLocalized("home.casino.hint")))
-    }
-
-    private func comingSoon(name: String, identifier: String) -> some View {
-        HStack {
-            Text(verbatim: name)
-                .font(.system(.title3, design: .serif))
-                .foregroundStyle(TablePalette.secondaryText)
-            Spacer()
-            Text(verbatim: uiLocalized("world.comingSoon"))
-                .font(.caption.weight(.semibold))
-                .padding(.horizontal, 8).padding(.vertical, 3)
-                .background(Capsule().fill(Color.white.opacity(0.12)))
-                .foregroundStyle(TablePalette.secondaryText)
-        }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.05)))
-        .opacity(0.7)
-        .accessibilityElement(children: .ignore)
-        .accessibilityIdentifier(identifier)
-        .accessibilityLabel(Text(verbatim: uiLocalized("world.comingSoon.a11y", name)))
     }
 }

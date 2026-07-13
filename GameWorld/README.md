@@ -187,3 +187,16 @@ parametri di config:
 Coperto da `DrawDecisiveHandTests` (crescita ante e ritorno al base, forzatura dopo 3
 pass, bet/cap raddoppiati, intervallo 5–8, disattivazione) e dal boost bot in
 `DrawBotTests`.
+
+## Pattern casinò + Skypool (M2.5, D-065/D-066)
+
+- **`Casino`/`CasinoTable`/`CasinoGame` + registry `Casinos`.** Un casinò ospita tavoli;
+  ogni tavolo dichiara il suo gioco (`.texas`/`.draw`/`.omaha` con le regole complete),
+  buy-in e personalità. Aggiungere un casinò è un **cambio di dati** nel registry, non
+  codice duplicato. Il **Riverwood è invariato** dopo la generalizzazione (`CasinoTests`).
+- **Skypool** (`Casinos.skypool`): Texas Classico/Rapido con **bot urbani**
+  (`WorldPersonalities.skypool`/`skypoolFast`, tre personalità come **entità proprie**, D-066)
+  + la specialità **Omaha Pot Limit "Marble"** (`OmahaTableRules.skypoolMarble`). Buy-in ~5×
+  il Riverwood, scala crescente Fast 5000 < Classic 6000 < Marble 10000. Accesso **solo
+  economico** (testato con `DEBUG_FREE_PLAY` off in `CasinoTests`). Riverwood **non
+  ricalibrato** (calibrazione comparativa = mattone successivo).

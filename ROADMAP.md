@@ -249,12 +249,34 @@ Draw **visibile ma non entrabile**. `SessionDriver` non modificato strutturalmen
 **Note di design:** D-035, D-036, D-037. **Slot audio M2 predisposti** (fallback):
 `amb_home_neutral`, `amb_riverwood_calm_01/02`, `vo_it_high_stakes`, `ui_navigation`.
 
-### ⏭️ Prossimi sotto-mattoni M2 (proposti)
+### ✅ M2.5 — Skypool Casinò + Omaha giocabile; pattern casinò generalizzato (D-065/D-066)
+Il **secondo casinò** e l'**Omaha giocabile**. Estratto il **pattern casinò riusabile**
+(`Casino`/`CasinoTable`/`CasinoGame` + registry `Casinos`, lobby generica
+`CasinoLobbyView`, temi per casinò `CasinoTheme`) col **Riverwood invariato** (regressione
+`CasinoTests`). Lo **Skypool** (cittadino, marmo/acqua/blu, freddo) ospita Texas Classico/
+Rapido con **bot urbani** (`WorldPersonalities.skypool`/`skypoolFast`, tre personalità come
+**entità proprie**, D-066) e la specialità **Omaha Pot Limit "Marble"** — ora **giocabile**
+(`OmahaTableView` & c.: quattro carte private lette **per seme**, box raise **Pot Limit**
+senza shove — max = piatto, D-066). Accesso **solo economico**: buy-in Skypool ~5× (Fast
+5000 < Classic 6000 < Marble 10000), logica testata con `DEBUG_FREE_PLAY` **off**. Novità
+audio: **due categorie di voce** (informativa→sintesi, ambientale→silenzio, D-066); slot
+Skypool dichiarati (croupier `vo_it_sky_*`, ambient `amb_skypool_*`, colore bot `vob_sky_*`),
+**nessun file prodotto**, catalogo in `Skypool_audio_catalog.md`. Motori invariati. **337
+test verdi** + XCUITest Skypool/Omaha.
+
+### ⏭️ Prossimi sotto-mattoni M2 (residui dichiarati)
+- **Calibrazione comparativa Riverwood ↔ Skypool:** tarare le differenze di difficoltà/
+  carattere tra i due casinò **dopo** che l'utente ha giocato entrambi (giudizio sulla
+  pelle). Il Riverwood **non** è stato ricalibrato in M2.5.
+- **File audio Skypool + cablaggio voci di colore urbane:** produrre i file di
+  `Skypool_audio_catalog.md` (ElevenLabs voci, StableAudio ambient) e cablare le `vob_sky_*`
+  quando arrivano (oggi ambientali → silenzio). Idem: unificazione croupier per-casinò per i
+  Texas dello Skypool (ora riusano il croupier condiviso).
 - **M2.2 — Cassa / DLC:** ricarica dei gettoni quando finiscono (acquisti, bonus).
-- **M2.3 — Ambient Riverwood:** produzione e integrazione dei file audio dedicati
-  (chitarra/piano rustici) al posto dei fallback.
-- **M2.5 — Secondo casinò lussuoso** (es. Velvet Palace) con estetica opposta.
-- **M2.6 — NPC narrativi:** avversari ricorrenti con nome/carattere/storia.
+- **M2.3 — Ambient Riverwood:** produzione dei file audio dedicati al posto dei fallback.
+- **M2.6 — NPC narrativi:** avversari ricorrenti con nome/carattere/storia (non definiti).
+- **Piscina / discoteca dello Skypool** come luoghi giocabili (oggi solo atmosfera).
+- **Terzo casinò:** non anticipato.
 
 ### ✅ M2.4 — Five-Card Draw giocabile fino a TestFlight (D-042/043/044)
 Il secondo gioco diventa **giocabile end-to-end**. Driver di sessione dedicato

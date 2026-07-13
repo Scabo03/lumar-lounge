@@ -1,14 +1,14 @@
 // AppRootView.swift
 // =====================================================================
-// The application root (D-035): owns the app-level state (navigation + wallet) and
-// the app-wide VoiceOver mode, wraps each screen in the persistent GameChrome, and
-// drives the per-screen ambient. This is the new entry point — the app no longer
-// opens straight onto a poker table.
+// The application root (D-035, generalised D-065): owns the app-level state
+// (navigation + wallet) and the app-wide VoiceOver mode, wraps each screen in the
+// persistent GameChrome, and drives the per-screen ambient. Navigation is now
+// casino-agnostic — Home, a `Casino` lobby, or a `CasinoTable` — and the table screen
+// is built from the table's game (Texas / Draw / Omaha).
 //
 // One shared AudioEngine spans all screens (single audio session, ambient
-// continuity). Home/Riverwood ambients fall back to a lounge bed until the
-// dedicated files are produced (D-035). Navigation plays a (silent-for-now)
-// transition blip.
+// continuity). Home/casino ambients fall back to a lounge bed until the dedicated
+// files are produced. Navigation plays a (silent-for-now) transition blip.
 
 import SwiftUI
 import GameWorld
@@ -43,21 +43,31 @@ public struct AppRootView: View {
             GameChrome(voMode: voMode, chips: app.chips) {
                 HomeView(app: app)
             }
-        case .riverwood:
-            GameChrome(voMode: voMode, chips: app.chips, leading: backToHome) {
-                RiverwoodView(app: app)
+        case let .casino(casino):
+            let theme = CasinoTheme.theme(for: casino)
+            GameChrome(voMode: voMode, chips: app.chips, leading: backToHome, background: theme.background) {
+                CasinoLobbyView(casino: casino, app: app)
             }
-        case let .table(style):
-            GameChrome(voMode: voMode) {
-                TableScreen(rules: rules(for: style), audio: audio, mode: voMode,
-                            onLeave: { remaining in app.leaveTable(cashingOut: remaining) })
-                    .id(style)   // a fresh session per sit-down
+        case let .table(table):
+            let theme = CasinoTheme.theme(forTable: table.id)
+            GameChrome(voMode: voMode, background: theme.background) {
+                tableScreen(table)
+                    .id(table.id)   // a fresh session per sit-down
             }
-        case .drawTable:
-            GameChrome(voMode: voMode) {
-                DrawTableScreen(rules: .riverwoodWhiskey, audio: audio, mode: voMode,
-                                onLeave: { remaining in app.leaveTable(cashingOut: remaining) })
-            }
+        }
+    }
+
+    /// Builds the right game screen for a table, with its casino's return label.
+    @ViewBuilder private func tableScreen(_ table: CasinoTable) -> some View {
+        let returnLabel = uiLocalized(Casinos.casino(hosting: table.id)?.returnLabelKey ?? "endgame.return")
+        let onLeave: (Int) -> Void = { remaining in app.leaveTable(cashingOut: remaining) }
+        switch table.game {
+        case let .texas(rules):
+            TableScreen(rules: rules, audio: audio, mode: voMode, returnLabel: returnLabel, onLeave: onLeave)
+        case let .draw(rules):
+            DrawTableScreen(rules: rules, audio: audio, mode: voMode, returnLabel: returnLabel, onLeave: onLeave)
+        case let .omaha(rules):
+            OmahaTableScreen(rules: rules, audio: audio, mode: voMode, returnLabel: returnLabel, onLeave: onLeave)
         }
     }
 
@@ -66,23 +76,28 @@ public struct AppRootView: View {
                      identifier: "chrome.back") { app.goHome() }
     }
 
-    private func rules(for style: TableFormat) -> TableRules {
-        style == .fast ? .fast : .classic
-    }
-
-    // MARK: - Ambient per screen (D-035)
+    // MARK: - Ambient per screen (D-035/D-066)
 
     private func applyAmbient() {
         switch app.screen {
         case .home:
             audio.crossfadeAmbient(to: bed(SoundCatalog.ambHomeNeutral, SoundCatalog.ambLoungeCalm1), duration: 1.0)
             audio.setAmbientScale(0.6, duration: 1.0)   // discreet, we're outside the casinos
-        case .riverwood:
-            audio.crossfadeAmbient(to: bed(SoundCatalog.ambRiverwoodCalm1, SoundCatalog.ambLoungeCalm2), duration: 1.0)
+        case let .casino(casino):
+            audio.crossfadeAmbient(to: casinoBed(casino), duration: 1.0)
             audio.setAmbientScale(1.0, duration: 1.0)
-        case .table, .drawTable:
-            // The table's AudioDirector takes over the ambient on sessionBegan.
+        case .table:
+            // The table's audio director takes over the ambient on sessionBegan.
             break
+        }
+    }
+
+    /// A casino lobby's calm bed, falling back to a lounge bed until the dedicated file
+    /// is produced (D-035/D-066). The Skypool gets its cool urban bed.
+    private func casinoBed(_ casino: Casino) -> SoundID {
+        switch casino.id {
+        case "skypool": return bed(SoundCatalog.ambSkypoolCalm1, SoundCatalog.ambLoungeCalm2)
+        default:        return bed(SoundCatalog.ambRiverwoodCalm1, SoundCatalog.ambLoungeCalm2)
         }
     }
 

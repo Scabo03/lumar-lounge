@@ -28,11 +28,12 @@ import Audio
 struct TableScreen: View {
     @StateObject private var model: TableViewModel
 
-    init(rules: TableRules, audio: AudioEngine, mode: AppVoiceOverMode, onLeave: @escaping (Int) -> Void) {
+    init(rules: TableRules, audio: AudioEngine, mode: AppVoiceOverMode,
+         returnLabel: String = uiLocalized("endgame.return"), onLeave: @escaping (Int) -> Void) {
         let fastMode = ProcessInfo.processInfo.arguments.contains("-uiTesting")
         // No seed → fresh random cards every hand in production (D-047).
-        _model = StateObject(wrappedValue: TableViewModel(fastMode: fastMode,
-                                                          audio: audio, mode: mode, rules: rules, onLeave: onLeave))
+        _model = StateObject(wrappedValue: TableViewModel(fastMode: fastMode, audio: audio, mode: mode,
+                                                          rules: rules, returnLabel: returnLabel, onLeave: onLeave))
     }
 
     var body: some View {
@@ -70,7 +71,8 @@ struct TableScreen: View {
                 }
 
                 if let outcome = model.outcome {
-                    EndOverlay(outcome: outcome, onReturn: { model.returnToCasino() })
+                    EndOverlay(outcome: outcome, onReturn: { model.returnToCasino() },
+                               returnLabel: model.returnLabel)
                 }
             }
         }
