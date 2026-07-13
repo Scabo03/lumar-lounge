@@ -1760,8 +1760,18 @@ auto-bundled). Nessun tocco a SpeechMap/conductor/CasinoAudio.
   `_01` (`vob_it_sky_*→vob_sky_*_01`). **Ambiguo, non indovinato** (regola del prompt): in Downloads
   `vob_it_sky_aggressor_nervous.mp3` non ha uno slot `aggressor_nervous`; **probabilmente** è
   `aggressor_bluff_giveaway` ("risatina nervosa") ma il nome non è *evidentemente* riconducibile →
-  lasciato fuori, slot silenzioso, dichiarato. **Non prodotti:** `vo_it_sky_hand_start` (chime →
-  silenzio), `vo_it_sky_pot_limit` (riservato), `vob_sky_aggressor_bluff_giveaway_01`.
+  lasciato fuori, slot silenzioso, dichiarato. **Poi, su richiesta esplicita dell'utente,**
+  `aggressor_nervous` **rinominato** `vob_sky_aggressor_bluff_giveaway_01` e cablato. **Non
+  prodotti:** `vo_it_sky_hand_start` (chime → silenzio), `vo_it_sky_pot_limit` (riservato).
+- **Wiring del bluff-giveaway (scelta dell'utente: "ovunque"):** lo slot `aggressor_bluff_giveaway`
+  era **dichiarato ma mai innescato** dal chatter (l'aggressivo pescava solo `taunt`/`confident`),
+  per **entrambi** i casinò. Attivato **ovunque**: aggiunto alla rotazione dell'aggressivo in
+  `BotChatter`/`OmahaBotChatter` (~15% bluff-giveaway / 25% taunt / 60% confident quando parla).
+  **Una sola `roll()`** come prima → stream RNG e decisione parla/tace **identici**: cambia solo
+  *quale* battuta, non *se*. **Tocca anche il Riverwood** (accettato esplicitamente dall'utente): il
+  suo `vob_aggressor_bluff_giveaway_01` (prodotto in M1.8, finora mai suonato) ora si sente
+  occasionalmente — **unico** cambio deliberato all'esperienza del Riverwood; la palette identità
+  (`CasinoAudioTests`) resta invariata.
 - **D-051 verificato ora che i file esistono:** con l'mp3 presente il conductor **suona l'mp3 e
   ignora il fallback di registro** (la sintesi di contenuto — carte/vincitore — è separata e diversa,
   nessuna doppia riproduzione). Nessuna voce dichiara `synthesis` e `croupierFallback` con lo **stesso**

@@ -80,7 +80,13 @@ final class BotChatter {
         case .aggressor:
             switch action {
             case .bet, .raised:
-                return (roll() < 0.25 ? voices.aggressorTaunt : voices.aggressorConfident, 0.22)
+                // A single roll picks the flavour (so the RNG stream — and thus the
+                // caller's separate speak/skip roll — is unchanged): an occasional
+                // bluff-giveaway tell (D-068), else taunt, else the usual confidence.
+                let r = roll()
+                let voice = r < 0.15 ? voices.aggressorBluffGiveaway
+                          : (r < 0.40 ? voices.aggressorTaunt : voices.aggressorConfident)
+                return (voice, 0.22)
             default:
                 return (nil, 0)
             }

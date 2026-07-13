@@ -51,7 +51,8 @@ final class BotChatterTests: XCTestCase {
         chatter.handBegan(seats: seats([1]))
         var seen: Set<String> = []
         for _ in 0..<60 { if let v = chatter.actionVoice(seat: 1, action: raise()) { seen.insert(v.rawValue) } }
-        let allowed: Set = [SoundCatalog.vobAggressorConfident.rawValue, SoundCatalog.vobAggressorTaunt.rawValue]
+        let allowed: Set = [SoundCatalog.vobAggressorConfident.rawValue, SoundCatalog.vobAggressorTaunt.rawValue,
+                            SoundCatalog.vobAggressorBluffGiveaway.rawValue]   // bluff-giveaway tell (D-068)
         XCTAssertTrue(seen.isSubset(of: allowed), "aggressor used a non-aggressor voiceline: \(seen)")
     }
 }

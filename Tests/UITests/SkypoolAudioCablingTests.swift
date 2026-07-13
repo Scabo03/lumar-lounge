@@ -37,6 +37,7 @@ final class SkypoolAudioCablingTests: XCTestCase {
         SoundCatalog.vobSkyNoviceExcited, SoundCatalog.vobSkyNoviceDisappointed,
         SoundCatalog.vobSkyNoviceNervous, SoundCatalog.vobSkyRockGrunt,
         SoundCatalog.vobSkyAggressorConfident, SoundCatalog.vobSkyAggressorTaunt,
+        SoundCatalog.vobSkyAggressorBluffGiveaway,   // renamed from the Downloads 'aggressor_nervous'
     ]
 
     func testEveryCabledSlotHasItsFileOnDisk() {
@@ -54,8 +55,6 @@ final class SkypoolAudioCablingTests: XCTestCase {
                        "hand-start chime not produced → silent (add here when it lands)")
         XCTAssertFalse(exists(SoundCatalog.voSkyPotLimit.rawValue),
                        "pot-limit reminder is reserved/unused → not produced")
-        XCTAssertFalse(exists(SoundCatalog.vobSkyAggressorBluffGiveaway.rawValue),
-                       "aggressor bluff-giveaway not cabled (Downloads had an ambiguous 'aggressor_nervous')")
     }
 
     // MARK: - Bot COLOUR is on the ambient channel, not the announcement queue (D-068)

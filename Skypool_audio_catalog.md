@@ -21,14 +21,12 @@ L'utente ha prodotto e depositato i file; sono stati cablati in `Resources/Audio
   ⬜ `vo_it_sky_hand_start` (stacco/chime → resta silenzioso), ⬜ `vo_it_sky_pot_limit`
   (riservato/non cablato).
 - **Ambient:** ✅ 4/4 (`calm_01`, `calm_02`, `tense_01`, `water_01`).
-- **Colore bot:** ✅ 6/7 (`novice_excited`, `novice_disappointed`, `novice_nervous`,
-  `rock_grunt`, `aggressor_confident`, `aggressor_taunt`). ⬜
-  `vob_sky_aggressor_bluff_giveaway_01` — **non cablato**: in Downloads c'era
-  `vob_it_sky_aggressor_nervous.mp3`, che **probabilmente** è questa battuta (la
-  descrizione è "risatina nervosa"), ma il nome non è **evidentemente** riconducibile
-  allo slot, quindi **non l'ho indovinato**: resta fuori (slot silenzioso). Rinominalo in
-  Downloads come `vob_sky_aggressor_bluff_giveaway_01` (o confermami la corrispondenza) e
-  lo cablo.
+- **Colore bot:** ✅ 7/7 (`novice_excited`, `novice_disappointed`, `novice_nervous`,
+  `rock_grunt`, `aggressor_confident`, `aggressor_taunt`, `aggressor_bluff_giveaway`).
+  L'ultimo veniva da `vob_it_sky_aggressor_nervous.mp3` in Downloads: su conferma dell'utente
+  **rinominato** in `vob_sky_aggressor_bluff_giveaway_01` e cablato, **e attivato** nel chatter
+  (l'aggressivo ora ha una "risatina nervosa" occasionale come tell — anche al Riverwood, su
+  scelta dell'utente).
 - **Rinomine fatte** (dichiarate): `big_blind→blind_big`, `small_blind→blind_small`,
   `amb_skypool_tense→tense_01`, `amb_skypool_water→water_01`, e per **tutti** i colore-bot
   la rimozione dell'`it_` di troppo e la normalizzazione del suffisso `_01`
