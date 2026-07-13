@@ -377,3 +377,19 @@
 "seat.name.sky.rock" = "The Pro";
 "seat.name.sky.aggressor" = "The Shark";
 "omaha.announce.yourturn" = "your turn";
+
+/* ------------------------------------------------------------------ */
+/* D-067 — Skypool croupier: cold, cynical, technical, a touch verbose (city register).
+   Synthesis fallback (informative) until the vo_it_sky_* files are produced. */
+"skypool.croupier.blind.small" = "Small blind. Put the small one in and stay sharp.";
+"skypool.croupier.blind.big" = "Big blind is yours. Defend it, if it's worth it.";
+"skypool.croupier.button" = "Button in hand. Last word — use it well.";
+"skypool.croupier.yourturn" = "Your turn. The table's waiting.";
+"skypool.croupier.flop" = "Flop's on the table. Read the board.";
+"skypool.croupier.turn" = "Turn. Things get complicated.";
+"skypool.croupier.river" = "River. Last card, no more excuses.";
+"skypool.croupier.showdown" = "Showdown. Cards on the marble.";
+"skypool.croupier.allin" = "All in. The whole lot.";
+"skypool.croupier.pot" = "The pot changes hands.";
+"skypool.croupier.split" = "Split pot. Nobody leaves happy.";
+"skypool.croupier.stakesup" = "Stakes are up. Whoever stays means business.";

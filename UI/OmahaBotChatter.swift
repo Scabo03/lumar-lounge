@@ -25,11 +25,14 @@ final class OmahaBotChatter {
     private var stacks: [Int: Int] = [:]
     private var activeSeats: Set<Int> = []
     private var voicedLastAction: [Int: Bool] = [:]
+    /// The hosting casino's bot colour voices (D-067); default the Skypool urban set.
+    private let voices: BotVoices
 
-    init(heroSeatID: Int, characters: [Int: BotCharacter], seed: UInt64) {
+    init(heroSeatID: Int, characters: [Int: BotCharacter], seed: UInt64, voices: BotVoices = .skypool) {
         self.heroSeatID = heroSeatID
         self.characters = characters
         self.rng = SeededGenerator(seed: seed)
+        self.voices = voices
     }
 
     func handBegan(seats: [OmahaSeatSnapshot]) {
@@ -59,19 +62,19 @@ final class OmahaBotChatter {
         case .novice:
             switch action {
             case .bet, .raised:
-                return (SoundCatalog.vobSkyNoviceExcited, 0.22)
+                return (voices.noviceExcited, 0.22)
             case let .called(amount, _):
                 let big = stackBefore > 0 && Double(amount) > 0.25 * Double(stackBefore)
-                return big ? (SoundCatalog.vobSkyNoviceNervous, 0.22) : (nil, 0)
+                return big ? (voices.noviceNervous, 0.22) : (nil, 0)
             default:
                 return (nil, 0)
             }
         case .rock:
-            return (SoundCatalog.vobSkyRockGrunt, 0.10)
+            return (voices.rockGrunt, 0.10)
         case .aggressor:
             switch action {
             case .bet, .raised:
-                return (roll() < 0.25 ? SoundCatalog.vobSkyAggressorTaunt : SoundCatalog.vobSkyAggressorConfident, 0.22)
+                return (roll() < 0.25 ? voices.aggressorTaunt : voices.aggressorConfident, 0.22)
             default:
                 return (nil, 0)
             }

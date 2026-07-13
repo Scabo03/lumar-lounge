@@ -92,6 +92,12 @@ nei file collegati.
   Accesso **solo economico** (buy-in Skypool ~5×, scala Fast 5000 < Classic 6000 < Marble 10000).
   Novità audio: **due categorie di voce** (informativa→sintesi, ambientale→silenzio); slot Skypool
   dichiarati (nessun file), catalogo in `Skypool_audio_catalog.md`.
+- **`UI` M2 croupier per-casinò (D-067):** il **croupier (e l'ambient) è un attributo del CASINÒ,
+  non del gioco** — una palette (`CasinoAudio`) per casinò, valida per **tutti** i suoi tavoli.
+  Chiude il debito D-066: i Texas dello Skypool ora usano il croupier/ambient/colore-bot **dello
+  Skypool** (registro cittadino, cinico), non più quelli del Riverwood. Il **Riverwood è la palette
+  identità/default** → invariato per costruzione (pin di regressione). Un casinò nuovo eredita il
+  croupier **senza toccare il percorso audio**.
 
 **🏢 Fase 1 (M1) completa; Fase 2 (M2) in corso.** Girano end-to-end **tre giochi** in **due
 casinò**: al **Riverwood** Texas Hold'em No Limit (Classico/Rapido) e **Five-Card Draw** (Sala
@@ -109,9 +115,10 @@ Home → Casinò → Tavolo con gettoni persistenti e barriera economica.
   e i 2 storici (`amb_crowd_distant`, `fx_hand_neutral`).
 
 **Prossimo passo** (vedi [`ROADMAP.md`](ROADMAP.md)): **calibrazione comparativa** Riverwood↔Skypool
-(dopo che l'utente ha giocato entrambi); **produzione dei file audio Skypool** e **cablaggio delle
-voci di colore urbane** quando arrivano; cassa/DLC per ricarica gettoni; **NPC narrativi**;
-piscina/discoteca come luoghi. Il **terzo casinò non è anticipato**.
+(dopo che l'utente ha giocato entrambi); **produzione dei file audio Skypool** (croupier + ambient +
+`vob_sky_*`) e cablaggio delle `vob_sky_*` quando arrivano (oggi silenti); cassa/DLC per ricarica
+gettoni; **NPC narrativi**; piscina/discoteca come luoghi. Il **terzo casinò non è anticipato**.
+(Il croupier per-casinò — debito D-066 — è **chiuso** in D-067.)
 
 **Stato completo, sempre aggiornato:** sezione *Stato di sviluppo* in
 [`README.md`](README.md).
@@ -1695,3 +1702,46 @@ cache dallo stato corrente; Personality additiva; determinismo dato seed, casual
 in ROADMAP):** calibrazione comparativa Riverwood↔Skypool; produzione dei file audio Skypool
 (`Skypool_audio_catalog.md`) e cablaggio delle voci di colore urbane; NPC narrativi; piscina/discoteca
 come luoghi; terzo casinò. **Nessuna anticipazione del terzo casinò.**
+
+### D-067 — Il croupier (e l'ambient) è un attributo del CASINÒ, non del gioco (M2, chiude il debito D-066)
+Debito dichiarato in D-066: il croupier era legato al **gioco**, non al casinò. I Texas dello
+Skypool riusavano croupier e ambient del Riverwood → due terzi del casinò nuovo suonavano identici
+al vecchio; solo Marble aveva voce propria (perché Omaha è un gioco nuovo con `SpeechMap` nuova).
+**Perché conta (accessibilità):** il non vedente l'identità di un casinò non la **vede** (marmo,
+blu, feltro), la **sente** — voce e aria. Se al Texas dello Skypool sente il croupier del Riverwood,
+per lui è lo **stesso posto** e la progressione narrativa svanisce: è la perdita che "nessuno perde
+niente" esiste per impedire. Criterio **invertito**: la palette audio (croupier + ambient + colore
+bot) è attributo del **casinò**, uno solo per **tutti** i suoi tavoli.
+- **`CasinoAudio` (UI):** la palette di un casinò — remap del croupier (SoundID di default del gioco
+  → SoundID del casinò), **fallback di registro** per cue (chiave localizzata), `AmbientBeds`,
+  `BotVoices`. `registry: [id: CasinoAudio]` + `of(casinoID:)` + `hosting(table:)` (via `Casinos`).
+  **Aggiungere un casinò = aggiungere una voce al registry (dati);** SpeechMap/conductor/director
+  **non si toccano** — il terzo casinò eredita il croupier **per costruzione**.
+- **Il Riverwood È la palette IDENTITÀ/DEFAULT** (la chiave della regressione): remap **vuoto**
+  (identità), override **vuoti** (usa i fallback propri delle SpeechMap), e **esattamente** i letti
+  lounge + le `vob_` di oggi. Instradare il Riverwood attraverso il layer è **byte-identico per
+  costruzione**. Pin di regressione: `CasinoAudioTests.testRiverwoodPaletteIsIdentity`.
+- **Cosa ho toccato del percorso audio esistente (tutto ADDITIVO, default = Riverwood):** i tre VM
+  (`TableViewModel`/`OmahaTableViewModel`, e il default per il Draw) risolvono il **lead croupier +
+  fallback** via `casinoAudio.croupier(plan.croupier)` invece di passare il SoundID grezzo — per il
+  Riverwood è l'identità (stesso SoundID, fallback della SpeechMap) → **stesse `conductor.say`**. Le
+  SpeechMap (Texas/Draw/Omaha) **non cambiano output**. `AudioDirector`/`BotChatter` (e le versioni
+  Omaha) prendono `ambient: AmbientBeds`/`voices: BotVoices` con **default Riverwood/Skypool** che
+  riproducono il comportamento attuale. Il Texas dello Skypool ora usa croupier + ambient + colore
+  bot **dello Skypool** (nessuna voce del Riverwood trapela più — anche i `vob_` diventano `vob_sky_`).
+- **Il croupier cambia REGISTRO, non solo voce.** Ogni cue esiste in **due testi distinti**: il
+  Riverwood **invariato** (validato all'orecchio, non toccato); lo Skypool **nuovo**, scritto nel
+  registro **cittadino, cinico, tecnico, un po' verboso** (chiavi `skypool.croupier.*`, es. flop =
+  "Flop sul tavolo. Leggi le carte."; your-turn = "Tocca a te. Il tavolo aspetta."; pot = "Il piatto
+  cambia proprietario."), coerente col carattere del posto e delle tre personalità urbane.
+- **Fallback (D-066) rispettato:** le voci Skypool sono slot **non prodotti** → il croupier
+  (informativo) cade su **sintesi** (il testo di registro); i `vob_sky_*` (ambientali) cadono nel
+  **silenzio**. Nessun anti-pattern D-051 (il fallback di registro ≠ la sintesi di contenuto).
+- **Draw:** resta cablato al Riverwood (è **solo** al Riverwood → già corretto); il suo VM non è
+  toccato. Quando un casinò ospiterà il Draw, gli si passa `casinoAudio` come per Texas/Omaha (stesso
+  one-liner) — nessuna modifica al percorso audio.
+**Test:** Riverwood identità (regressione centrale); Skypool usa la propria palette su **tutti e tre**
+i tavoli (Texas + Omaha, via `hosting`); informativa→sintesi / ambientale→silenzio end-to-end col
+conductor; **palette data-driven** → un casinò nuovo eredita il meccanismo senza toccare il percorso
+audio. Catalogo `Skypool_audio_catalog.md` **rigenerato** contro l'architettura nuova. **343 test
+verdi.** Solo `UI` (+ stringhe di registro). Motori/driver/flusso/`Audio` intatti.

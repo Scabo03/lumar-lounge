@@ -225,6 +225,20 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     La regola vive **sulla categoria** (`SoundCategory.fallsBackToSynthesis`, true solo per
     `.croupier`), così **ogni voce futura eredita il fallback giusto** dichiarando la sua
     categoria; il `SpeechConductor` la consulta. Vale per ogni voce futura del progetto.
+  - **L'identità di un LUOGO, per il non vedente, vive nell'audio → ogni luogo nuovo ha la
+    sua palette sonora PER COSTRUZIONE (D-067).** Il giocatore cieco l'identità di un casinò
+    non la **vede** (marmo, feltro, colori): la **sente** — la voce del croupier e l'aria del
+    posto. Perciò la **palette audio** (croupier + registro dei testi + ambient + colore dei
+    bot) è un attributo del **LUOGO** (il casinò), **non del gioco**: un casinò ha **un solo**
+    croupier, valido per **tutti** i suoi tavoli e ogni gioco futuro. Due luoghi diversi
+    **devono** suonare diversi — stesse regole, voce e aria diverse — altrimenti per il non
+    vedente sono lo stesso posto e la progressione narrativa svanisce ("nessuno perde niente"
+    applicato all'identità). Implementazione: una **palette per casinò** (`CasinoAudio`)
+    risolta **per dati** (registry per id, remap del croupier + fallback di registro + letti
+    ambient + `vob_`); il **luogo di partenza è la palette IDENTITÀ/DEFAULT** (remap e override
+    vuoti → comportamento invariato per costruzione, così la regressione è garantita), e un
+    **luogo nuovo si aggiunge come dato** senza toccare le SpeechMap, il conductor o i director.
+    Il croupier di un luogo nuovo cambia **voce E registro** (testi propri), non solo il file.
   - **Annunci di ruolo personalizzati sul giocatore umano, non generici (D-031).**
     A inizio mano il croupier annuncia **solo il ruolo del giocatore umano** se ne ha
     uno (small blind / big blind / button), e resta **in silenzio** se non ne ha:

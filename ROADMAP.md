@@ -264,17 +264,27 @@ Skypool dichiarati (croupier `vo_it_sky_*`, ambient `amb_skypool_*`, colore bot 
 **nessun file prodotto**, catalogo in `Skypool_audio_catalog.md`. Motori invariati. **337
 test verdi** + XCUITest Skypool/Omaha.
 
+### ✅ M2.6 — Croupier (e ambient) come attributo del casinò (D-067) — debito D-066 CHIUSO
+Il croupier era legato al **gioco**, non al casinò: i Texas dello Skypool suonavano come
+il Riverwood. Invertito il criterio con una **palette per casinò** (`CasinoAudio`: remap
+croupier + fallback di registro + `AmbientBeds` + `BotVoices`), risolta per dati
+(`registry`/`hosting(table:)`). Il **Riverwood è la palette identità/default** → invariato
+per costruzione (pin `CasinoAudioTests`). I Texas dello Skypool ora hanno croupier + ambient
++ colore-bot **propri** (registro cittadino, cinico; testi `skypool.croupier.*`; `vob_sky_*`).
+Un casinò nuovo eredita il croupier **senza toccare il percorso audio**. Catalogo
+**rigenerato** contro la nuova architettura. Solo `UI` + stringhe. **343 test verdi.**
+
 ### ⏭️ Prossimi sotto-mattoni M2 (residui dichiarati)
 - **Calibrazione comparativa Riverwood ↔ Skypool:** tarare le differenze di difficoltà/
-  carattere tra i due casinò **dopo** che l'utente ha giocato entrambi (giudizio sulla
-  pelle). Il Riverwood **non** è stato ricalibrato in M2.5.
+  carattere tra i due casinò **dopo** che l'utente ha giocato entrambi. Il Riverwood **non**
+  è stato ricalibrato.
 - **File audio Skypool + cablaggio voci di colore urbane:** produrre i file di
-  `Skypool_audio_catalog.md` (ElevenLabs voci, StableAudio ambient) e cablare le `vob_sky_*`
-  quando arrivano (oggi ambientali → silenzio). Idem: unificazione croupier per-casinò per i
-  Texas dello Skypool (ora riusano il croupier condiviso).
+  `Skypool_audio_catalog.md` (ElevenLabs voci croupier + `vob_sky_*`, StableAudio ambient) e
+  cablare le `vob_sky_*` quando arrivano (oggi ambientali → silenzio). Il croupier per-casinò
+  è **fatto** (D-067): i file, quando arrivano, suonano automaticamente al posto della sintesi.
 - **M2.2 — Cassa / DLC:** ricarica dei gettoni quando finiscono (acquisti, bonus).
 - **M2.3 — Ambient Riverwood:** produzione dei file audio dedicati al posto dei fallback.
-- **M2.6 — NPC narrativi:** avversari ricorrenti con nome/carattere/storia (non definiti).
+- **M2.7 — NPC narrativi:** avversari ricorrenti con nome/carattere/storia (non definiti).
 - **Piscina / discoteca dello Skypool** come luoghi giocabili (oggi solo atmosfera).
 - **Terzo casinò:** non anticipato.
 

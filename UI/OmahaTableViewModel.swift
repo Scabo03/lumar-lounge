@@ -89,6 +89,9 @@ public final class OmahaTableViewModel: ObservableObject {
     private let botChatter: OmahaBotChatter
     private let mode: AppVoiceOverMode
     private let rules: OmahaTableRules
+    /// The hosting casino's audio palette (D-067): croupier voice + register, ambient,
+    /// bot voices. Default `.skypool` (the Marble table's home).
+    private let casinoAudio: CasinoAudio
     private let onLeave: (Int) -> Void
 
     private var leaveAfterHand = false
@@ -108,12 +111,14 @@ public final class OmahaTableViewModel: ObservableObject {
                 mode: AppVoiceOverMode,
                 rules: OmahaTableRules = .skypoolMarble,
                 returnLabel: String,
+                casinoAudio: CasinoAudio = .skypool,
                 onLeave: @escaping (Int) -> Void = { _ in }) {
         self.fastMode = fastMode
         self.audio = audio
         self.mode = mode
         self.rules = rules
         self.returnLabel = returnLabel
+        self.casinoAudio = casinoAudio
         self.onLeave = onLeave
 
         let rootSeed = seed ?? UInt64.random(in: .min ... .max)
@@ -136,9 +141,11 @@ public final class OmahaTableViewModel: ObservableObject {
 
         let characters: [Int: BotCharacter] = [1: .novice, 2: .rock, 3: .aggressor]
         self.audioDirector = OmahaAudioDirector(audio: audio, heroSeatID: 0, characters: characters,
-                                                seed: rootSeed, fastMode: fastMode)
+                                                seed: rootSeed, fastMode: fastMode,
+                                                ambient: casinoAudio.ambient, voices: casinoAudio.botVoices)
         self.conductor = SpeechConductor(audio: audio, queue: announcements)
-        self.botChatter = OmahaBotChatter(heroSeatID: 0, characters: characters, seed: rootSeed &+ 555)
+        self.botChatter = OmahaBotChatter(heroSeatID: 0, characters: characters, seed: rootSeed &+ 555,
+                                          voices: casinoAudio.botVoices)
 
         self.state = OmahaTableState(
             seats: ([0] + bots.map { $0.id }).map { OmahaSeatPresentation(id: $0, position: $0, chips: startingChips) },
@@ -283,17 +290,20 @@ public final class OmahaTableViewModel: ObservableObject {
     // MARK: - Speech
 
     private func speak(_ payload: OmahaEventPayload, _ reason: String = "") {
-        let plan = OmahaSpeechMap.plan(for: payload, heroSeatID: heroSeatID, names: names)
-        conductor.say(lead: plan.croupier, synthesis: plan.synthesis.map(OmahaSpeechMap.text),
-                      fallback: plan.croupierFallback.map(OmahaSpeechMap.text),
-                      priority: priority(of: plan), reason: reason)
+        say(OmahaSpeechMap.plan(for: payload, heroSeatID: heroSeatID, names: names), reason: reason)
     }
 
     private func speakRole(_ payload: OmahaEventPayload) {
-        let plan = OmahaSpeechMap.roleAnnouncement(for: payload, heroSeatID: heroSeatID)
-        conductor.say(lead: plan.croupier, synthesis: plan.synthesis.map(OmahaSpeechMap.text),
-                      fallback: plan.croupierFallback.map(OmahaSpeechMap.text),
-                      priority: priority(of: plan), reason: "role")
+        say(OmahaSpeechMap.roleAnnouncement(for: payload, heroSeatID: heroSeatID), reason: "role")
+    }
+
+    /// Sends a plan to the conductor, resolving the croupier LEAD + register fallback
+    /// through the HOSTING CASINO's palette (D-067) — the Skypool's own croupier here.
+    private func say(_ plan: OmahaSpeechPlan, reason: String) {
+        let (lead, fbKey) = casinoAudio.croupier(plan.croupier)
+        let fallback = fbKey.map(uiLocalized) ?? plan.croupierFallback.map(OmahaSpeechMap.text)
+        conductor.say(lead: lead, synthesis: plan.synthesis.map(OmahaSpeechMap.text),
+                      fallback: fallback, priority: priority(of: plan), reason: reason)
     }
 
     private func speakAction(seatID: Int, action: OmahaActedAction) {
@@ -301,8 +311,9 @@ public final class OmahaTableViewModel: ObservableObject {
                                        heroSeatID: heroSeatID, names: names)
         let synth = plan.synthesis.map(OmahaSpeechMap.text)
         if plan.croupier != nil {
-            conductor.say(lead: plan.croupier, leadCategory: .croupier, synthesis: synth,
-                          fallback: nil, priority: .medium, reason: "action-allin")
+            let (lead, fbKey) = casinoAudio.croupier(plan.croupier)
+            conductor.say(lead: lead, leadCategory: .croupier, synthesis: synth,
+                          fallback: fbKey.map(uiLocalized), priority: .medium, reason: "action-allin")
         } else if seatID != heroSeatID {
             // Skypool colour lead (AMBIENT: silent until produced, D-066), then the
             // informative attribution synthesis.
@@ -337,7 +348,9 @@ public final class OmahaTableViewModel: ObservableObject {
             line = nil
         }
         let prio = line.map(OmahaSpeechMap.priority) ?? .high
-        conductor.say(lead: plan.croupier, synthesis: line.map(OmahaSpeechMap.text), priority: prio, reason: "pot")
+        let (lead, fbKey) = casinoAudio.croupier(plan.croupier)
+        conductor.say(lead: lead, synthesis: line.map(OmahaSpeechMap.text), fallback: fbKey.map(uiLocalized),
+                      priority: prio, reason: "pot")
     }
 
     // MARK: - The human's betting turn
@@ -347,10 +360,12 @@ public final class OmahaTableViewModel: ObservableObject {
         humanTurn = info
         state.activeSeatID = heroSeatID
         conductor.flushPending()
-        // The croupier's "it's your turn" (silent until the Skypool mp3 exists →
-        // informative synthesis fallback so the blind player always hears the turn).
-        conductor.say(lead: SoundCatalog.voSkyYourTurn, synthesis: nil,
-                      fallback: uiLocalized("omaha.announce.yourturn"), priority: .high, reason: "your-turn")
+        // The croupier's "it's your turn" — the casino's own voice (silent until its mp3
+        // exists → the register fallback so the blind player always hears the turn, D-067).
+        let (lead, fbKey) = casinoAudio.croupier(SoundCatalog.voSkyYourTurn)
+        conductor.say(lead: lead, synthesis: nil,
+                      fallback: fbKey.map(uiLocalized) ?? uiLocalized("omaha.announce.yourturn"),
+                      priority: .high, reason: "your-turn")
         await withCheckedContinuation { turnContinuation = $0 }
         humanTurn = nil
         raiseBox = nil

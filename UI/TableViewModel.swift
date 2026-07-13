@@ -91,6 +91,9 @@ public final class TableViewModel: ObservableObject {
     private let mode: AppVoiceOverMode
     /// This table's rules (blinds, personalities, boost — D-035/D-037).
     private let rules: TableRules
+    /// The hosting casino's audio palette: croupier voice + register, ambient, bot
+    /// voices (D-067). Default `.riverwood` = the identity palette → unchanged behaviour.
+    private let casinoAudio: CasinoAudio
     /// Called when the player stands up: the remaining fiches to cash out (D-036).
     private let onLeave: (Int) -> Void
     /// The Fast table's decisive-hand boost (D-037).
@@ -123,12 +126,14 @@ public final class TableViewModel: ObservableObject {
                 mode: AppVoiceOverMode,
                 rules: TableRules = .classic,
                 returnLabel: String,
+                casinoAudio: CasinoAudio = .riverwood,
                 onLeave: @escaping (Int) -> Void = { _ in }) {
         self.fastMode = fastMode
         self.audio = audio
         self.mode = mode
         self.rules = rules
         self.returnLabel = returnLabel
+        self.casinoAudio = casinoAudio
         self.onLeave = onLeave
         // A concrete root seed for the bots and audio: fixed in tests, random per
         // session in production. The DRIVER gets the optional `seed` directly, so a
@@ -157,9 +162,11 @@ public final class TableViewModel: ObservableObject {
         // base big blind lets the director raise the ambient on a decisive hand.
         let characters: [Int: BotCharacter] = [1: .novice, 2: .rock, 3: .aggressor]
         self.audioDirector = AudioDirector(audio: audio, heroSeatID: 0, characters: characters,
-                                           seed: rootSeed, fastMode: fastMode, baseBigBlind: rules.bigBlind)
+                                           seed: rootSeed, fastMode: fastMode, baseBigBlind: rules.bigBlind,
+                                           ambient: casinoAudio.ambient, voices: casinoAudio.botVoices)
         self.conductor = SpeechConductor(audio: audio, queue: announcements)
-        self.botChatter = BotChatter(heroSeatID: 0, characters: characters, seed: rootSeed &+ 999)
+        self.botChatter = BotChatter(heroSeatID: 0, characters: characters, seed: rootSeed &+ 999,
+                                     voices: casinoAudio.botVoices)
 
         self.state = TableState(
             seats: ([0] + bots.map { $0.id }).map { SeatPresentation(id: $0, position: $0, chips: startingChips) },
@@ -257,7 +264,8 @@ public final class TableViewModel: ObservableObject {
             speak(payload, "hand-start")   // croupier: "new hand"
             speakRole(payload)             // the human's OWN role, or silence (D-031)
             if bigBlind > rules.bigBlind { // decisive hand: blinds doubled (D-037)
-                conductor.say(lead: SoundCatalog.voHighStakes, fallback: uiLocalized("announce.high.stakes"),
+                let (lead, fbKey) = casinoAudio.croupier(SoundCatalog.voHighStakes)
+                conductor.say(lead: lead, fallback: fbKey.map(uiLocalized) ?? uiLocalized("announce.high.stakes"),
                               priority: .high, reason: "high-stakes")
             }
             await pace(payload, human: Pacing.seconds(for: payload))
@@ -366,19 +374,23 @@ public final class TableViewModel: ObservableObject {
     /// Sends an event's spoken plan (croupier lead and/or synthesis, with fallback)
     /// to the conductor.
     private func speak(_ payload: EventPayload, _ reason: String = "") {
-        let plan = SpeechMap.plan(for: payload, heroSeatID: heroSeatID, names: names)
-        conductor.say(lead: plan.croupier, synthesis: plan.synthesis.map(SpeechMap.text),
-                      fallback: plan.croupierFallback.map(SpeechMap.text),
-                      priority: priority(of: plan), reason: reason)
+        say(SpeechMap.plan(for: payload, heroSeatID: heroSeatID, names: names), reason: reason)
     }
 
     /// The human's OWN role at the start of the hand, or silence (D-031). The
     /// button mp3 isn't produced yet, so its declared synthesis fallback speaks.
     private func speakRole(_ payload: EventPayload) {
-        let plan = SpeechMap.roleAnnouncement(for: payload, heroSeatID: heroSeatID)
-        conductor.say(lead: plan.croupier, synthesis: plan.synthesis.map(SpeechMap.text),
-                      fallback: plan.croupierFallback.map(SpeechMap.text),
-                      priority: priority(of: plan), reason: "role")
+        say(SpeechMap.roleAnnouncement(for: payload, heroSeatID: heroSeatID), reason: "role")
+    }
+
+    /// Sends a plan to the conductor, resolving the croupier LEAD + register fallback
+    /// through the HOSTING CASINO's palette (D-067). For the Riverwood palette this is
+    /// the identity — same SoundID, and the plan's own fallback — so it is unchanged.
+    private func say(_ plan: SpeechPlan, reason: String) {
+        let (lead, fbKey) = casinoAudio.croupier(plan.croupier)
+        let fallback = fbKey.map(uiLocalized) ?? plan.croupierFallback.map(SpeechMap.text)
+        conductor.say(lead: lead, synthesis: plan.synthesis.map(SpeechMap.text),
+                      fallback: fallback, priority: priority(of: plan), reason: reason)
     }
 
     /// An opponent's action: its attribution synthesis (medium priority — D-032),
@@ -389,8 +401,9 @@ public final class TableViewModel: ObservableObject {
                                   heroSeatID: heroSeatID, names: names)
         let synth = plan.synthesis.map(SpeechMap.text)
         if plan.croupier != nil {                       // all-in (own or opponent)
-            conductor.say(lead: plan.croupier, leadCategory: .croupier, synthesis: synth,
-                          priority: .medium, reason: "action-allin")
+            let (lead, fbKey) = casinoAudio.croupier(plan.croupier)
+            conductor.say(lead: lead, leadCategory: .croupier, synthesis: synth,
+                          fallback: fbKey.map(uiLocalized), priority: .medium, reason: "action-allin")
         } else if seatID != heroSeatID {                // opponent ordinary action
             let vob = botChatter.actionVoice(seat: seatID, action: action)
             conductor.say(lead: vob, leadCategory: .botVoice, synthesis: synth,
@@ -426,7 +439,9 @@ public final class TableViewModel: ObservableObject {
             line = nil
         }
         let prio = line.map(SpeechMap.priority) ?? .high
-        conductor.say(lead: plan.croupier, synthesis: line.map(SpeechMap.text), priority: prio, reason: "pot")
+        let (lead, fbKey) = casinoAudio.croupier(plan.croupier)
+        conductor.say(lead: lead, synthesis: line.map(SpeechMap.text), fallback: fbKey.map(uiLocalized),
+                      priority: prio, reason: "pot")
     }
 
     // MARK: - The human's turn
@@ -442,7 +457,8 @@ public final class TableViewModel: ObservableObject {
         // The turn is time-critical: drop any stale narration still queued so the
         // "your turn" mp3 plays promptly rather than behind a backlog (D-031).
         conductor.flushPending()
-        conductor.say(lead: SoundCatalog.voYourTurn, synthesis: nil, priority: .high, reason: "your-turn")
+        let (lead, fbKey) = casinoAudio.croupier(SoundCatalog.voYourTurn)
+        conductor.say(lead: lead, synthesis: nil, fallback: fbKey.map(uiLocalized), priority: .high, reason: "your-turn")
         await withCheckedContinuation { turnContinuation = $0 }
         humanTurn = nil
         raiseBox = nil

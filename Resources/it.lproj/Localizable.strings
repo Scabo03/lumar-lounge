@@ -389,3 +389,19 @@
 "seat.name.sky.rock" = "Il Professionista";
 "seat.name.sky.aggressor" = "Lo Squalo";
 "omaha.announce.yourturn" = "è il tuo turno";
+
+/* ------------------------------------------------------------------ */
+/* D-067 — Croupier dello Skypool: registro cittadino, cinico, tecnico, un po' verboso.
+   Fallback di sintesi (informativo) finché i vo_it_sky_* non sono prodotti. */
+"skypool.croupier.blind.small" = "Sei in smòl blaind. Metti la piccola e stai sul pezzo.";
+"skypool.croupier.blind.big" = "Big blaind è tuo. Difendi, se ne vale la pena.";
+"skypool.croupier.button" = "Bàtton in mano. Ultima parola, usala bene.";
+"skypool.croupier.yourturn" = "Tocca a te. Il tavolo aspetta.";
+"skypool.croupier.flop" = "Flop sul tavolo. Leggi le carte.";
+"skypool.croupier.turn" = "Tern. La faccenda si complica.";
+"skypool.croupier.river" = "River. Ultima carta, niente più scuse.";
+"skypool.croupier.showdown" = "Sciodaun. Carte sul marmo.";
+"skypool.croupier.allin" = "Ol-in. Tutto quanto.";
+"skypool.croupier.pot" = "Il piatto cambia proprietario.";
+"skypool.croupier.split" = "Piatto diviso. Nessuno esce contento.";
+"skypool.croupier.stakesup" = "Le poste salgono. Chi resta, fa sul serio.";

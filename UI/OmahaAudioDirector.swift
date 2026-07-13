@@ -51,14 +51,20 @@ public final class OmahaAudioDirector {
     private var showdownHushed = false
     private var activeSeats: Set<Int> = []
     private var bustedSeats: Set<Int> = []
+    /// The hosting casino's ambient beds and bot colour voices (D-067); default Skypool.
+    private let ambient: AmbientBeds
+    private let voices: BotVoices
 
     public init(audio: AudioServicing, heroSeatID: Int, characters: [Int: BotCharacter],
-                seed: UInt64, fastMode: Bool = false) {
+                seed: UInt64, fastMode: Bool = false,
+                ambient: AmbientBeds = .skypool, voices: BotVoices = .skypool) {
         self.audio = audio
         self.heroSeatID = heroSeatID
         self.characters = characters
         self.rng = SeededGenerator(seed: seed)
         self.fastMode = fastMode
+        self.ambient = ambient
+        self.voices = voices
     }
 
     public func run(_ stream: AsyncStream<OmahaSessionEvent>) async {
@@ -74,7 +80,7 @@ public final class OmahaAudioDirector {
         switch payload {
         case let .sessionBegan(seats, _, _):
             audio.startAmbient(calmBed)
-            audio.startAmbientLayer(bed(SoundCatalog.ambSkypoolWater, SoundCatalog.ambCrowdDistant), volume: 0.18)
+            audio.startAmbientLayer(bed(ambient.layer, ambient.layerFallback), volume: 0.18)
             for s in seats { startChips[s.seatID] = s.chips }
 
         case let .handBegan(_, _, _, _, _, _, _, seats):
@@ -125,8 +131,8 @@ public final class OmahaAudioDirector {
         return cues
     }
 
-    private var calmBed: SoundID { bed(SoundCatalog.ambSkypoolCalm1, SoundCatalog.ambLoungeCalm2) }
-    private var tenseBed: SoundID { bed(SoundCatalog.ambSkypoolTense, SoundCatalog.ambLoungeTense) }
+    private var calmBed: SoundID { bed(ambient.calm1, ambient.calm1Fallback) }
+    private var tenseBed: SoundID { bed(ambient.tense, ambient.tenseFallback) }
 
     private func hushForShowdown() {
         guard !showdownHushed else { return }
@@ -154,9 +160,9 @@ public final class OmahaAudioDirector {
         where character == .novice && activeSeats.contains(seat) && !bustedSeats.contains(seat) {
             guard let start = startChips[seat], let final = chips[seat] else { continue }
             if final > start, roll() < 0.5 {
-                audio.play(SoundCatalog.vobSkyNoviceExcited, category: .botVoice)
+                audio.play(voices.noviceExcited, category: .botVoice)
             } else if final < start, roll() < 0.4 {
-                audio.play(SoundCatalog.vobSkyNoviceDisappointed, category: .botVoice)
+                audio.play(voices.noviceDisappointed, category: .botVoice)
             }
         }
     }

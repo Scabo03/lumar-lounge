@@ -60,14 +60,19 @@ public struct AppRootView: View {
     /// Builds the right game screen for a table, with its casino's return label.
     @ViewBuilder private func tableScreen(_ table: CasinoTable) -> some View {
         let returnLabel = uiLocalized(Casinos.casino(hosting: table.id)?.returnLabelKey ?? "endgame.return")
+        // The hosting casino's audio palette — its croupier, register and ambient are an
+        // attribute of the CASINO, not the game, so all its tables share one voice (D-067).
+        let palette = CasinoAudio.hosting(table: table.id)
         let onLeave: (Int) -> Void = { remaining in app.leaveTable(cashingOut: remaining) }
         switch table.game {
         case let .texas(rules):
-            TableScreen(rules: rules, audio: audio, mode: voMode, returnLabel: returnLabel, onLeave: onLeave)
+            TableScreen(rules: rules, audio: audio, mode: voMode, returnLabel: returnLabel,
+                        casinoAudio: palette, onLeave: onLeave)
         case let .draw(rules):
             DrawTableScreen(rules: rules, audio: audio, mode: voMode, returnLabel: returnLabel, onLeave: onLeave)
         case let .omaha(rules):
-            OmahaTableScreen(rules: rules, audio: audio, mode: voMode, returnLabel: returnLabel, onLeave: onLeave)
+            OmahaTableScreen(rules: rules, audio: audio, mode: voMode, returnLabel: returnLabel,
+                             casinoAudio: palette, onLeave: onLeave)
         }
     }
 

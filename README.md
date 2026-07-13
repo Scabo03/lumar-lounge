@@ -170,6 +170,14 @@ sintesi, ambientale (colore dei bot) → **silenzio** — con slot Skypool dichi
 file prodotto** (catalogo in `Skypool_audio_catalog.md`). **337 unit test verdi** + XCUITest
 Skypool/Omaha; motori invariati.
 
+**Il croupier è un attributo del casinò, non del gioco (D-067).** Chiuso il debito: i tavoli
+Texas dello Skypool non suonano più come quelli del Riverwood. Una **palette per casinò**
+(`CasinoAudio`: croupier + registro dei testi + ambient + colore dei bot) è risolta per dati
+dal tavolo → il casinò che lo ospita; lo Skypool ha il **suo** croupier (registro cittadino,
+cinico) e il **suo** ambient su **tutti** i suoi tavoli. Il **Riverwood è la palette
+identità/default** → invariato per costruzione (regressione pinnata). Un casinò nuovo eredita
+il croupier senza toccare il percorso audio. **343 unit test verdi.**
+
 > **🏁 La prima fase è completa.** Il gioco base è funzionante end-to-end — motore
 > completo, bot credibili, sessione multi-mano, flusso di eventi, UI giocabile e
 > accessibile, e **audio pieno**: i 47 file mp3 consegnati (atmosfera, carte,

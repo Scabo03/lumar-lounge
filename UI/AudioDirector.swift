@@ -60,15 +60,22 @@ public final class AudioDirector {
     private var bustedSeats: Set<Int> = []
     /// The table's base big blind; a hand whose blind exceeds it is decisive (D-037).
     private let baseBigBlind: Int
+    /// The hosting casino's ambient beds and bot colour voices (D-067). The DEFAULTS
+    /// reproduce today's Riverwood behaviour EXACTLY, so a Riverwood table is unchanged.
+    private let ambient: AmbientBeds
+    private let voices: BotVoices
 
     public init(audio: AudioServicing, heroSeatID: Int, characters: [Int: BotCharacter],
-                seed: UInt64, fastMode: Bool = false, baseBigBlind: Int = 20) {
+                seed: UInt64, fastMode: Bool = false, baseBigBlind: Int = 20,
+                ambient: AmbientBeds = .riverwood, voices: BotVoices = .riverwood) {
         self.audio = audio
         self.heroSeatID = heroSeatID
         self.characters = characters
         self.rng = SeededGenerator(seed: seed)
         self.fastMode = fastMode
         self.baseBigBlind = baseBigBlind
+        self.ambient = ambient
+        self.voices = voices
     }
 
     public func run(_ stream: AsyncStream<SessionEvent>) async {
@@ -86,8 +93,8 @@ public final class AudioDirector {
     public func handle(_ payload: EventPayload) -> [SoundCue] {
         switch payload {
         case let .sessionBegan(seats, _, _):
-            audio.startAmbient(SoundCatalog.ambLoungeCalm1)
-            audio.startAmbientLayer(SoundCatalog.ambCrowdDistant, volume: 0.2)
+            audio.startAmbient(bed(ambient.calm1, ambient.calm1Fallback))
+            audio.startAmbientLayer(bed(ambient.layer, ambient.layerFallback), volume: 0.2)
             for s in seats { startChips[s.seatID] = s.chips }
             heroChips = startChips[heroSeatID] ?? 0
 
@@ -99,13 +106,13 @@ public final class AudioDirector {
             for s in seats { startChips[s.seatID] = s.chips }
             audio.setAmbientScale(1.0, duration: 0.3)
             // A decisive hand (doubled blinds) opens on the tense bed (D-037).
-            let bed = bigBlind > baseBigBlind ? SoundCatalog.ambLoungeTense : calmBed(for: number)
+            let bed = bigBlind > baseBigBlind ? tenseBed : calmBed(for: number)
             audio.crossfadeAmbient(to: bed, duration: 0.8)
 
         case let .playerActed(_, action):
             if SpeechMap.isAllIn(action), !allInInPlay {
                 allInInPlay = true
-                audio.crossfadeAmbient(to: SoundCatalog.ambLoungeTense, duration: 0.8)
+                audio.crossfadeAmbient(to: tenseBed, duration: 0.8)
             }
 
         case .handShown:
@@ -152,6 +159,13 @@ public final class AudioDirector {
         if allInInPlay { audio.crossfadeAmbient(to: calmBed(for: handNumber), duration: 1.0) }
     }
 
+    /// The preferred bed if bundled, else its fallback (D-030/D-067). For the Riverwood
+    /// palette preferred == fallback == a bundled lounge bed, so this is a no-op there.
+    private func bed(_ preferred: SoundID, _ fallback: SoundID) -> SoundID {
+        audio.isAvailable(preferred) ? preferred : fallback
+    }
+    private var tenseBed: SoundID { bed(ambient.tense, ambient.tenseFallback) }
+
     private func heroChipDeltaFeedback(_ chips: [Int: Int]) {
         guard let start = startChips[heroSeatID], let final = chips[heroSeatID] else { return }
         let fx = final > start ? SoundCatalog.fxWinHand
@@ -168,15 +182,15 @@ public final class AudioDirector {
         where character == .novice && activeSeats.contains(seat) && !bustedSeats.contains(seat) {
             guard let start = startChips[seat], let final = chips[seat] else { continue }
             if final > start, roll() < 0.5 {
-                audio.play(SoundCatalog.vobNoviceExcited, category: .botVoice)
+                audio.play(voices.noviceExcited, category: .botVoice)
             } else if final < start, roll() < 0.4 {
-                audio.play(SoundCatalog.vobNoviceDisappointed, category: .botVoice)
+                audio.play(voices.noviceDisappointed, category: .botVoice)
             }
         }
     }
 
     private func calmBed(for handNumber: Int) -> SoundID {
-        handNumber % 2 == 0 ? SoundCatalog.ambLoungeCalm1 : SoundCatalog.ambLoungeCalm2
+        handNumber % 2 == 0 ? bed(ambient.calm1, ambient.calm1Fallback) : bed(ambient.calm2, ambient.calm2Fallback)
     }
 
     private func roll() -> Double {

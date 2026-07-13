@@ -233,3 +233,19 @@ Cinque fix da test reale su iPhone (Tavolo Rapido, VoiceOver attivo), tutti in `
   `AmbientVoiceFallbackTests`. Layer parlato/non-parlato Omaha dedicati (`OmahaSpeechMap`,
   `OmahaAudioScore`/`OmahaAudioDirector`, `OmahaBotChatter`) con slot Skypool (croupier
   informativi → sintesi, colore bot → silenzio).
+
+## Il croupier è un attributo del casinò, non del gioco (M2, D-067)
+
+- **`CasinoAudio`** — la palette audio di un casinò: remap del croupier (SoundID di default
+  del gioco → SoundID del casinò), **fallback di registro** per cue (testo localizzato),
+  `AmbientBeds`, `BotVoices`. Risolta per dati (`registry` per id, `hosting(table:)` via
+  `Casinos`). **Aggiungere un casinò = aggiungere una voce al registry**; SpeechMap/conductor/
+  director non si toccano.
+- **Il Riverwood È la palette identità/default** (remap e override vuoti, letti lounge + `vob_`
+  di oggi) → instradarlo nel layer è **byte-identico** (pin `CasinoAudioTests`). I VM risolvono
+  il lead croupier + fallback via `casinoAudio.croupier(plan.croupier)`; `AudioDirector`/
+  `BotChatter` (e le versioni Omaha) prendono `ambient`/`voices` col default Riverwood/Skypool.
+- **Registro dello Skypool:** ogni cue del croupier ha un testo proprio (chiavi
+  `skypool.croupier.*`), cittadino/cinico/tecnico, diverso da quello di frontiera del Riverwood
+  (invariato). Le voci Skypool sono slot non prodotti → sintesi del registro (informative) o
+  silenzio (`vob_sky_*`, ambientali).

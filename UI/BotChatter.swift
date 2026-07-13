@@ -29,11 +29,15 @@ final class BotChatter {
     private var activeSeats: Set<Int> = []
     /// Whether a seat's previous action was voiced (anti-repeat).
     private var voicedLastAction: [Int: Bool] = [:]
+    /// The hosting casino's bot colour voices (D-067). Default = the Riverwood `vob_`
+    /// set, so a Riverwood table is unchanged.
+    private let voices: BotVoices
 
-    init(heroSeatID: Int, characters: [Int: BotCharacter], seed: UInt64) {
+    init(heroSeatID: Int, characters: [Int: BotCharacter], seed: UInt64, voices: BotVoices = .riverwood) {
         self.heroSeatID = heroSeatID
         self.characters = characters
         self.rng = SeededGenerator(seed: seed)
+        self.voices = voices
     }
 
     func handBegan(seats: [SeatSnapshot]) {
@@ -64,19 +68,19 @@ final class BotChatter {
         case .novice:
             switch action {
             case .bet, .raised:
-                return (SoundCatalog.vobNoviceExcited, 0.22)
+                return (voices.noviceExcited, 0.22)
             case let .called(amount, _):
                 let big = stackBefore > 0 && Double(amount) > 0.25 * Double(stackBefore)
-                return big ? (SoundCatalog.vobNoviceNervous, 0.22) : (nil, 0)
+                return big ? (voices.noviceNervous, 0.22) : (nil, 0)
             default:
                 return (nil, 0)
             }
         case .rock:
-            return (SoundCatalog.vobRockGrunt, 0.10)
+            return (voices.rockGrunt, 0.10)
         case .aggressor:
             switch action {
             case .bet, .raised:
-                return (roll() < 0.25 ? SoundCatalog.vobAggressorTaunt : SoundCatalog.vobAggressorConfident, 0.22)
+                return (roll() < 0.25 ? voices.aggressorTaunt : voices.aggressorConfident, 0.22)
             default:
                 return (nil, 0)
             }
