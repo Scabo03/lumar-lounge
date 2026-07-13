@@ -49,6 +49,25 @@ final class PhoneticsTests: XCTestCase {
         }
     }
 
+    /// Casino/table names — EAR-VERIFIED on Alice by the user (D-060/D-066):
+    ///   • Skypool → "Skai pul" (sample 04; the plain "Skypool" was read wrong).
+    ///   • Marble  → the plain word "Marble" (sample 01, the best-sounding).
+    /// Change either only after re-listening and re-approving the sound.
+    func testEarVerifiedCasinoNameRenderings() throws {
+        let s = try italianStrings()
+        XCTAssertEqual(s["skypool.spoken.a11y"], "Skai pul Casinò",
+                       "Skypool spoken name — ear-verified render (sample 04)")
+        XCTAssertTrue((s["endgame.return.skypool"] ?? "").contains("Skai pul"),
+                      "the Skypool return label must use the ear-verified \"Skai pul\"")
+        // The plain "Skypool" (read wrong) must not creep back into a SPOKEN string.
+        XCTAssertFalse((s["skypool.spoken.a11y"] ?? "").contains("Skypool"),
+                       "skypool.spoken.a11y reverted to the plain \"Skypool\" (read wrong by Alice)")
+        XCTAssertFalse((s["endgame.return.skypool"] ?? "").contains("Skypool"),
+                       "the Skypool return label reverted to the plain \"Skypool\"")
+        // Marble is spoken via the plain word, which the user approved (sample 01).
+        XCTAssertEqual(s["table.omaha.marble"], "Marble", "Marble — ear-verified plain word (sample 01)")
+    }
+
     // MARK: - Structural: every action-bar accessibility label comes from a `.a11y` key (D-054)
 
     func testActionBarAccessibilityLabelsUsePhoneticKeys() throws {

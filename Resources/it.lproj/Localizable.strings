@@ -346,7 +346,11 @@
 /* Skypool casino identity */
 "skypool.tagline" = "Marmo, acqua, cemento. Il gioco freddo della città.";
 "home.skypool.blurb" = "Un casinò cittadino: marmo, piscina, discoteca. Specialità: Omaha Pot Limit.";
-"endgame.return.skypool" = "Torna allo Skypool";
+/* Nome parlato del casinò per VoiceOver: resa EAR-VERIFIED "Skai pul" (D-060/D-066).
+   La voce italiana Alice legge "Skypool" (grafia piana) male; "Skai pul" (campione 04,
+   approvato all'ascolto dall'utente) è la resa giusta. Il nome VISIBILE resta "Skypool Casinò". */
+"skypool.spoken.a11y" = "Skai pul Casinò";
+"endgame.return.skypool" = "Torna allo Skai pul";
 
 /* Omaha table row (lobby) */
 "table.omaha.title" = "Omaha Pot Limit";

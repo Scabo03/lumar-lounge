@@ -45,6 +45,11 @@ struct HomeView: View {
         }
     }
 
+    /// The VoiceOver-spoken casino name (ear-verified spelling when declared, D-060).
+    private func spokenName(_ casino: Casino) -> String {
+        casino.spokenNameKey.map(uiLocalized) ?? casino.displayName
+    }
+
     private func casinoCard(_ casino: Casino) -> some View {
         let theme = CasinoTheme.theme(for: casino)
         let blurb = uiLocalized(casino.blurbKey)
@@ -69,7 +74,8 @@ struct HomeView: View {
         }
         .accessibilityIdentifier("home.casino.\(casino.id)")
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(verbatim: uiLocalized("home.casino.a11y", casino.displayName, blurb)))
+        // Visible name stays English; VoiceOver reads the ear-verified spoken name (D-060).
+        .accessibilityLabel(Text(verbatim: uiLocalized("home.casino.a11y", spokenName(casino), blurb)))
         .accessibilityHint(Text(verbatim: uiLocalized("home.casino.hint")))
     }
 }

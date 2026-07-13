@@ -67,6 +67,11 @@ public struct Casino: Identifiable, Equatable, Sendable {
     public let id: String
     /// Proper-noun display name shown on screen (not a localized string — a name).
     public let displayName: String
+    /// The localized key for the VoiceOver-SPOKEN rendering of the name, when the
+    /// visible English name doesn't read right in the target voice (D-060). `nil` →
+    /// the visible `displayName` is spoken as-is. E.g. "Skypool" reads wrong for the
+    /// Italian voice, so the Skypool declares the ear-verified spelling "Skai pul".
+    public let spokenNameKey: String?
     public let taglineKey: String
     public let blurbKey: String
     /// The localized key for the "return to <casino>" label on the end-of-game
@@ -74,10 +79,11 @@ public struct Casino: Identifiable, Equatable, Sendable {
     public let returnLabelKey: String
     public let tables: [CasinoTable]
 
-    public init(id: String, displayName: String, taglineKey: String, blurbKey: String,
-                returnLabelKey: String, tables: [CasinoTable]) {
+    public init(id: String, displayName: String, spokenNameKey: String? = nil,
+                taglineKey: String, blurbKey: String, returnLabelKey: String, tables: [CasinoTable]) {
         self.id = id
         self.displayName = displayName
+        self.spokenNameKey = spokenNameKey
         self.taglineKey = taglineKey
         self.blurbKey = blurbKey
         self.returnLabelKey = returnLabelKey
@@ -118,6 +124,7 @@ public enum Casinos {
     public static let skypool = Casino(
         id: "skypool",
         displayName: "Skypool Casinò",
+        spokenNameKey: "skypool.spoken.a11y",   // ear-verified "Skai pul" (D-060/D-066)
         taglineKey: "skypool.tagline",
         blurbKey: "home.skypool.blurb",
         returnLabelKey: "endgame.return.skypool",

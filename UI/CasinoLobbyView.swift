@@ -28,6 +28,9 @@ struct CasinoLobbyView: View {
                         .foregroundStyle(theme.primaryText)
                         .accessibilityIdentifier("\(casino.id).title")
                         .accessibilityAddTraits(.isHeader)
+                        // Visible name stays English; VoiceOver reads the ear-verified
+                        // spoken name (D-060) — this is also the focus-landing element.
+                        .accessibilityLabel(Text(verbatim: casino.spokenNameKey.map(uiLocalized) ?? casino.displayName))
                         .voiceOverFocusLanding()   // land VoiceOver here on entry (D-057)
                     Text(verbatim: uiLocalized(casino.taglineKey))
                         .font(.callout).italic()

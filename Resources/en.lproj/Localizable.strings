@@ -337,6 +337,8 @@
 /* Skypool casino identity */
 "skypool.tagline" = "Marble, water, concrete. The cold city game.";
 "home.skypool.blurb" = "A city casino: marble, a pool, a nightclub. Speciality: Pot Limit Omaha.";
+/* English voice reads "Skypool" fine — no phonetic respelling needed here (D-060). */
+"skypool.spoken.a11y" = "Skypool Casino";
 "endgame.return.skypool" = "Back to the Skypool";
 
 /* Omaha table row (lobby) */

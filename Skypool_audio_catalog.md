@@ -105,12 +105,13 @@ tono più che testo. Testi **suggeriti** (adattabili):
 
 ---
 
-## 5. Fonetica dei nomi propri (da approvare prima del cablaggio)
-`Skypool` e `Marble` finiscono nelle label accessibili lette da Alice it-IT. I
-**campioni audio** sono in `~/Desktop/lumar-phonetics/skypool-marble/` (vedi il README
-lì). Il default cablato è la **grafia piana** "Skypool" / "Marble" (device-safe, D-060).
-Se l'ascolto richiede una variante, la si cabla e si aggiunge l'àncora in
-`PhoneticsTests`.
+## 5. Fonetica dei nomi propri (APPROVATA all'ascolto, D-060)
+`Skypool` e `Marble` finiscono nelle label accessibili lette da Alice it-IT. Campioni in
+`~/Desktop/lumar-phonetics/skypool-marble/`. **Esito ascolto dell'utente:**
+- **Marble** = grafia piana **"Marble"** (approvata, cablata).
+- **Skypool** = **"Skai pul"** (la grafia piana "Skypool" leggeva male): label VoiceOver del
+  casinò "Skai pul Casinò", ritorno "Torna allo Skai pul". Il nome **visibile** resta "Skypool
+  Casinò". Àncora in `PhoneticsTests.testEarVerifiedCasinoNameRenderings`.
 
 ---
 
