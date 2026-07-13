@@ -32,9 +32,8 @@ struct ActionBarView: View {
                          enabled: turn?.canFold ?? false) { model.fold() }
 
             ActionButton(title: uiLocalized("action.raise"),
+                         // EAR-VERIFIED plain render "Raise" (D-060) — no IPA.
                          a11yLabel: uiLocalized("action.raise.a11y"),
-                         // IPA pronunciation, not a guessed grapheme (D-059).
-                         a11yAttributed: PokerSpeech.raiseLabel(spelled: uiLocalized("action.raise.a11y")),
                          identifier: "action.raise",
                          kind: .accent,
                          enabled: turn?.canBetOrRaise ?? false) { model.openRaiseBox() }
@@ -61,10 +60,6 @@ private enum ButtonKind { case neutral, danger, accent }
 private struct ActionButton: View {
     let title: String
     let a11yLabel: String
-    /// When set, drives the VoiceOver label with an explicit IPA pronunciation so the
-    /// Italian voice says the exact phonemes (the Raise button — D-059). Falls back to
-    /// the plain `a11yLabel` string otherwise.
-    var a11yAttributed: AttributedString? = nil
     let identifier: String
     let kind: ButtonKind
     let enabled: Bool
@@ -90,7 +85,7 @@ private struct ActionButton: View {
         }
         .disabled(!enabled)
         .accessibilityIdentifier(identifier)
-        .accessibilityLabel(a11yAttributed.map(Text.init) ?? Text(verbatim: a11yLabel))
+        .accessibilityLabel(Text(verbatim: a11yLabel))
     }
 
     private var background: Color {

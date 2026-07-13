@@ -31,19 +31,10 @@ struct DrawActionBarView: View {
                              enabled: turn?.canBet ?? false) { model.betOpen() }
 
             DrawActionButton(title: raiseTitle(turn), a11yLabel: raiseLabel(turn),
-                             // IPA pronunciation for "reis" + the amount as a plain tail (D-059).
-                             a11yAttributed: raiseAttributedLabel(turn),
                              identifier: "action.raise", kind: .accent,
                              enabled: turn?.canRaise ?? false) { model.raise() }
         }
         .padding(.vertical, 4)
-    }
-
-    /// The Raise button's spoken label: the word pronounced via IPA, then " a N"
-    /// pronounced normally so the number can't corrupt the word (D-059).
-    private func raiseAttributedLabel(_ turn: DrawBettingTurn?) -> AttributedString {
-        PokerSpeech.raiseLabel(spelled: uiLocalized("action.raise.a11y"),
-                               amount: uiLocalized("draw.action.raise.amount.a11y", turn?.raiseTo ?? 0))
     }
 
     private func checkCallTitle(_ turn: DrawBettingTurn?) -> String {
@@ -73,9 +64,6 @@ private enum DrawButtonKind { case neutral, danger, accent }
 private struct DrawActionButton: View {
     let title: String
     let a11yLabel: String
-    /// When set, drives the VoiceOver label with an explicit IPA pronunciation (the
-    /// Raise button — D-059); falls back to the plain `a11yLabel` string otherwise.
-    var a11yAttributed: AttributedString? = nil
     let identifier: String
     let kind: DrawButtonKind
     let enabled: Bool
@@ -94,7 +82,7 @@ private struct DrawActionButton: View {
         }
         .disabled(!enabled)
         .accessibilityIdentifier(identifier)
-        .accessibilityLabel(a11yAttributed.map(Text.init) ?? Text(verbatim: a11yLabel))
+        .accessibilityLabel(Text(verbatim: a11yLabel))
     }
 
     private var background: Color {

@@ -125,16 +125,21 @@
 "action.call" = "Call %d";
 "action.call.a11y" = "col %d";
 "action.fold" = "Fold";
-"action.fold.a11y" = "fould";
+/* EAR-VERIFIED render (D-060): "fohld" is pronounced /ˈfold/ by the it VoiceOver
+   voice (Alice), byte-identical to the sample the user approved — a plain grapheme,
+   no IPA (the IPA path was unproven on device). "fould" read "Fohold" (doubling). */
+"action.fold.a11y" = "fohld";
 "action.raise" = "Raise";
-"action.raise.a11y" = "reis";
+/* EAR-VERIFIED render (D-060): the plain English word "Raise" read by Alice is the
+   rendering the user approved; the invented "reis" read "ace". */
+"action.raise.a11y" = "Raise";
 
 /* Raise box */
 "raise.title.raise" = "Raise";
 "raise.title.bet" = "Bet";
-/* Phonetic VoiceOver renders of the raise-box title (D-049): the Italian voice reads
-   "Raise" as "Ace", so the accessibility label uses "reis" (and "bett" for Bet). */
-"raise.title.raise.a11y" = "reis";
+/* EAR-VERIFIED (D-060): the plain word "Raise" is the approved render (see action.raise.a11y).
+   "bett" for Bet is NOT yet acoustically verified — pending the catalog listening pass. */
+"raise.title.raise.a11y" = "Raise";
 "raise.title.bet.a11y" = "bett";
 "raise.minus.a11y" = "meno";
 "raise.plus.a11y" = "più";
@@ -144,7 +149,7 @@
 "raise.cancel" = "Annulla";
 "raise.cancel.a11y" = "annulla";
 "raise.confirm.to" = "Raise a %d";
-"raise.confirm.a11y" = "conferma reis a %d fiche";
+"raise.confirm.a11y" = "conferma Raise a %d fiche";
 "raise.confirm.allin.a11y" = "conferma ol-in di %d fiche";
 
 /* Turn + raise announcements */
@@ -255,10 +260,8 @@
 "draw.action.bet" = "Bet %d";
 "draw.action.bet.a11y" = "bett %d";
 "draw.action.raise" = "Raise %d";
-"draw.action.raise.a11y" = "reis a %d";
-/* Spoken tail composed after the IPA-pronounced "reis" word (D-059): the number
-   pronounced normally, so it can't corrupt the word's pronunciation. */
-"draw.action.raise.amount.a11y" = " a %d";
+/* EAR-VERIFIED (D-060): plain "Raise" + amount, no IPA (device-safe). */
+"draw.action.raise.a11y" = "Raise a %d";
 
 /* Draw box */
 "draw.box.title" = "Scegli le carte da scartare";

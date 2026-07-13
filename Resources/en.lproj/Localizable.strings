@@ -253,7 +253,6 @@
 "draw.action.bet.a11y" = "bet %d";
 "draw.action.raise" = "Raise %d";
 "draw.action.raise.a11y" = "raise to %d";
-"draw.action.raise.amount.a11y" = " to %d";
 
 /* Draw box */
 "draw.box.title" = "Choose cards to discard";
