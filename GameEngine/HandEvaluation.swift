@@ -116,6 +116,31 @@ public enum HandEvaluator {
         return best!
     }
 
+    /// Omaha-style CONSTRAINED best hand: the strongest five-card hand using
+    /// EXACTLY two of the four hole cards plus EXACTLY three of the (3–5) board
+    /// cards — the "two-and-three" rule that is the heart of Omaha (D-061).
+    ///
+    /// This is why the unconstrained `evaluate` above is not enough for Omaha: it
+    /// would freely take four or five cards from the board. `evaluateOmaha` enforces
+    /// the provenance constraint by enumerating the 2-from-hole × 3-from-board
+    /// combinations (6 × up-to-10) and taking the best five-card evaluation of each.
+    /// It is purely ADDITIVE: Texas Hold'em and Five-Card Draw keep calling
+    /// `evaluate` unchanged, so extending the evaluator never disturbs them (D-061).
+    ///
+    /// - Precondition: exactly four hole cards and at least three board cards.
+    public static func evaluateOmaha(hole: [Card], board: [Card]) -> HandRank {
+        precondition(hole.count == 4, "Omaha requires exactly four hole cards.")
+        precondition(board.count >= 3, "Omaha needs at least three board cards to make a hand.")
+        var best: HandRank?
+        for twoHole in combinations(of: hole, choose: 2) {         // C(4,2) = 6
+            for threeBoard in combinations(of: board, choose: 3) { // C(5,3) = 10 at the river
+                let rank = evaluateFive(twoHole + threeBoard)
+                if best == nil || rank > best! { best = rank }
+            }
+        }
+        return best!   // at least one combination always exists
+    }
+
     /// Compares two card sets and reports the outcome for the first one.
     public enum Comparison: Sendable { case win, lose, tie }
 

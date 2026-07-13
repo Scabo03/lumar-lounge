@@ -68,6 +68,28 @@ public struct Personality: Equatable, Sendable {
     /// can prove openers at showdown, 0 = may open on air and risk being exposed.
     public let openingDiscipline: Double
 
+    // MARK: Omaha dimensions (D-063)
+    //
+    // These two dials only bite in the Omaha engine; the Hold'em and Draw bots never
+    // read them. Omaha value is NOT the strength of the best two cards (that's Texas
+    // thinking) — with four hole cards almost everyone flops *something*, so the edge
+    // lives in (a) how COORDINATED the four cards are (suited, connected, pairs that
+    // can make the nuts) and (b) NUT DISCIPLINE: chasing/holding the nuts and folding
+    // dominated second-best hands, because in Pot Limit the second nut flush is a
+    // trap that pays off the nut flush. The two levers express exactly that. Neutral
+    // defaults (0.5) so adding them never changes a personality that doesn't set them
+    // (additive principle, CONVENTIONS §4-bis). They are LEVERS, not tuned values —
+    // calibration is a later cross-casino exercise (D-063).
+
+    /// How much the bot demands its four hole cards be COORDINATED to play pre-flop:
+    /// 1 = only coherent, double-suited/connected holdings (folds dangly cards);
+    /// 0 = plays any four cards. Raises the pre-flop entry bar with coordination.
+    public let omahaCoordination: Double
+    /// NUT DISCIPLINE: how much the bot values nut potential and distrusts a merely
+    /// "made" non-nut hand under heavy Pot Limit pressure. 1 = folds dominated hands,
+    /// commits big only near the nuts; 0 = pays off with second-best made hands.
+    public let omahaNuttiness: Double
+
     public init(name: String,
                 tightness: Double,
                 aggression: Double,
@@ -80,7 +102,9 @@ public struct Personality: Equatable, Sendable {
                 trashFoldTendency: Double = 0.0,
                 drawDiscipline: Double = 0.5,
                 drawBluffiness: Double = 0.3,
-                openingDiscipline: Double = 0.7) {
+                openingDiscipline: Double = 0.7,
+                omahaCoordination: Double = 0.5,
+                omahaNuttiness: Double = 0.5) {
         self.name = name
         self.tightness = tightness.clamped01
         self.aggression = aggression.clamped01
@@ -94,6 +118,8 @@ public struct Personality: Equatable, Sendable {
         self.drawDiscipline = drawDiscipline.clamped01
         self.drawBluffiness = drawBluffiness.clamped01
         self.openingDiscipline = openingDiscipline.clamped01
+        self.omahaCoordination = omahaCoordination.clamped01
+        self.omahaNuttiness = omahaNuttiness.clamped01
     }
 
     // MARK: - Pressure heuristic (pure, shared by both bots — D-048)
@@ -134,7 +160,9 @@ public extension Personality {
         trashFoldTendency: 0.30,  // undisciplined, but folds trash sometimes
         drawDiscipline: 0.25,   // chaotic exchange — keeps the wrong cards
         drawBluffiness: 0.15,   // draws honestly, doesn't scheme
-        openingDiscipline: 0.50 // doesn't always realise it holds openers
+        openingDiscipline: 0.50, // doesn't always realise it holds openers
+        omahaCoordination: 0.25, // Omaha: plays any four cards
+        omahaNuttiness: 0.30     // Omaha: overvalues weak made hands (pays off)
     )
 
     /// "Sasso conservativo": only strong hands, little aggression, predictable,
@@ -152,7 +180,9 @@ public extension Personality {
         trashFoldTendency: 0.90,  // folds junk pre-flop almost always
         drawDiscipline: 0.90,   // textbook-correct exchange
         drawBluffiness: 0.05,   // never misrepresents the draw
-        openingDiscipline: 0.95 // opens only with provable openers
+        openingDiscipline: 0.95, // opens only with provable openers
+        omahaCoordination: 0.85, // Omaha: only coherent, coordinated holdings
+        omahaNuttiness: 0.85     // Omaha: nut-disciplined, folds dominated hands
     )
 
     /// "Aggressivo caldo": raises constantly, bluffs a lot, barely reads
@@ -170,7 +200,9 @@ public extension Personality {
         trashFoldTendency: 0.15,  // plays far too many hands
         drawDiscipline: 0.50,   // tactically sound, but bends it to deceive
         drawBluffiness: 0.80,   // stands pat / short-draws to fake strength
-        openingDiscipline: 0.20 // gambles on opening light, risks exposure
+        openingDiscipline: 0.20, // gambles on opening light, risks exposure
+        omahaCoordination: 0.35, // Omaha: plays a wide, loose range
+        omahaNuttiness: 0.35     // Omaha: gambles with non-nut hands
     )
 
     /// The starting roster. More personalities arrive with game progression.

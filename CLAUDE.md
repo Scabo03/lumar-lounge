@@ -71,11 +71,23 @@ nei file collegati.
   Whiskey" del Riverwood è **entrabile** (buy-in 2000). Riuso di tutta l'infrastruttura
   trasversale (chrome, coda annunci, conductor, modalità VoiceOver). Motore/Texas non
   toccati. 234 unit test + XCUITest del tavolo Draw.
+- **`GameEngine`/`GameWorld` M1.10:** **terzo motore di gioco**, l'**Omaha Pot Limit**,
+  in `Omaha/`, **indipendente** da Texas e Draw (D-061→D-064). `OmahaHand`: quattro
+  carte private, quattro street comuni, **valutazione vincolata due-più-tre** (esteso
+  `HandEvaluator.evaluateOmaha`, D-061), **betting Pot Limit** col tetto calcolato dal
+  vivo (`PotMath.potLimitMax…`, D-062), side pot, determinismo. `HeuristicOmahaBot` con
+  euristica pre-flop sulle quattro carte + equity Monte Carlo vincolata (costo **misurato**,
+  ~3×/campione → ~⅓ dei campioni per la parità col Texas, D-063) e due leve additive di
+  `Personality` (`omahaCoordination`/`omahaNuttiness`). `OmahaSessionDriver` in GameWorld
+  con **accelerazione riusabile a conteggio-mani** (`StakeEscalation`: blind escalation,
+  mai a tempo — D-064). **Solo motore+bot+driver: nessuna UI, nessun audio, nessun casinò
+  ospitante.** 311 test verdi; Texas e Draw invariati.
 
 **🏁 Fase 1 (M1) completa; Fase 2 (M2) in corso.** Girano end-to-end **due giochi
 completi**: Texas Hold'em No Limit (Classico e Rapido) e **Five-Card Draw** (Sala
 Whiskey), dentro la navigazione Home → Riverwood → Tavolo con gettoni persistenti.
-`GameEngine` contiene due motori; entrambi hanno ora driver, UI e audio. L'app bundle contiene 51 mp3;
+`GameEngine` contiene ora **tre motori**; Texas e Draw hanno driver, UI e audio, mentre
+**Omaha è motore+bot+driver ma non ancora giocabile** (mancano UI, audio, casinò). L'app bundle contiene 51 mp3;
 oltre ai 2 storici (`amb_crowd_distant`, `fx_hand_neutral`) mancano ora **5 slot M2**
 e **5 nuovi slot croupier del Draw**, tutti predisposti con fallback (vedi sotto), da
 produrre e depositare in `Resources/Audio/`.
@@ -92,6 +104,9 @@ produrre e depositare in `Resources/Audio/`.
 **Prossimo passo.** Prossimi sotto-mattoni M2 (vedi [`ROADMAP.md`](ROADMAP.md)): cassa/
 DLC per ricarica gettoni, ambient dedicati Riverwood e voci croupier del Draw
 (produzione dei file audio elencati sopra), secondo casinò più lussuoso, NPC narrativi.
+**Per Omaha (M1.10, motore pronto):** UI (`OmahaTableView` giocabile), audio (voce
+croupier + `OmahaSpeechMap`), e il **secondo casinò** che lo ospiterà come specialità
+— quel mondo non esiste ancora e non è stato anticipato in questa sessione.
 
 **Stato completo, sempre aggiornato:** sezione *Stato di sviluppo* in
 [`README.md`](README.md).
@@ -1399,3 +1414,160 @@ la pronuncia con **IPA** (deterministica) e far verificare al guardiano la *pres
 non la plausibilità del grafema. Se un termine legge male sul device nonostante il verde, la
 prima mossa è **leggere `element.label` a runtime con un XCUITest** per distinguere "label non
 applicata" (ipotesi 1/3) da "grafia mispronunciata" (ipotesi 2) — come fatto qui.
+
+### D-060 — La resa fonetica non si dichiara risolta senza ascoltarla: campioni audio sulla voce reale, poi grafie piane verificate (quarto e definitivo intervento)
+Anche dopo D-059 (IPA) i pulsanti Raise leggevano ancora "ace", e Fold suonava "Fohold"
+(raddoppio vocalico). **Causa reale, al fondo di TRE fallimenti — nessuno di noi aveva mai
+ASCOLTATO.** D-049/D-054/D-059 hanno tutte ragionato a tavolino su grafie/IPA e spedito
+senza sentire la voce di destinazione; il guardiano ha codificato assunzioni **mai udite** ed
+è passato verde su un bug vivo. Il metodo che ha rotto il ciclo: **generare audio reale** con
+la stessa voce di VoiceOver iOS (**Alice it-IT compact**, via `AVSpeechSynthesizer.write` +
+`AVSpeechSynthesisIPANotationAttribute`) per ogni candidato, e farli **ascoltare all'utente**.
+- **Perché l'IPA di D-059 non ha funzionato:** l'analisi dei byte dei campioni mostra che la
+  sintesi **onora** l'IPA (con IPA presente il testo base è ignorato: "reis"+IPA e "Raise"+IPA
+  danno file byte-identici). Ma /ˈreɪz/ reso dalla voce **compatta** Alice **non** suona come
+  la parola inglese "raise" che l'utente voleva; e resta il dubbio (mai provato) che il percorso
+  SwiftUI `.accessibilityLabel(Text(AttributedString))` consegni davvero l'attributo a VoiceOver
+  sul device. In breve: l'IPA era la specifica giusta di un suono che l'utente **non** voleva.
+- **Cosa ha scelto l'orecchio (sorprendente e semplice):** la **parola inglese piana "Raise"**
+  letta da Alice è la resa giusta per Raise (l'invenzione "reis" leggeva "ace"); per Fold la
+  grafia piana **"fohld"** è resa /ˈfold/ (l'invenzione "fould" raddoppiava in "Fohold").
+- **Fix — grafie PIANE, verificate all'orecchio, niente IPA:** `action.raise.a11y`="Raise",
+  `action.fold.a11y`="fohld" (idem box valore/conferma e Draw "Raise a %d"). **Device-safe** per
+  costruzione: sono stringhe piane (nessuna dipendenza dal fatto che il device onori l'IPA di
+  SwiftUI). Byte-identità verificata: la label **così com'è nel codice** rigenerata in audio è
+  **identica** al campione approvato dall'utente ("Raise"==raise_02, "fohld"==fold_03). La
+  macchineria IPA di D-059 (`PokerSpeech`) è **rimossa**.
+- **Guardiano adeguato, non aggirato (il vero fallimento strutturale):** il guardiano non può
+  *sentire*, quindi **non deve più affermare che una grafia inventata è giusta**. Ora (a)
+  **àncora alle rese VERIFICATE all'orecchio** (`PhoneticsTests.testEarVerifiedButtonRenderings`
+  le asserisce esatte, byte-identiche ai campioni approvati; guardia anti-ritorno di
+  "reis"/"fould"); (b) **traccia i termini NON ancora verificati** come semplice rilevatore di
+  modifica (`…UnverifiedCatalogTermsUnchanged…`) senza dichiararli corretti — chi ne cambia uno
+  è **costretto a ri-verificarlo all'orecchio** e promuoverlo all'àncora; (c) mantiene lo scan
+  strutturale (`.a11y`) e (d) l'XCUITest runtime (`RaiseButtonLabelUITests`: label "Raise"/"fohld"
+  su Texas **e** Draw). Il perno di D-060: **si asserisce solo ciò che un umano ha udito.**
+- **Ambito:** solo i due pulsanti Raise + il pulsante Fold (scelti dall'utente all'ascolto), più
+  gli elementi Raise gemelli (box valore/conferma) per coerenza della stessa parola. Gli altri
+  termini del catalogo (cek, col, blaind, bàtton, ol-in, tern, sciodaun, e la narrazione "fould"/
+  "foulda") sono **campionati** e in attesa dell'ascolto dell'utente in una passata dedicata —
+  **non toccati alla cieca**. Narrazione a verbi italiani ("rilancia") non toccata. Nessun
+  `UIAccessibility.post` diretto. Label visibili in inglese invariate.
+- **Verifica:** 279 test verdi + XCUITest (label runtime, interazione). **TestFlight solo dopo
+  la conferma acustica dell'utente sui campioni `FINAL_*` — non prima.** I campioni vivono in
+  `~/Desktop/lumar-phonetics/`. **Supera D-059** sull'approccio (IPA → grafia piana verificata).
+
+### ⚠️ Metodo canonico per la fonetica (da D-060) — ASCOLTARE prima di dichiarare
+Per qualunque termine la cui pronuncia conta: **(1)** genera un campione audio reale con la
+**voce di destinazione** (Alice it-IT) e più candidati (parola inglese piana, grafie, IPA);
+**(2)** falli **ascoltare** e fatti dire quale è giusto; **(3)** cabla la resa scelta, **(4)**
+rigenera il campione della label *così com'è nel codice* e conferma **byte-identità** al
+candidato approvato; **(5)** solo dopo la conferma acustica → commit/TestFlight. Il guardiano
+pinna **solo rese udite**. Preferire una **grafia piana verificata** all'IPA quando esiste
+(device-safe, nessuna dipendenza dal percorso SwiftUI→VoiceOver). Lo strumento per generare i
+campioni è nello scratchpad di sessione (`render1.swift`: un processo per campione — la write
+di `AVSpeechSynthesizer` smette di produrre audio dopo ~20 chiamate nello stesso processo).
+
+### D-061 — `HandEvaluator` esteso (non sostituito) per la valutazione vincolata di Omaha (M1.10)
+Omaha impone che la mano sia composta da **esattamente due** delle quattro carte private
+ed **esattamente tre** delle cinque comuni. Il valutatore attuale
+(`HandEvaluator.evaluate`) trova la migliore mano di cinque **senza vincolo di
+provenienza** — usa liberamente quattro o cinque carte dal board — quindi non basta.
+**Scelta:** estenderlo **additivamente**, non sostituirlo. Aggiunto
+`HandEvaluator.evaluateOmaha(hole:board:)` che enumera le combinazioni **2-su-4 di mano
+× 3-su-5 di board** (6 × fino a 10 = 60 valutazioni a cinque carte al river) riusando
+`evaluateFive`/`combinations` interni, e ne prende la migliore. Texas e Draw continuano a
+chiamare `evaluate` **invariato**: nessuno dei due è toccato (verificato dai loro test).
+La regola due-più-tre è la fonte di quasi tutti gli errori di Omaha, quindi è coperta ai
+casi di frontiera: flush di board inutilizzabile senza due carte del seme in mano, quads di
+board che diventano al più un full, "la mano migliore non è quella intuitiva perché il
+vincolo la esclude". Solo `GameEngine` (foundational), solo Foundation.
+
+### D-062 — Motore Omaha Pot Limit (`OmahaHand`) + tetto pot-limit in `PotMath`, engine parallelo e separato (M1.10)
+Terzo motore del progetto, in `GameEngine/Omaha/`, **parallelo e indipendente** da Texas e
+Draw (D-038): nessun import incrociato, **nessun tipo di regole condiviso**. Condivide solo i
+fondazionali (`Card`/`Rank`/`Suit`/`Deck`/`HandEvaluator`) e l'aritmetica chip game-agnostica
+(`PotMath`/`Pot`). **Resistito alla tentazione** di riusare il motore Texas: la somiglianza
+(blind, quattro street comuni, side pot) è superficiale — la regola due-più-tre (D-061) e il
+Pot Limit la rompono alla radice — quindi tipi propri (`OmahaSeat`/`OmahaSeatState`/
+`OmahaAction`/`OmahaLegalActions`/`OmahaResult`/`OmahaStreet`). `OmahaHand` è, come `HoldemHand`,
+un value type con transizioni `mutating`, sincrono e deterministico via seed; distribuisce
+**quattro** carte private, gioca le quattro street, e allo showdown valuta con `evaluateOmaha`.
+**Pot Limit (non negoziabile):** ogni bet/raise è limitato alla dimensione del piatto. La
+matematica canonica del tetto vive in **`PotMath`** (fondazionale, dove sta già l'aritmetica
+chip; scelta di riuso, non un file Omaha): `potLimitMaxBetTo(pot:)` = piatto;
+`potLimitMaxRaiseTo(pot:currentBet:toCall:)` = `currentBet + (pot + toCall)` — cioè "chiama,
+poi rilancia della dimensione del piatto dopo la chiamata". Calcolato **dal vivo** in
+`legalActions()`/`apply(_:)` così il tetto traccia correttamente raise multipli nello stesso
+giro, all-in corti (che non riaprono l'azione), e i side pot. L'`allIn` in Pot Limit è
+**cappato al piatto** (uno stack più grande del piatto non può shovare: diventa un bet/raise
+di dimensione-piatto), gestito nel motore. Coperto da test dedicati sul tetto (apertura, dopo
+una call, dopo raise multipli, all-in corto + side pot) e determinismo. Solo `GameEngine`,
+solo Foundation. Nessun driver/UI ancora in questo file.
+
+### D-063 — Bot di Omaha + dimensioni Personality dedicate; costo equity MISURATO e contenuto (M1.10)
+I bot devono giocare Omaha **come Omaha**, non col ragionamento del Texas: con quattro carte
+private quasi tutti floppano qualcosa, le mani marginali del Texas sono spazzatura, e il valore
+sta nella **connessione tra le quattro carte** e nella **disciplina del nut**. `HeuristicOmahaBot`
+(specchio di `HeuristicBot`, sizing Pot Limit) usa una forza pre-flop **euristica sulle quattro
+carte** (coordinazione: coppie da set, suited per il nut flush, connessi per i wrap; penalizza
+carte morte/tris in mano) e un'equity post-flop **Monte Carlo vincolato** (`evaluateOmaha`,
+avversari a quattro carte). **Due nuove dimensioni additive di `Personality`** (default 0.5,
+neutro): `omahaCoordination` (quanto pretende che le quattro carte siano coordinate per giocare
+pre-flop) e `omahaNuttiness` (disciplina del nut: quanto svaluta una mano "fatta" ma non-nut
+sotto pressione Pot Limit). Sono **leve, non valori calibrati** — la calibrazione è un confronto
+tra casinò più avanti; i default producono un gioco sensato. **Retrocompatibilità additiva
+verificata:** Texas e Draw **non leggono** le nuove dimensioni → comportamento identico (test:
+due personalità che differiscono solo nelle leve Omaha danno la stessa decisione Texas e Draw);
+i preset esistenti hanno valori Omaha differenziati (rock nut-disciplinato/coordinato, aggressor
+loose) **senza toccare** i campi Texas/Draw.
+**Costo equity — MISURATO, non stimato (vincolo del task):** la valutazione vincolata costa
+~**3× per campione** rispetto al Texas (60 valutazioni a cinque carte vs 21; misurato:
+rapporto **≈2.8–3.0×**, build debug). Per tenere i bot **rapidi come il Texas** si esegue
+**~⅓ dei campioni** (`defaultEquitySamples = 60` vs ~200 del Texas): misurato in debug, l'equity
+Omaha a 60 campioni (~103 ms/call) è **alla pari** col Texas a 200 (~123 ms/call) — in release
+è ~15–30× più veloce. "Meglio un bot leggermente meno preciso che risponde subito." I numeri
+sono in `OmahaEquityCostTests` (stampa il rapporto e afferma la parità, non un ms assoluto).
+Solo `GameEngine`.
+
+### D-064 — Accelerazione di sessione: `StakeEscalation` (blind su CONTEGGIO MANI) in GameWorld; niente mano decisiva No-Limit
+Le sessioni di Omaha Pot Limit tendono a essere lunghe. Serve una meccanica che le acceleri,
+del genere di quelle esistenti (ante progressivo Whiskey D-052, boost mano decisiva Rapido
+D-037). **Scelta e motivazione onesta:** in Pot Limit i piatti crescono **già** per costruzione,
+quindi un boost transitorio di un-piatto-più-grande aggiunge poco; una **escalation permanente
+delle blind su schedule** (stile livelli di torneo) accorcia la sessione in modo **affidabile**
+(stack corti rispetto alle blind → all-in più rapidi) e resta **coerente col Pot Limit** (la
+struttura di puntata non cambia, crescono solo le blind). **Rifiutata la mano decisiva in No
+Limit dentro una sessione Pot Limit:** sarebbe un **tradimento dell'identità del tavolo** — il
+Pot Limit *è* il contratto del tavolo; permettere shove No-Limit per una mano è arbitrario e
+spezza la texture strategica. Se un giorno servisse una "mano decisiva" per Omaha, boosti le
+**blind** (restando PL), non la struttura.
+**Dove vive:** in **GameWorld**, non nel motore — è una meccanica di sessione. Nuovo tipo
+riusabile e game-agnostico `StakeEscalation { interval, factor }` che calcola un moltiplicatore
+dallo **schedule di mani giocate** (`multiplier(afterPlayedHands:)` = `factor^(playedHands/
+interval)`); il driver decide cosa moltiplicare (blind per Omaha/Texas; ante/bet per un gioco
+limit). È un **parametro configurabile del tavolo** (`OmahaTableRules.escalation`), applicabile
+in futuro a Texas, Draw e ogni gioco successivo. Non ho migrato i meccanismi esistenti di
+Rapido/Whiskey (per non rischiarne il comportamento/determinismo): restano com'erano e
+potrebbero adottare `StakeEscalation` più avanti. `OmahaSessionDriver` la applica per mano dal
+`handNumber` (mani **giocate**), emette `stakesEscalated` sul level-up, e mette le blind
+scalate nell'evento `handBegan` e nell'`OmahaHandOutcome`.
+**Principio permanente (accessibilità, in CONVENTIONS §4):** ogni meccanica di accelerazione
+scatta su un **contatore di mani giocate, MAI su un cronometro**. Un giocatore cieco impiega
+più tempo reale per la stessa quantità di gioco: una meccanica a minuti lo punirebbe per la sua
+velocità di ascolto invece che per le sue scelte. È "nessuno perde niente" applicato al tempo,
+valido per ogni meccanica futura del progetto.
+**OmahaSessionDriver:** sorella di `SessionDriver`/`DrawSessionDriver` con flusso eventi proprio
+(`OmahaSessionEvent`/`OmahaEventHub`, riusando solo `EventAudience`/`EventViewer`, D-015), dead
+button (D-012), eventi descrittivi non prescrittivi, audience privata esplicita (le quattro
+carte solo al proprietario), bot via `BotContext` redatto, e **seed casuale per mano in
+produzione / iniettabile nei test** (D-047, non riscoperto). Cliente puro del motore.
+
+**🧱 `GameEngine` M1.10 — Omaha Pot Limit: motore + bot + driver di sessione, MA NON GIOCABILE.**
+Terzo motore completo (carte/mazzo condivisi, valutazione vincolata due-più-tre, betting Pot
+Limit, side pot, determinismo), bot che lo giocano da Omaha con due leve di personalità dedicate,
+e `OmahaSessionDriver` in GameWorld con accelerazione a conteggio-mani riusabile. **Residuo
+aperto (esplicito):** mancano **UI** (niente `OmahaTableView`/viste/SwiftUI), **audio** (niente
+voce croupier, nessun file, nessuna estensione `SpeechMap`), e il **casinò ospitante** (secondo
+casinò, mattone successivo con identità e decisioni ancora aperte — non anticipato). 311 test
+verdi; Texas e Draw invariati. Niente TestFlight (nulla di giocabile da testare).

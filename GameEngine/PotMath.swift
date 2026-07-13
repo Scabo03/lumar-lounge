@@ -55,6 +55,32 @@ enum PotMath {
         return pots
     }
 
+    // MARK: - Pot Limit betting cap (D-062)
+
+    /// The maximum a seat may RAISE **to** (total street bet) under Pot Limit rules —
+    /// the canonical "pot raise": you first call, then may raise BY the size of the
+    /// pot as it stands after that call.
+    ///
+    ///   maxRaiseTo = currentBet + (pot + toCall)
+    ///
+    /// where `pot` is every chip already in the middle (all streets, INCLUDING this
+    /// street's bets and the acting seat's own contribution so far) and
+    /// `toCall = currentBet − the seat's current street bet`. The caller must still
+    /// clamp the result to the seat's stack (`streetBet + stack`); this is only the
+    /// pot-imposed ceiling. Pure and testable in isolation — this is the trickiest
+    /// arithmetic of Pot Limit and gets its own tests.
+    static func potLimitMaxRaiseTo(pot: Int, currentBet: Int, toCall: Int) -> Int {
+        currentBet + pot + toCall
+    }
+
+    /// The maximum OPENING bet **to** (total street bet) under Pot Limit rules: the
+    /// current size of the pot. `pot` is every chip already in the middle; the opener's
+    /// own street bet is 0 (nobody has bet this street), so the bet-to equals the pot.
+    /// The caller clamps to the seat's stack.
+    static func potLimitMaxBetTo(pot: Int) -> Int {
+        pot
+    }
+
     /// Divides `amount` among winners, giving each an equal share and handing
     /// out any indivisible remainder chips one at a time in the given priority
     /// order.

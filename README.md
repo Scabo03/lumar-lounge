@@ -146,6 +146,17 @@ la voce del croupier ha la **completion garantita** (risolto il blocco pre-flop)
 schermata e modale **atterra il focus VoiceOver** sul primo elemento a ogni transizione;
 e le voci dei bot **bustati** non si sentono più. **280 unit test verdi.**
 
+**Terzo motore — Omaha Pot Limit (M1.10, motore ma non ancora giocabile).** `GameEngine`
+contiene ora un terzo motore, l'**Omaha Pot Limit** (in `Omaha/`, indipendente da Texas e
+Draw): quattro carte private, quattro street comuni, **regola due-più-tre** (valutatore
+esteso, non sostituito), **betting Pot Limit** col tetto calcolato dal vivo, side pot e
+determinismo; bot che lo giocano da Omaha (euristica a quattro carte + equity Monte Carlo
+vincolata a costo misurato e contenuto) con due nuove leve di personalità; e un
+`OmahaSessionDriver` in `GameWorld` con **accelerazione di sessione a conteggio-mani**
+(blind escalation, mai a tempo — accessibilità). Mancano **UI, audio e il casinò ospitante**:
+Omaha è motore+bot+driver, non ancora un tavolo giocabile. **311 unit test verdi**, Texas e
+Draw invariati.
+
 > **🏁 La prima fase è completa.** Il gioco base è funzionante end-to-end — motore
 > completo, bot credibili, sessione multi-mano, flusso di eventi, UI giocabile e
 > accessibile, e **audio pieno**: i 47 file mp3 consegnati (atmosfera, carte,

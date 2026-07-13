@@ -298,6 +298,21 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     run**: la parola con la notazione IPA, il valore come run **normale**. Così il numero è
     pronunciato dalla voce senza corrompere la pronuncia della parola, e l'IPA resta scoped al
     solo termine. Riusare questa forma per input analoghi con valore (blackjack, roulette).
+  - **La resa fonetica NON si dichiara risolta senza verifica acustica sulla voce reale di
+    destinazione (D-060).** Un test statico non può *sentire*: né un grafema inventato ("reis",
+    "fould") né una notazione IPA vanno spediti perché "sembrano giusti a tavolino" — è così che
+    lo stesso termine ha attraversato **tre** sessioni leggendo "ace"/"Fohold". Metodo canonico:
+    **(1)** genera audio reale con la **voce di destinazione** (Alice it-IT, via
+    `AVSpeechSynthesizer`) di più candidati (parola inglese piana, grafie, IPA); **(2)** fatti
+    dire all'ascolto quale è giusto; **(3)** cabla la resa scelta; **(4)** rigenera il campione
+    della label *così com'è nel codice* e conferma **byte-identità** al candidato approvato;
+    **(5)** solo dopo l'OK acustico → rilascio. Preferire una **grafia piana verificata**
+    all'IPA quando riproduce lo stesso suono (device-safe: nessuna dipendenza dal fatto che
+    VoiceOver onori l'attributo IPA lungo il percorso SwiftUI). Il guardiano **pinna solo rese
+    udite** (asserite esatte, byte-identiche al campione approvato); per i termini non ancora
+    ascoltati fa da **rilevatore di modifica** senza dichiararli corretti, così un cambio
+    costringe a ri-ascoltare. Diagnosi: se un termine legge male malgrado il verde, prima
+    `element.label` a runtime (label applicata?), poi l'ascolto del campione (grafia giusta?).
   - **Un annuncio contestuale dinamico non deve duplicare un pulsante visibile (D-055).**
     Se un controllo mostra e pronuncia già un'informazione (il pulsante "Call X" dice la
     cifra da chiamare quando VoiceOver ci arriva), **non** ripeterla in una sintesi
@@ -330,6 +345,16 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     calcolata all'inizio della sessione: `handEnded.chips` continua a elencare i bustati a
     0, quindi un confronto con uno start stantio li farebbe "reagire" per sempre. **Un bot
     bustato non emette più alcuna voce.**
+  - **Ogni meccanica di accelerazione/progressione di sessione scatta sul CONTEGGIO DELLE
+    MANI GIOCATE, MAI su un cronometro (regola permanente, D-064).** Blind escalation, ante
+    progressivo, mano decisiva, e qualunque meccanica futura che dipenda dal "quanto è durata"
+    la sessione, deve chiavizzarsi sul **numero di mani giocate**, non sui minuti trascorsi.
+    Motivazione di **accessibilità**: un giocatore cieco (VoiceOver, audio-first) impiega più
+    **tempo reale** per la stessa quantità di gioco; una soglia a tempo lo punirebbe per la
+    sua velocità di ascolto invece che per le sue scelte al tavolo. È il principio "nessuno
+    perde niente" applicato al **tempo**. Le meccaniche di sessione vivono in **GameWorld**
+    (non nel motore) come **parametri configurabili del tavolo**, riusabili da ogni gioco
+    (es. `StakeEscalation`, D-064), non feature prigioniere di un singolo gioco.
 
 ## 5. Testabilità
 

@@ -39,6 +39,9 @@ qualcuno o *quanto* ha puntato vive più in alto (`GameWorld`, `UI`).
 | `FiveCardDrawHand` | **Motore di una mano di Five-Card Draw** ("Jacks or Better"): secondo motore di gioco, indipendente dal Texas (D-038). Ante, due giri di puntata **limit** (small/big bet, cap a tre raise), draw, apertura jacks-or-better sull'onore + verifica degli openers allo showdown (D-039), pass-and-out con pot progressivo (D-040). Vive in `Draw/`. |
 | `DrawSeat`/`DrawSeatState`/`DrawPhase`/`DrawAction`/`DrawResult`/`DrawLegalActions`/`DrawOptions` | I tipi del motore Draw, distinti da quelli del Texas: configurazione e stato dinamico del posto (5 carte, openers snapshottati), fasi (firstBet/draw/secondBet/complete), azioni limit senza importo, esito (showdown/foldOut/passedIn + pot portato), mosse legali e opzioni di scarto. |
 | `DrawBot`/`DrawBotContext`/`DrawDrawContext`/`HeuristicDrawBot` | Bot del Draw: decide **puntata** e **scarto** viste solo l'informazione onesta (proprie 5 carte + stato pubblico, incl. il numero di carte cambiate dagli avversari). Riusa le 3 personalità del Texas con i dial specifici del draw. |
+| `OmahaHand` | **Motore di una mano di Omaha Pot Limit** (D-062): terzo motore, indipendente da Texas e Draw. Quattro carte private, quattro street comuni, **valutazione vincolata due-più-tre** (`HandEvaluator.evaluateOmaha`, D-061), **betting Pot Limit** (tetto = piatto, dal vivo, `PotMath.potLimitMax…`), side pot, determinismo via seed. Vive in `Omaha/`. |
+| `OmahaSeat`/`OmahaSeatState`/`OmahaStreet`/`OmahaAction`/`OmahaResult`/`OmahaLegalActions` | I tipi del motore Omaha, distinti da Texas/Draw: posto con **quattro** carte private, azioni con semantica "to" e maxima già cappati al Pot Limit, esito con mano vincolata mostrata allo showdown. |
+| `OmahaBot`/`OmahaBotContext`/`OmahaStrength`/`HeuristicOmahaBot` | Bot dell'Omaha: forza pre-flop **euristica sulle quattro carte** (coordinazione, nut) + equity **Monte Carlo vincolata** a costo contenuto (D-063). Due leve additive di `Personality` (`omahaCoordination`/`omahaNuttiness`). |
 | `DrawStrategy` | Euristiche pure e testabili del draw: forza statica di 5 carte + scarto "da manuale" (stand pat sui punti fatti, tieni le forti, pesca ai progetti). |
 
 Gestisce i casi particolari del poker: l'Asso che vale 1 nella scala minima
@@ -70,6 +73,24 @@ conoscono: nessun `import` incrociato, nessun tipo di regole condiviso. Condivid
 e l'**aritmetica dei chip game-agnostica** (`PotMath`/`Pot`), che è matematica pura
 dei pot, non regole del Texas. `FiveCardDrawHand` è, come `HoldemHand`, un value
 type con transizioni `mutating`, sincrono e **deterministico via seed**.
+
+### Filosofia del modulo Omaha (Pot Limit)
+
+Il **terzo** gioco (D-061→D-064) vive in `Omaha/`, con lo **stesso rigore di
+separazione**: nessun import incrociato con Texas o Draw, **nessun tipo di regole
+condiviso** — anche se Omaha *assomiglia* al Texas (blind, quattro street comuni,
+side pot) più di quanto gli assomigli il Draw. Proprio per questo la tentazione di
+riusare il motore Texas è forte e va **respinta**: la somiglianza è superficiale e
+la regola di composizione **due-più-tre** (esattamente due carte private + tre
+comuni) la rompe alla radice. Condivide **solo** i fondazionali + `PotMath`/`Pot`.
+`OmahaHand` è un value type `mutating`, deterministico via seed, con **betting Pot
+Limit** (tetto = piatto, calcolato dal vivo). Il valutatore fondazionale è **esteso,
+non sostituito**: `HandEvaluator.evaluateOmaha(hole:board:)` impone il vincolo
+due-più-tre; Texas e Draw continuano a usare `evaluate` invariato. I bot
+(`HeuristicOmahaBot`) hanno euristica pre-flop sulle quattro carte + equity Monte
+Carlo **vincolata** (costo misurato, campioni ridotti per la parità col Texas), con
+due leve additive di `Personality` (`omahaCoordination`/`omahaNuttiness`). **Solo
+motore+bot**: driver, UI, audio e casinò ospitante sono fuori da `GameEngine`.
 
 Regole implementate — **versione tradizionale completa** (chiusa, non un MVP):
 

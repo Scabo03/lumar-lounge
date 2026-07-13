@@ -296,6 +296,25 @@ attuale del tavolo (D-058). 280 test verdi. Motore/driver/flusso non toccati.
 > Prossimi sotto-mattoni M2 (residui): cassa/DLC per ricarica gettoni, produzione dei
 > file audio predisposti (ambient Riverwood + voci croupier del Draw), secondo casinò.
 
+### ✅ M1.10 — Motore di Omaha Pot Limit (motore + bot + driver, NON giocabile) (D-061…D-064)
+Terzo motore di `GameEngine`, in `Omaha/`, **indipendente** da Texas e Draw. `OmahaHand`:
+quattro carte private, quattro street comuni, **valutazione vincolata due-più-tre** (esteso
+additivamente `HandEvaluator.evaluateOmaha`, D-061), **betting Pot Limit** col tetto calcolato
+dal vivo (`PotMath.potLimitMax…`, D-062), side pot, determinismo via seed. `HeuristicOmahaBot`
+gioca Omaha da Omaha (euristica pre-flop a quattro carte + equity Monte Carlo **vincolata**,
+costo **misurato** ~3×/campione → ~⅓ dei campioni per la parità di risposta col Texas) con due
+leve additive di `Personality` (`omahaCoordination`/`omahaNuttiness`, D-063). `OmahaSessionDriver`
+in `GameWorld`, sorella di `SessionDriver`/`DrawSessionDriver` con flusso eventi proprio, seed
+casuale per mano in produzione (D-047), e **accelerazione di sessione riusabile a
+conteggio-mani** (`StakeEscalation`: blind escalation stile torneo, **mai a tempo** —
+accessibilità, D-064; rifiutata la mano decisiva No-Limit dentro il Pot Limit). 311 test verdi;
+Texas e Draw **invariati**. Niente TestFlight (nulla di giocabile).
+
+> **Residuo aperto per Omaha (esplicito):** è **motore ma non giocabile**. Mancano la **UI**
+> (`OmahaTableView`, viste, box), l'**audio** (voce croupier, file mp3, estensione `SpeechMap`)
+> e il **casinò ospitante** — Omaha sarà la specialità di un **secondo casinò** che non esiste
+> ancora e la cui identità/decisioni sono un mattone successivo, non anticipato qui.
+
 ---
 
 ## Fase 3 — Audio trasversale (`Audio`)
