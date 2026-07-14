@@ -129,7 +129,7 @@ enum MachiavelliSpeechMap {
 
     /// The ClockTower speaker sound for a moment, with its register fallback KEY (spoken
     /// via synthesis until the mp3 exists, D-030). Character/gender undecided (D-072).
-    enum Cue { case handStart, yourTurn, meld, drew, passed, handEnd, matchEnd }
+    enum Cue { case handStart, yourTurn, meld, drew, passed, handEnd, matchEnd, opponentShift, playerShift }
 
     static func voice(_ cue: Cue) -> (sound: SoundID, fallbackKey: String) {
         switch cue {
@@ -140,8 +140,15 @@ enum MachiavelliSpeechMap {
         case .passed:    return (SoundCatalog.voClockPassed,    "machiavelli.voice.passed")
         case .handEnd:   return (SoundCatalog.voClockHandEnd,   "machiavelli.voice.handend")
         case .matchEnd:  return (SoundCatalog.voClockMatchEnd,  "machiavelli.voice.matchend")
+        // A turn that REARRANGES existing table combinations (D-081), by who did it.
+        case .opponentShift: return (SoundCatalog.voClockOpponentShift, "machiavelli.voice.oppshift")
+        case .playerShift:   return (SoundCatalog.voClockPlayerShift,   "machiavelli.voice.playershift")
         }
     }
+
+    /// The custode's line when the HUMAN rearranges the table (D-081) — a fact, an audible
+    /// confirmation that the recomposition took effect.
+    static func youRearranged() -> String { uiLocalized("machiavelli.say.you.shift") }
 
     // MARK: - Italian grammar helpers (variant-key approach, as D-045)
 

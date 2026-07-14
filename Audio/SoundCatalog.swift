@@ -159,13 +159,17 @@ public enum SoundCatalog {
     // GENDER are STILL UNDECIDED (the user will decide before producing the voices) —
     // only the register is fixed. Each is INFORMATIVE, so it falls back to VoiceOver
     // synthesis (D-030) declared in `MachiavelliSpeechMap` until the mp3 is produced.
-    public static let voClockHandStart = SoundID("vo_it_clock_hand_start")    // not delivered
-    public static let voClockYourTurn = SoundID("vo_it_clock_your_turn")      // not delivered
-    public static let voClockMeld = SoundID("vo_it_clock_meld")               // not delivered
-    public static let voClockDrew = SoundID("vo_it_clock_drew")               // not delivered
-    public static let voClockPassed = SoundID("vo_it_clock_passed")           // not delivered
-    public static let voClockHandEnd = SoundID("vo_it_clock_hand_end")        // not delivered
-    public static let voClockMatchEnd = SoundID("vo_it_clock_match_end")      // not delivered
+    public static let voClockHandStart = SoundID("vo_it_clock_hand_start")    // not delivered → content synth
+    public static let voClockYourTurn = SoundID("vo_it_clock_your_turn")      // delivered (D-080)
+    public static let voClockMeld = SoundID("vo_it_clock_meld")               // delivered (D-080, ex "combination")
+    public static let voClockDrew = SoundID("vo_it_clock_drew")               // not delivered → content synth
+    public static let voClockPassed = SoundID("vo_it_clock_passed")           // not delivered (unused)
+    public static let voClockHandEnd = SoundID("vo_it_clock_hand_end")        // not delivered → scores synth
+    public static let voClockMatchEnd = SoundID("vo_it_clock_match_end")      // delivered (D-080, ex "game_end")
+    /// The "shift" cues (D-081): a turn that REARRANGES existing table combinations (not just
+    /// adds a new one) — distinct from a plain meld. Two, by who did it (opponent / the human).
+    public static let voClockOpponentShift = SoundID("vo_it_clock_opponent_shift")   // delivered (D-081)
+    public static let voClockPlayerShift = SoundID("vo_it_clock_player_shift")        // delivered (D-081)
 
     // MARK: The ClockTower custode as POKER croupier — `vo_it_tower_*` (D-077/D-080)
     // The SAME old man who arbitrates the Machiavelli (`vo_it_clock_*`) is the croupier at
@@ -248,6 +252,7 @@ public enum SoundCatalog {
         (voSkyPotLimit, .croupier), (voSkyStakesUp, .croupier),
         (voClockHandStart, .croupier), (voClockYourTurn, .croupier), (voClockMeld, .croupier),
         (voClockDrew, .croupier), (voClockPassed, .croupier), (voClockHandEnd, .croupier), (voClockMatchEnd, .croupier),
+        (voClockOpponentShift, .croupier), (voClockPlayerShift, .croupier),
         (voTowerNewHand, .croupier), (voTowerShowdown, .croupier), (voTowerPotAwarded, .croupier),
         (voTowerSplitPot, .croupier), (voTowerGameEnd, .croupier),
         (voTowerYourTurn, .croupier), (voTowerHousePrize, .croupier),

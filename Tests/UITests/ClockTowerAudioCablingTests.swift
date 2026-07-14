@@ -36,6 +36,7 @@ final class ClockTowerAudioCablingTests: XCTestCase {
         // Machiavelli arbiter (delivered subset) + tower croupier wired to Stud (delivered).
         let voices: [SoundID] = [
             SoundCatalog.voClockYourTurn, SoundCatalog.voClockMeld, SoundCatalog.voClockMatchEnd,
+            SoundCatalog.voClockOpponentShift, SoundCatalog.voClockPlayerShift,   // rearrange cues (D-081)
             SoundCatalog.voTowerNewHand, SoundCatalog.voTowerShowdown, SoundCatalog.voTowerPotAwarded,
             SoundCatalog.voTowerSplitPot, SoundCatalog.voTowerGameEnd,
         ]
@@ -59,10 +60,14 @@ final class ClockTowerAudioCablingTests: XCTestCase {
         }
     }
 
-    func testAmbiguousFilesWereNotCabled() {
-        // `opponent_shift` / `player_shift` had no clear event mapping → left out, not guessed.
-        XCTAssertFalse(existsRaw("vo_it_clock_opponent_shift"), "an ambiguous file was cabled without a mapping")
-        XCTAssertFalse(existsRaw("vo_it_clock_player_shift"), "an ambiguous file was cabled without a mapping")
+    func testShiftCuesAreCabledToRearrangement() {
+        // Once clarified (D-081): opponent_shift / player_shift fire when a turn REARRANGES
+        // existing table combinations (`tableChanged.rearrangedExisting`), by who did it.
+        XCTAssertTrue(existsRaw("vo_it_clock_opponent_shift"))
+        XCTAssertTrue(existsRaw("vo_it_clock_player_shift"))
+        // Distinct cues from the plain "meld" cue.
+        XCTAssertNotEqual(MachiavelliSpeechMap.voice(.opponentShift).sound, MachiavelliSpeechMap.voice(.meld).sound)
+        XCTAssertNotEqual(MachiavelliSpeechMap.voice(.playerShift).sound, MachiavelliSpeechMap.voice(.opponentShift).sound)
     }
 
     // MARK: - Reserved future-Texas croupier files are bundled but unwired

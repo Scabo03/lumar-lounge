@@ -2439,3 +2439,17 @@ ambigui esclusi**.
   descrittivi; Riverwood/Skypool **invariati** (palette identità pin verde); rimborso Machiavelli non toccato.
   **472 test verdi** (+6 dal cablaggio/missaggio/dosatura). Cataloghi audio aggiornati allo **stato reale**.
   **Caricato su TestFlight (build 1784066297).**
+
+### D-081 — Machiavelli: cue di RIMANEGGIAMENTO del tavolo (opponent_shift / player_shift)
+Chiarito dall'utente cosa fossero i due file lasciati ambigui in D-080: **`vo_it_clock_opponent_shift`** e
+**`vo_it_clock_player_shift`** scattano quando un turno **altera combinazioni GIÀ ESISTENTI** sul tavolo
+(rimaneggiamento), **non** quando si aggiunge soltanto una nuova combinazione. Corrisponde **esattamente** al
+flag `rearrangedExisting` dell'evento `tableChanged`, distinto per **chi** l'ha fatto:
+- **opponent_shift** — un **avversario** rimaneggia (`tableChanged`, `rearrangedExisting == true`, non hero):
+  sostituisce il cue `meld` come **lead** (il contenuto dice già "rimaneggia il tavolo e cala…").
+- **player_shift** — il **giocatore umano** rimaneggia: prima il suo turno che rimaneggiava era **muto**
+  (solo il box confermava); ora un **cue di conferma udibile** ("Hai rimaneggiato il tavolo") — utile al
+  cieco. Il meld semplice dell'umano resta muto (il box conferma).
+Solo `UI`/`Audio`/localizzazione: due slot `SoundCatalog`, due `Cue` in `MachiavelliSpeechMap`, selezione
+per-seat nel VM, stringhe it/en. I due file **cablati** (erano gli unici "ambigui" di D-080). **472 test
+verdi.** **Caricato su TestFlight (build 1784067206).**

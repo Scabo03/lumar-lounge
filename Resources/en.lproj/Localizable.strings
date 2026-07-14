@@ -432,8 +432,11 @@
 "machiavelli.voice.passed" = "Passes.";
 "machiavelli.voice.handend" = "Hand over.";
 "machiavelli.voice.matchend" = "The match is decided.";
+"machiavelli.voice.oppshift" = "The table changes.";
+"machiavelli.voice.playershift" = "You rework the table.";
 
 "machiavelli.say.newhand" = "You hold %d cards.";
+"machiavelli.say.you.shift" = "You reworked the table.";
 "machiavelli.say.opp.melded" = "%1$@ lays %2$@.";
 "machiavelli.say.opp.recomposed" = "%1$@ reworks the table and lays %2$@.";
 "machiavelli.say.opp.placed" = "%1$@ lays %2$d cards.";

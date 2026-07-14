@@ -250,10 +250,18 @@ public final class MachiavelliTableViewModel: ObservableObject {
         case let .tableChanged(seatID, table, placed, rearranged):
             let oldMelds = state.melds
             state = MachiavelliTableReducer.reduce(state, payload)
-            let spoke = seatID != heroSeatID
-            if spoke {
+            var spoke = false
+            if seatID != heroSeatID {
                 speakOpponentMeld(seatID: seatID, oldMelds: oldMelds, newMelds: table,
                                   placed: placed, rearranged: rearranged)
+                spoke = true
+            } else if rearranged {
+                // The HUMAN rearranged existing combinations → an audible confirmation cue
+                // (player-shift, D-081). A plain new meld stays silent (the box confirmed it).
+                let v = MachiavelliSpeechMap.voice(.playerShift)
+                conductor.say(lead: v.sound, synthesis: MachiavelliSpeechMap.youRearranged(),
+                              priority: .medium, reason: "player-shift")
+                spoke = true
             }
             await pace(0.6, spoke: spoke)
 
@@ -334,7 +342,9 @@ public final class MachiavelliTableViewModel: ObservableObject {
             .compactMap { MachiavelliSpeechMap.meldTitle($0) }
         let line = MachiavelliSpeechMap.opponentMelded(name: name(seatID), titles: titles,
                                                        placed: placed.count, rearranged: rearranged)
-        let v = MachiavelliSpeechMap.voice(.meld)
+        // A rearrangement of existing table combinations gets the "shift" cue; a plain new
+        // combination the "meld" cue (D-081). The content already says which it is.
+        let v = MachiavelliSpeechMap.voice(rearranged ? .opponentShift : .meld)
         conductor.say(lead: v.sound, synthesis: line, priority: .medium, reason: "opp-meld")
     }
 

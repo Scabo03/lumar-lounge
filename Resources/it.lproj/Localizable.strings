@@ -448,9 +448,12 @@
 "machiavelli.voice.passed" = "Passa.";
 "machiavelli.voice.handend" = "La mano si conclude.";
 "machiavelli.voice.matchend" = "La partita è conclusa.";
+"machiavelli.voice.oppshift" = "Il tavolo cambia.";
+"machiavelli.voice.playershift" = "Rimaneggi il tavolo.";
 
 /* Linee sintetizzate (contenuto specifico) */
 "machiavelli.say.newhand" = "Hai in mano %d carte.";
+"machiavelli.say.you.shift" = "Hai rimaneggiato il tavolo.";
 "machiavelli.say.opp.melded" = "%1$@ cala %2$@.";
 "machiavelli.say.opp.recomposed" = "%1$@ rimaneggia il tavolo e cala %2$@.";
 "machiavelli.say.opp.placed" = "%1$@ cala %2$d carte.";
