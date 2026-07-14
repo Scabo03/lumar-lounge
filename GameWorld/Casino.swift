@@ -26,13 +26,16 @@ public enum CasinoGame: Equatable, Sendable {
     case texas(TableRules)
     case draw(DrawTableRules)
     case omaha(OmahaTableRules)
+    case machiavelli(MachiavelliTableRules)
 
-    /// The buy-in required to sit — the sole economic barrier to a table (D-065).
+    /// The buy-in required to sit — the sole economic barrier to a table (D-065). For
+    /// Machiavelli it is a refundable entry threshold (prestige, not money — D-072).
     public var buyIn: Int {
         switch self {
         case let .texas(rules): return rules.buyIn
         case let .draw(rules): return rules.buyIn
         case let .omaha(rules): return rules.buyIn
+        case let .machiavelli(rules): return rules.buyIn
         }
     }
 }
@@ -140,8 +143,27 @@ public enum Casinos {
                         game: .omaha(.skypoolMarble)),
         ])
 
+    /// The ClockTower: a small, exclusive, ACADEMIC casino in an ancient tower, tied to
+    /// the university — erudite, refined, played for PRESTIGE not money (D-072). A third
+    /// axis, not a step above the Skypool: Riverwood is the frontier, Skypool the money,
+    /// ClockTower the prestige — and, being refundable, the MOST ACCESSIBLE economically.
+    /// It hosts a SINGLE table for now: Machiavelli. (The roadmap gives it Seven-Card
+    /// Stud as a future poker speciality — NOT anticipated here, no placeholder.)
+    public static let clockTower = Casino(
+        id: "clocktower",
+        displayName: "ClockTower",
+        spokenNameKey: "clocktower.spoken.a11y",   // ear-verify before producing voices (D-060)
+        taglineKey: "clocktower.tagline",
+        blurbKey: "home.clocktower.blurb",
+        returnLabelKey: "endgame.return.clocktower",
+        tables: [
+            CasinoTable(id: "clocktower.table.machiavelli",
+                        titleKey: "table.machiavelli.title", subtitleKey: "table.machiavelli.room",
+                        game: .machiavelli(.clockTower)),
+        ])
+
     /// Every casino, in home-screen order.
-    public static let all: [Casino] = [riverwood, skypool]
+    public static let all: [Casino] = [riverwood, skypool, clockTower]
 
     /// The casino a table belongs to (for return navigation / labels).
     public static func casino(hosting tableID: String) -> Casino? {

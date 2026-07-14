@@ -80,10 +80,11 @@ final class CasinoTests: XCTestCase {
         XCTAssertEqual(account.chips, 0)
     }
 
-    func testRegistryContainsBothCasinosInOrder() {
-        XCTAssertEqual(Casinos.all.map(\.id), ["riverwood", "skypool"])
+    func testRegistryContainsTheCasinosInOrder() {
+        XCTAssertEqual(Casinos.all.map(\.id), ["riverwood", "skypool", "clocktower"])
         XCTAssertEqual(Casinos.casino(hosting: "skypool.table.marble")?.id, "skypool")
         XCTAssertEqual(Casinos.casino(hosting: "riverwood.table.classic")?.id, "riverwood")
+        XCTAssertEqual(Casinos.casino(hosting: "clocktower.table.machiavelli")?.id, "clocktower")
     }
 
     private func table(_ casino: Casino, _ id: String) -> CasinoTable {

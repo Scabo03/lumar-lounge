@@ -55,6 +55,18 @@ public struct AmbientBeds: Equatable, Sendable {
         tense: SoundCatalog.ambSkypoolTense, tenseFallback: SoundCatalog.ambLoungeTense,
         layer: SoundCatalog.ambSkypoolWater, layerFallback: SoundCatalog.ambCrowdDistant,
         layerVolume: 0.02)
+
+    /// The ClockTower beds (D-072) — erudite CLASSICAL music (strings), calm_01/02 two
+    /// crossfaded movements, `tense` the searching passage played while a bot thinks
+    /// (the audible wait), a continuous low grandfather-clock TICK as the layer. None
+    /// produced yet → each falls back to a lounge bed; the clock layer is a quiet
+    /// undertone (0.12).
+    public static let clocktower = AmbientBeds(
+        calm1: SoundCatalog.ambClocktowerCalm1, calm1Fallback: SoundCatalog.ambLoungeCalm1,
+        calm2: SoundCatalog.ambClocktowerCalm2, calm2Fallback: SoundCatalog.ambLoungeCalm2,
+        tense: SoundCatalog.ambClocktowerThinking, tenseFallback: SoundCatalog.ambLoungeTense,
+        layer: SoundCatalog.ambClocktowerClock, layerFallback: SoundCatalog.ambCrowdDistant,
+        layerVolume: 0.12)
 }
 
 /// A casino's bots' colour voices (`vob_`). AMBIENT: a missing file falls back to
@@ -169,12 +181,24 @@ public struct CasinoAudio {
         ],
         ambient: .skypool, botVoices: .skypool)
 
+    /// The ClockTower (D-072). Its ambient is the erudite classical MUSIC; its "speaker"
+    /// voice (turns, combinations, scores) is NOT the poker croupier, so it needs no
+    /// croupier remap — `MachiavelliSpeechMap` produces the ClockTower `vo_it_clock_*`
+    /// ids and their synthesis fallbacks directly (as the Draw map does for the
+    /// Riverwood, D-067). The `botVoices` field (poker-shaped) is UNUSED by Machiavelli,
+    /// which uses its own colour voices in `MachiavelliAudioDirector`; the Riverwood set
+    /// is a harmless placeholder here.
+    public static let clockTower = CasinoAudio(
+        id: "clocktower", croupierRemap: [:], fallbackKeys: [:],
+        ambient: .clocktower, botVoices: .riverwood)
+
     /// Every casino's palette, keyed by casino id. Adding a casino = adding an entry
     /// HERE (declaring its palette). The speech maps / conductor / directors are never
     /// touched — the third casino inherits its croupier by construction (D-067).
     public static let registry: [String: CasinoAudio] = [
         "riverwood": .riverwood,
         "skypool": .skypool,
+        "clocktower": .clockTower,
     ]
 
     /// The palette for a casino id (default Riverwood for an unknown/nil id).

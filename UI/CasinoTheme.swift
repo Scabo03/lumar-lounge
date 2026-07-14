@@ -51,14 +51,29 @@ struct CasinoTheme {
         secondaryText: Color(red: 0.78, green: 0.84, blue: 0.90),
         titleDesign: .default)
 
+    /// The ClockTower look (D-072): an ancient, exclusive, ACADEMIC tower — aged stone,
+    /// noble walnut, parchment, weathered bronze and ink. Erudite and refined, a third
+    /// AXIS (not a step above the Skypool): Riverwood is the frontier, Skypool the money,
+    /// ClockTower the PRESTIGE. Warm scholarly darks + bronze + parchment, serif — deep
+    /// enough to read distinct from the Riverwood's green felt and bright brass.
+    static let clockTower = CasinoTheme(
+        background: Color(red: 0.07, green: 0.06, blue: 0.05),     // dark walnut/ink
+        panel: Color(red: 0.16, green: 0.12, blue: 0.09),         // aged wood
+        panelEdge: Color(red: 0.72, green: 0.56, blue: 0.30),     // weathered bronze
+        accent: Color(red: 0.80, green: 0.62, blue: 0.34),        // bronze / gilt
+        primaryText: Color(red: 0.95, green: 0.92, blue: 0.84),   // parchment
+        secondaryText: Color(red: 0.78, green: 0.72, blue: 0.62), // faded ink
+        titleDesign: .serif)
+
     /// A neutral theme for the Home screen (outside any casino) — the app's dark base.
     static let home = riverwood
 
     /// The theme for a casino, by id (D-066).
     static func theme(for casino: Casino) -> CasinoTheme {
         switch casino.id {
-        case "skypool": return .skypool
-        default:        return .riverwood
+        case "skypool":    return .skypool
+        case "clocktower": return .clockTower
+        default:           return .riverwood
         }
     }
 

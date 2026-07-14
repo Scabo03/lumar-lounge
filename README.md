@@ -210,6 +210,18 @@ nuova dimensione additiva (`machiavelliMalusAversion`) fa sì che il bot pazient
 pesanti** e non resti con l'asso in mano quando un avversario sta per chiudere. Punteggio nel **motore**
 (`MachiavelliScoring`), soglia/struttura in **GameWorld**. Ancora **non giocabile**. **389 unit test verdi.**
 
+**ClockTower (terzo casinò) + Machiavelli giocabile (M2, D-072).** Terzo casinò, il **ClockTower** —
+torre antica, accademico, erudito, si gioca per **prestigio non denaro** (poste basse e
+**rimborsabili** → il posto **più accessibile**; un terzo asse, non un gradino sopra lo Skypool).
+Ospita il **Machiavelli**, ora **giocabile end-to-end**. La UI di ricombinazione è nuova: un **box di
+composizione accessibile** (due metà, marcatore di zona "selezionata", stato che **descrive senza
+consigliare**) e il **trascinamento** per il vedente, **entrambi sopra lo stesso predicato del motore**
+(nessuna validazione nella UI — vedente e non vedente giocano lo **stesso** gioco). Knob di bordo
+tavolo col titolo della combinazione e azioni personalizzate (il colpo d'occhio restituito al cieco).
+L'attesa dei bot che pensano è **udibile** sulla musica (classica ed erudita — il primo casinò la cui
+musica ha una forma). **Primo gioco non-poker giocabile.** **405 unit test verdi**; Riverwood/Skypool
+invariati.
+
 > **🏁 La prima fase è completa.** Il gioco base è funzionante end-to-end — motore
 > completo, bot credibili, sessione multi-mano, flusso di eventi, UI giocabile e
 > accessibile, e **audio pieno**: i 47 file mp3 consegnati (atmosfera, carte,

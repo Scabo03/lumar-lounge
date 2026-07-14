@@ -60,6 +60,8 @@ public final class MachiavelliSessionDriver {
     public private(set) var isHandInProgress = false
     public private(set) var isMatchOver = false
     public private(set) var hasEnded = false
+    /// Whether the `matchEnded` event has already been emitted (once per match).
+    private var matchEndEmitted = false
 
     /// Per-hand turn safety bound (also lets tests cap a hand to a few turns → a
     /// stalemate scored to the fewest-cards holder). Per-match hand safety bound.
@@ -115,6 +117,10 @@ public final class MachiavelliSessionDriver {
     }
     public func handCount(of id: Int) -> Int? { hands[id]?.count }
     public func score(of id: Int) -> Int? { cumulativeScores[id] }
+    /// Whether another hand can be dealt (match not over, not mid-hand, enough players).
+    public var canDealNextHand: Bool {
+        !hasEnded && !isMatchOver && !isHandInProgress && players.count >= 2 && handNumber < maxHandsPerMatch
+    }
     public var stockCount: Int { stock.count }
     /// Total cards currently on the shared table — for card-conservation checks.
     public var tableCardCount: Int { table.reduce(0) { $0 + $1.size } }
@@ -133,6 +139,10 @@ public final class MachiavelliSessionDriver {
         guard !hasEnded else { return }
         hasEnded = true
         await announceSessionIfNeeded()
+        // Guarantee `matchEnded` was emitted at least once — e.g. a UI that drove hands
+        // one-by-one and stopped at the hand-cap (or because the player left) without a
+        // threshold crossing never triggered it (D-072).
+        await concludeMatchIfNeeded()
         await emit(.sessionEnded(reason: reason))
         await hub.finishAll()
     }
@@ -145,17 +155,29 @@ public final class MachiavelliSessionDriver {
     public func playMatch() async throws -> MachiavelliMatchOutcome {
         guard !hasEnded else { throw MachiavelliSessionError.sessionEnded }
         guard !isMatchOver else { throw MachiavelliSessionError.matchAlreadyOver }
-        var handsPlayed = 0
-        while !isMatchOver && handsPlayed < maxHandsPerMatch {
+        // Each `playHand` emits `matchEnded` itself once a player crosses the threshold
+        // (so a UI that drives hands one-by-one, gated for pacing, still gets it). Here
+        // we just keep dealing until that happens or the safety bound is hit.
+        while !isMatchOver && handNumber < maxHandsPerMatch {
             _ = try await playHand()
-            handsPlayed += 1
-            if cumulativeScores.values.contains(where: { $0 >= victoryThreshold }) { isMatchOver = true }
         }
+        await concludeMatchIfNeeded()      // covers the hand-cap case (no threshold crossed)
+        return MachiavelliMatchOutcome(winnerID: matchWinnerID(),
+                                       handsPlayed: handNumber, finalScores: cumulativeScores)
+    }
+
+    /// The current match leader (highest total, ties broken by lowest id).
+    private func matchWinnerID() -> Int {
+        players.max { (cumulativeScores[$0.id] ?? 0, -$0.id) < (cumulativeScores[$1.id] ?? 0, -$1.id) }!.id
+    }
+
+    /// Emits `matchEnded` once, marking the match over. Called when a player crosses the
+    /// threshold (from `finishHand`) or when the hand-cap is reached (from `playMatch`).
+    private func concludeMatchIfNeeded() async {
+        guard !matchEndEmitted else { return }
+        matchEndEmitted = true
         isMatchOver = true
-        let winnerID = players
-            .max { (cumulativeScores[$0.id] ?? 0, -$0.id) < (cumulativeScores[$1.id] ?? 0, -$1.id) }!.id
-        await emit(.matchEnded(winnerID: winnerID, handsPlayed: handsPlayed, finalScores: cumulativeScores))
-        return MachiavelliMatchOutcome(winnerID: winnerID, handsPlayed: handsPlayed, finalScores: cumulativeScores)
+        await emit(.matchEnded(winnerID: matchWinnerID(), handsPlayed: handNumber, finalScores: cumulativeScores))
     }
 
     // MARK: - Playing one hand
@@ -241,6 +263,11 @@ public final class MachiavelliSessionDriver {
                                              handScores: handScores, cumulativeScores: cumulativeScores,
                                              handCounts: handCounts)
         handNumber += 1
+        // If this hand carried a player past the victory threshold, the MATCH is over —
+        // emit it now, so both `playMatch` and a hand-by-hand UI driver see it (D-072).
+        if cumulativeScores.values.contains(where: { $0 >= victoryThreshold }) {
+            await concludeMatchIfNeeded()
+        }
         return outcome
     }
 

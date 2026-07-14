@@ -249,3 +249,32 @@ Cinque fix da test reale su iPhone (Tavolo Rapido, VoiceOver attivo), tutti in `
   `skypool.croupier.*`), cittadino/cinico/tecnico, diverso da quello di frontiera del Riverwood
   (invariato). Le voci Skypool sono slot non prodotti → sintesi del registro (informative) o
   silenzio (`vob_sky_*`, ambientali).
+
+## Machiavelli al ClockTower (D-072)
+
+Il **primo gioco non-poker giocabile** e la **UI più diversa** del progetto: non un tavolo, uno
+**spazio di ricombinazione**.
+
+- **`MachiavelliTableView`** — fascia sottile in alto con due **bollini** avversari (no fiches, solo
+  nome/conteggio/"pensa"), **centro** col tavolo delle combinazioni (ogni carta un elemento
+  accessibile; sotto ogni combinazione un **knob** di bordo che ne annuncia il **titolo**
+  — `MachiavelliSpeechMap.meldTitle` — con **azioni personalizzate** per navigarne le carte), **hero
+  hand** ordinata in basso, e una barra **Piazza / Passa / Pesca**.
+- **`MachiavelliBoxView`** — il **box di composizione** (Piazza): due metà, **bassa** = catena
+  scorribile (mano · divisore "tavolo" · carte calate), **alta** = pool. **Distinzione acustica
+  imposta:** la catena **non** annuncia stato, il pool annuncia "**selezionata**" (marcatore di zona,
+  D-072). In cima lo **stato della selezione** (descrive, non consiglia). Conferma gated sul predicato
+  del motore. Sottoalbero **stabile** (selezione via opacity, label costante — D-046/D-052).
+- **`MachiavelliWorkspace`** — lo stato di lavoro del turno, **puro bookkeeping** per indice di
+  istanza (duplicati dei due mazzi, riuso carta), che **non giudica** la legalità: la chiede a
+  `MachiavelliRules`. È il substrato che **box e drag mutano** allo stesso modo → **un solo predicato,
+  due interfacce**.
+- **`MachiavelliTableViewModel`** — guida `MachiavelliSessionDriver` mano per mano (gate), presenta gli
+  eventi a ritmo umano, narra via `SpeechConductor`/`AnnouncementQueue`, sospende il turno umano e ne
+  raccoglie box/drag/terminali. Matchmaking progressivo a partite giocate.
+- **`MachiavelliAudioDirector`** — musica erudita del ClockTower (beds dalla palette) e l'**attesa
+  udibile**: crossfade alla sezione "thinking" mentre un bot riflette, ritorno al calm alla fine —
+  sul canale **ambientale**, mai un annuncio.
+- **`MachiavelliSpeechMap`** — titoli delle combinazioni, lettura dello stato della selezione
+  (**descrive, non consiglia** — CONVENTIONS §4), linee del narratore del ClockTower (voce
+  **non-croupier**, personaggio da definire).

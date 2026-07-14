@@ -384,11 +384,28 @@ pre-punteggio): la ricerca scarica più **valore**, e il **paziente trattiene me
 chiusura (non resta con l'asso in mano). Determinismo su **tutta la partita**; retrocompatibilità
 additiva; giochi esistenti invariati. Niente TestFlight.
 
-> **Residuo aperto per Machiavelli (esplicito):** è **motore + bot + driver + punteggio, ma non
-> giocabile**. Mancano la **UI** accessibile (box di composizione per il cieco + drag per il vedente,
-> **entrambi sopra lo stesso predicato**), l'**audio** (voce che riempie l'attesa udibile dei bot che
-> pensano; nessun file, nessuna `SpeechMap` — solo gli eventi dichiarati) e il **casinò ospitante** —
-> un **terzo casinò** che non esiste ancora e **non è anticipato** qui.
+### ✅ ClockTower (terzo casinò) + Machiavelli GIOCABILE fino a TestFlight (D-072)
+Terzo casinò, il **ClockTower** — torre antica, accademico, erudito, si gioca per **prestigio non
+denaro** (buy-in basso e **rimborsabile** → il posto **più accessibile**). Terzo **asse** (Riverwood
+frontiera, Skypool denaro, ClockTower prestigio), **non** un gradino sopra lo Skypool. Ospita **un
+solo tavolo**: il **Machiavelli**, ora **giocabile end-to-end**. Aggiungere il casinò è stato un
+**cambio di dati** (registry + tema + palette + slot audio): la generalizzazione D-065/D-067 ha retto.
+**Primo casinò la cui musica ha una FORMA** (classica, archi, contrappunto). La **UI di
+ricombinazione** è nuova: box di composizione **accessibile** (due metà, marcatore di zona
+"selezionata", stato che **descrive non consiglia**) + **drag** per il vedente, **entrambi sopra lo
+stesso predicato** del motore (`MachiavelliRules`), zero validazione nella UI. Knob di bordo tavolo col
+titolo della combinazione e azioni personalizzate (il colpo d'occhio per il cieco). Attesa del bot
+**udibile** sul canale ambientale (musica "thinking"). Voce del ClockTower = figura **non-croupier**,
+personaggio **da decidere** (registro erudito scritto, slot dichiarati coi fallback). Matchmaking
+progressivo a **partite giocate**. Motore Machiavelli **non toccato** (una sola aggiunta al driver
+GameWorld). **405 test verdi**; Riverwood/Skypool invariati. **Caricato su TestFlight.**
+
+> **Residui aperti del ClockTower (dichiarati):** i **file audio** (ambient/musica su StableAudio →
+> `ClockTower_audio_catalog_ambient.md`; voci su ElevenLabs → `ClockTower_audio_catalog_voices.md`) sono
+> **da produrre** (attivi i fallback); il **personaggio della voce** del ClockTower è **da definire**
+> (l'utente lo sceglie prima di produrre le voci); il **Seven-Card Stud** è la **specialità di poker
+> futura** del posto (**non** anticipata, nessun placeholder). Rifinitura calibrazione bot dopo il
+> test reale dell'utente.
 
 ---
 

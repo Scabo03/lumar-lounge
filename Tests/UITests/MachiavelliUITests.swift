@@ -1,0 +1,190 @@
+// MachiavelliUITests.swift
+// =====================================================================
+// The Machiavelli UI layer (D-072): the ClockTower's cheap addition to the casino
+// registry, the workspace's hypothetical/repeatable turn model, the single validity
+// predicate queried identically by the box and by drag, the describe-not-advise
+// selection read-out, and the meld titles — all in the pure `swift test` layer.
+
+import XCTest
+@testable import UI
+import GameWorld
+import GameEngine
+import Audio
+
+final class MachiavelliUITests: XCTestCase {
+
+    private func c(_ r: Rank, _ s: Suit) -> Card { Card(r, s) }
+
+    // MARK: - ClockTower added to the registry cheaply (generalisation held — D-072)
+
+    func testClockTowerIsInTheRegistryAsADataChange() {
+        XCTAssertTrue(Casinos.all.contains { $0.id == "clocktower" })
+        let clock = Casinos.clockTower
+        XCTAssertEqual(clock.tables.count, 1)
+        let table = clock.tables[0]
+        XCTAssertEqual(table.id, "clocktower.table.machiavelli")
+        if case .machiavelli = table.game {} else { XCTFail("the ClockTower's table is Machiavelli") }
+    }
+
+    func testAddingTheClockTowerNeededNoAudioPathChange() {
+        // The palette resolves purely from the registry (D-067): a new casino inherits
+        // the whole audio path by DATA, no speech-map/conductor/director change.
+        let palette = CasinoAudio.hosting(table: "clocktower.table.machiavelli")
+        XCTAssertEqual(palette.id, "clocktower")
+        XCTAssertEqual(CasinoAudio.of(casinoID: "clocktower").id, "clocktower")
+    }
+
+    func testRiverwoodAndSkypoolUntouched() {
+        // Same tables, same buy-ins as before the ClockTower arrived.
+        XCTAssertEqual(Casinos.riverwood.tables.map { $0.id },
+                       ["riverwood.table.classic", "riverwood.table.fast", "riverwood.table.draw"])
+        XCTAssertEqual(Casinos.skypool.tables.map { $0.buyIn }, [5000, 6000, 10000])
+        XCTAssertEqual(CasinoAudio.of(casinoID: "riverwood").id, "riverwood")
+        XCTAssertEqual(CasinoAudio.of(casinoID: "skypool").id, "skypool")
+    }
+
+    // MARK: - The single validity predicate, queried by BOX and by DRAG (D-072)
+
+    func testBoxGateIsExactlyTheEnginePredicate() {
+        let ws = MachiavelliWorkspace(hand: [c(.eight, .spades), c(.eight, .hearts), c(.eight, .diamonds)], table: [])
+        // The three 8s (hand indices 0,1,2).
+        XCTAssertEqual(ws.selectionIsLegalCombination([0, 1, 2]),
+                       MachiavelliRules.classify([c(.eight, .spades), c(.eight, .hearts), c(.eight, .diamonds)]) != nil)
+        XCTAssertTrue(ws.selectionIsLegalCombination([0, 1, 2]))
+        // Two 8s are not a legal combination — the box gate agrees with the engine.
+        XCTAssertEqual(ws.selectionIsLegalCombination([0, 1]),
+                       MachiavelliRules.classify([c(.eight, .spades), c(.eight, .hearts)]) != nil)
+        XCTAssertFalse(ws.selectionIsLegalCombination([0, 1]))
+    }
+
+    func testBoxAndDragReachTheSameValidStateViaTheSamePredicate() {
+        let hand = [c(.eight, .spades), c(.eight, .hearts), c(.eight, .diamonds)]
+
+        // BOX path: select all three, confirm once.
+        var boxWS = MachiavelliWorkspace(hand: hand, table: [])
+        boxWS.placeCombination([0, 1, 2])
+
+        // DRAG path: drag them one at a time into a new group (transiently invalid).
+        var dragWS = MachiavelliWorkspace(hand: hand, table: [])
+        dragWS.moveToGroup(0, groupIndex: nil)
+        XCTAssertFalse(dragWS.tableIsValid, "one card is a transiently INVALID table (allowed)")
+        dragWS.moveToGroup(1, groupIndex: 0)
+        XCTAssertFalse(dragWS.tableIsValid, "two cards still invalid")
+        dragWS.moveToGroup(2, groupIndex: 0)
+
+        // Both reach the SAME valid table, both judged by MachiavelliRules.isValidTable.
+        XCTAssertTrue(boxWS.tableIsValid)
+        XCTAssertTrue(dragWS.tableIsValid)
+        XCTAssertEqual(Set(boxWS.meldCards.map { Set($0) }), Set(dragWS.meldCards.map { Set($0) }))
+        XCTAssertTrue(boxWS.canPass)
+        XCTAssertTrue(dragWS.canPass)
+    }
+
+    // MARK: - Hypothetical + repeatable turn (D-072)
+
+    func testPlacingReducesHandOnlyOnConfirm() {
+        var ws = MachiavelliWorkspace(hand: [c(.two, .spades), c(.two, .hearts), c(.two, .diamonds), c(.king, .clubs)], table: [])
+        XCTAssertEqual(ws.placedCount, 0)
+        XCTAssertTrue(ws.mustDraw)
+        XCTAssertFalse(ws.canPass)
+        ws.placeCombination([0, 1, 2])          // confirm the three 2s
+        XCTAssertEqual(ws.placedCount, 3)
+        XCTAssertTrue(ws.canPass)
+        XCTAssertFalse(ws.mustDraw)
+    }
+
+    func testTerminalGatesOnValidityNotJustPlacement() {
+        var ws = MachiavelliWorkspace(hand: [c(.eight, .spades), c(.eight, .hearts), c(.king, .clubs)], table: [])
+        ws.moveToGroup(0, groupIndex: nil)      // 8♠ alone — placed, but table invalid
+        ws.moveToGroup(1, groupIndex: 0)        // 8♠8♥ — two cards, still invalid
+        XCTAssertGreaterThan(ws.placedCount, 0)
+        XCTAssertFalse(ws.canPass, "placed cards but the table is invalid → cannot pass")
+    }
+
+    func testSameCardCanBeReusedWithinTheTurn() {
+        // Place 9♣ into a group of 9s, then move a 9 into the heart run — recomposing,
+        // and retract the just-placed hand card back and forth.
+        var ws = MachiavelliWorkspace(
+            hand: [c(.nine, .clubs)],
+            table: [[c(.nine, .spades), c(.nine, .hearts), c(.nine, .diamonds)],
+                    [c(.six, .hearts), c(.seven, .hearts), c(.eight, .hearts)]])
+        // Retract/replace the hand card: place it, retract to hand, place again.
+        let handIndex = 0
+        ws.moveToGroup(handIndex, groupIndex: 0)        // 9♣ joins the 9s (group of four)
+        XCTAssertEqual(ws.placedCount, 1)
+        ws.retractToHand(handIndex)                     // take it back
+        XCTAssertEqual(ws.placedCount, 0)
+        ws.moveToGroup(handIndex, groupIndex: 0)        // place it again — same card, same turn
+        XCTAssertEqual(ws.placedCount, 1)
+        XCTAssertTrue(ws.tableIsValid)
+    }
+
+    func testTableCardIsNeverPocketed() {
+        // A table-origin card cannot be retracted to hand (conservation, D-070).
+        var ws = MachiavelliWorkspace(hand: [c(.two, .clubs)],
+                                      table: [[c(.five, .spades), c(.six, .spades), c(.seven, .spades)]])
+        let tableCardIndex = 1   // hand has index 0; table cards start at 1
+        let before = ws.placedCount
+        ws.retractToHand(tableCardIndex)
+        XCTAssertEqual(ws.placedCount, before, "a table card is never moved into the hand")
+    }
+
+    // MARK: - Meld titles (branch selection — bundle-independent, D-072)
+
+    func testMeldTitleClassifiesTrisPokerRun() {
+        // Under `swift test` uiLocalized returns the KEY, so we assert which branch fired.
+        XCTAssertEqual(MachiavelliSpeechMap.meldTitle([c(.ace, .spades), c(.ace, .hearts), c(.ace, .diamonds)]),
+                       "machiavelli.meld.tris")
+        XCTAssertEqual(MachiavelliSpeechMap.meldTitle([c(.king, .spades), c(.king, .hearts), c(.king, .diamonds), c(.king, .clubs)]),
+                       "machiavelli.meld.poker")
+        XCTAssertEqual(MachiavelliSpeechMap.meldTitle([c(.five, .spades), c(.six, .spades), c(.seven, .spades)]),
+                       "machiavelli.meld.run")
+        XCTAssertNil(MachiavelliSpeechMap.meldTitle([c(.five, .spades), c(.six, .hearts)]))
+    }
+
+    // MARK: - Selection read-out DESCRIBES, never ADVISES (D-072)
+
+    func testSelectionReadOutDescribesStateWithoutAdvising() {
+        XCTAssertEqual(MachiavelliSpeechMap.describeSelection([]), "machiavelli.sel.none")
+        // A valid combination states the fact.
+        XCTAssertEqual(MachiavelliSpeechMap.describeSelection([c(.five, .hearts), c(.six, .hearts), c(.seven, .hearts)]),
+                       "machiavelli.sel.valid")
+        // A partial same-suit selection is an "incomplete run" — description, not advice.
+        XCTAssertEqual(MachiavelliSpeechMap.describeSelection([c(.five, .hearts), c(.seven, .hearts), c(.nine, .hearts)]),
+                       "machiavelli.sel.samesuit.run")
+        // A same-rank partial.
+        XCTAssertEqual(MachiavelliSpeechMap.describeSelection([c(.five, .hearts), c(.five, .spades)]),
+                       "machiavelli.sel.samerank")
+        // A loose mix.
+        XCTAssertEqual(MachiavelliSpeechMap.describeSelection([c(.five, .hearts), c(.king, .spades)]),
+                       "machiavelli.sel.loose")
+        // The read-out NEVER names a completing card (only the six declared keys are used).
+        let declared: Set<String> = ["machiavelli.sel.none", "machiavelli.sel.valid", "machiavelli.sel.samerank",
+                                     "machiavelli.sel.samesuit", "machiavelli.sel.samesuit.run", "machiavelli.sel.loose"]
+        XCTAssertTrue(declared.contains(MachiavelliSpeechMap.describeSelection([c(.two, .clubs), c(.three, .diamonds), c(.nine, .hearts)])))
+    }
+
+    // MARK: - Every Machiavelli localization key used actually exists (real text ships)
+
+    func testMachiavelliKeysExistInItalian() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let url = root.appendingPathComponent("Resources/it.lproj/Localizable.strings")
+        let strings = try XCTUnwrap(NSDictionary(contentsOf: url) as? [String: String])
+        let required = [
+            "clocktower.tagline", "home.clocktower.blurb", "endgame.return.clocktower",
+            "table.machiavelli.title", "table.machiavelli.room",
+            "machiavelli.meld.tris", "machiavelli.meld.poker", "machiavelli.meld.run",
+            "machiavelli.prep.dal", "machiavelli.prep.dal.vowel", "machiavelli.prep.dal.fem",
+            "machiavelli.prep.al", "machiavelli.prep.al.vowel", "machiavelli.prep.al.fem",
+            "machiavelli.sel.none", "machiavelli.sel.valid", "machiavelli.sel.samerank",
+            "machiavelli.sel.samesuit", "machiavelli.sel.samesuit.run", "machiavelli.sel.loose",
+            "machiavelli.voice.yourturn", "machiavelli.say.opp.melded", "machiavelli.say.handend",
+            "machiavelli.box.pool", "machiavelli.box.chain", "machiavelli.box.tabledivider",
+            "machiavelli.box.confirm", "machiavelli.action.piazza", "machiavelli.action.pass",
+            "machiavelli.action.draw", "machiavelli.knob.card", "machiavelli.card.a11y.selected",
+            "machiavelli.name.you", "machiavelli.name.student", "machiavelli.name.professor",
+        ]
+        for key in required { XCTAssertNotNil(strings[key], "missing it.lproj key: \(key)") }
+    }
+}

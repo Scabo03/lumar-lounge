@@ -36,6 +36,18 @@ public enum SoundCatalog {
     /// no layer (silent) until produced.
     public static let ambSkypoolWater = SoundID("amb_skypool_water_01")      // not delivered
 
+    /// ClockTower ambience & MUSIC (D-072) — the first casino whose background has a
+    /// FORM, not just an atmosphere: erudite CLASSICAL music (strings, complex
+    /// articulated contrapuntal structure) over ancient stone, wood and books. NOT
+    /// delivered yet (StableAudio); each falls back to a lounge bed until produced.
+    /// calm_01/calm_02 are two movements crossfaded for variety; `thinking` is the
+    /// more urgent, searching passage played while a bot deliberates (the audible wait,
+    /// D-072); `clock` is the continuous low grandfather-clock tick undertone.
+    public static let ambClocktowerCalm1 = SoundID("amb_clocktower_calm_01")     // not delivered
+    public static let ambClocktowerCalm2 = SoundID("amb_clocktower_calm_02")     // not delivered
+    public static let ambClocktowerThinking = SoundID("amb_clocktower_thinking_01") // not delivered
+    public static let ambClocktowerClock = SoundID("amb_clocktower_clock_01")    // not delivered
+
     // MARK: UI (10)
     public static let uiButtonTap = SoundID("ui_button_tap")
     public static let uiButtonTapSoft = SoundID("ui_button_tap_soft")
@@ -128,6 +140,32 @@ public enum SoundCatalog {
     public static let vobSkyAggressorTaunt = SoundID("vob_sky_aggressor_taunt_01")          // not delivered
     public static let vobSkyAggressorBluffGiveaway = SoundID("vob_sky_aggressor_bluff_giveaway_01") // not delivered
 
+    // MARK: The ClockTower "speaker" voice — Machiavelli (D-072, NOT delivered yet)
+    // The ClockTower has no croupier: Machiavelli has no pot/bets/showdown. The figure
+    // who speaks scans the TURNS, declares the COMBINATIONS laid, and announces the
+    // end-of-hand SCORES, in an erudite, measured, learned register. The CHARACTER and
+    // GENDER are STILL UNDECIDED (the user will decide before producing the voices) —
+    // only the register is fixed. Each is INFORMATIVE, so it falls back to VoiceOver
+    // synthesis (D-030) declared in `MachiavelliSpeechMap` until the mp3 is produced.
+    public static let voClockHandStart = SoundID("vo_it_clock_hand_start")    // not delivered
+    public static let voClockYourTurn = SoundID("vo_it_clock_your_turn")      // not delivered
+    public static let voClockMeld = SoundID("vo_it_clock_meld")               // not delivered
+    public static let voClockDrew = SoundID("vo_it_clock_drew")               // not delivered
+    public static let voClockPassed = SoundID("vo_it_clock_passed")           // not delivered
+    public static let voClockHandEnd = SoundID("vo_it_clock_hand_end")        // not delivered
+    public static let voClockMatchEnd = SoundID("vo_it_clock_match_end")      // not delivered
+
+    // MARK: Bot voices — ClockTower archetypes (D-072, NOT delivered yet)
+    // AMBIENT colour of the three learned archetypes (student, adult, professor). Each
+    // is `.botVoice`, so a missing file falls back to SILENCE, never synthesis (D-066):
+    // a missing colour line simply doesn't play. Used by `MachiavelliAudioDirector`.
+    public static let vobClockStudentEager = SoundID("vob_clock_student_eager_01")             // not delivered
+    public static let vobClockStudentPleased = SoundID("vob_clock_student_pleased_01")         // not delivered
+    public static let vobClockAdultPonders = SoundID("vob_clock_adult_ponders_01")             // not delivered
+    public static let vobClockAdultPleased = SoundID("vob_clock_adult_pleased_01")             // not delivered
+    public static let vobClockProfessorMasterstroke = SoundID("vob_clock_professor_masterstroke_01") // not delivered
+    public static let vobClockProfessorPleased = SoundID("vob_clock_professor_pleased_01")     // not delivered
+
     // MARK: Bot voices (7)
     public static let vobNoviceExcited = SoundID("vob_novice_excited_01")
     public static let vobNoviceDisappointed = SoundID("vob_novice_disappointed_01")
@@ -154,6 +192,8 @@ public enum SoundCatalog {
         (ambCrowdDistant, .ambient), (ambSilenceTension, .ambient),
         (ambHomeNeutral, .ambient), (ambRiverwoodCalm1, .ambient), (ambRiverwoodCalm2, .ambient),
         (ambSkypoolCalm1, .ambient), (ambSkypoolCalm2, .ambient), (ambSkypoolTense, .ambient), (ambSkypoolWater, .ambient),
+        (ambClocktowerCalm1, .ambient), (ambClocktowerCalm2, .ambient),
+        (ambClocktowerThinking, .ambient), (ambClocktowerClock, .ambient),
         (uiButtonTap, .ui), (uiButtonTapSoft, .ui), (uiBoxOpen, .ui), (uiBoxClose, .ui),
         (uiRaisePlus, .ui), (uiRaiseMinus, .ui), (uiAllInTrigger, .ui), (uiConfirm, .ui), (uiCancel, .ui),
         (uiNavigation, .ui),
@@ -172,6 +212,11 @@ public enum SoundCatalog {
         (voSkyTurn, .croupier), (voSkyRiver, .croupier), (voSkyShowdown, .croupier),
         (voSkyActionAllIn, .croupier), (voSkyPotAwarded, .croupier), (voSkySplitPot, .croupier),
         (voSkyPotLimit, .croupier), (voSkyStakesUp, .croupier),
+        (voClockHandStart, .croupier), (voClockYourTurn, .croupier), (voClockMeld, .croupier),
+        (voClockDrew, .croupier), (voClockPassed, .croupier), (voClockHandEnd, .croupier), (voClockMatchEnd, .croupier),
+        (vobClockStudentEager, .botVoice), (vobClockStudentPleased, .botVoice),
+        (vobClockAdultPonders, .botVoice), (vobClockAdultPleased, .botVoice),
+        (vobClockProfessorMasterstroke, .botVoice), (vobClockProfessorPleased, .botVoice),
         (vobNoviceExcited, .botVoice), (vobNoviceDisappointed, .botVoice), (vobNoviceNervous, .botVoice),
         (vobRockGrunt, .botVoice), (vobAggressorConfident, .botVoice), (vobAggressorTaunt, .botVoice),
         (vobAggressorBluffGiveaway, .botVoice),

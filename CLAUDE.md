@@ -117,12 +117,12 @@ nei file collegati.
   motore+bot+driver: nessuna UI, nessun audio, nessun casinò ospitante (terzo casinò non anticipato).**
   Giochi esistenti invariati.
 
-**🏢 Fase 1 (M1) completa; Fase 2 (M2) in corso.** Girano end-to-end **tre giochi** in **due
+**🏢 Fase 1 (M1) completa; Fase 2 (M2) in corso.** Girano end-to-end **quattro giochi** in **tre
 casinò**: al **Riverwood** Texas Hold'em No Limit (Classico/Rapido) e **Five-Card Draw** (Sala
-Whiskey); allo **Skypool** Texas (Classico/Rapido) e **Omaha Pot Limit** (Marble). `GameEngine`
-contiene **quattro motori**: i tre poker (tutti con driver, UI e audio) più il **Machiavelli**
-(motore+bot+driver, **non ancora giocabile** — manca UI/audio/casinò). Navigazione Home → Casinò →
-Tavolo con gettoni persistenti e barriera economica.
+Whiskey); allo **Skypool** Texas (Classico/Rapido) e **Omaha Pot Limit** (Marble); al **ClockTower**
+il **Machiavelli** (Sala degli Orologi). `GameEngine` contiene **quattro motori**, tutti e quattro
+ora con driver, UI e audio. Navigazione Home → Casinò → Tavolo con gettoni persistenti e barriera
+economica (le poste del ClockTower sono **rimborsabili** — prestigio, non denaro).
 
 **Slot audio** (stato reale, dettaglio in `Skypool_audio_catalog.md`):
 - **Skypool (D-068): file reali PRODOTTI e CABLATI** — croupier 12/14, ambient 4/4, colore-bot
@@ -1978,3 +1978,80 @@ già con la sessione multi-mano. **Solo motore e driver: nessuna UI/casinò/audi
   modello del turno **non toccati**. **Ancora non giocabile** (manca UI/audio/casinò). **389 test verdi**
   (382 + 7 nuovi: punteggio, malus-awareness, accumulo scores, eventi fine mano/partita);
   Texas/Draw/Omaha invariati. Nessun TestFlight.
+
+### D-072 — ClockTower (terzo casinò) + Machiavelli GIOCABILE, con la UI di ricombinazione accessibile
+Costruito il **ClockTower**, terzo casinò, e reso il **Machiavelli giocabile** end-to-end fino a
+TestFlight — la sessione UI più impegnativa finora, perché la UI del Machiavelli **non assomiglia a
+nessuna** delle altre: non è un tavolo da poker, è uno **spazio di ricombinazione**.
+- **Identità del ClockTower.** Casinò piccolo, esclusivo, **accademico**, in una **torre antica** legata
+  all'università: erudito, raffinato, si gioca per **vanto non per denaro**. **Terzo ASSE**, non un
+  gradino sopra lo Skypool: Riverwood = frontiera, Skypool = denaro, ClockTower = **prestigio** — e,
+  essendo le poste **rimborsabili** (buy-in 1200 restituito all'uscita), il posto **più accessibile
+  economicamente**. Palette: pietra antica, legno nobile, bronzo, pergamena, serif. **Primo casinò la
+  cui musica ha una FORMA**: classica ed erudita (archi, contrappunto articolato), non solo atmosfera.
+  Ospita **un solo tavolo** (Machiavelli); il Seven-Card Stud è futuro (**non anticipato**, nessun
+  placeholder).
+- **Aggiungere il casinò è costato poco (la generalizzazione D-065/D-067 ha retto).** Nuovo caso
+  `CasinoGame.machiavelli(MachiavelliTableRules)`, una voce nel registry `Casinos.clockTower`, un tema
+  `CasinoTheme.clockTower`, una palette `CasinoAudio.clockTower` (ambient) + gli slot audio: **cambio di
+  DATI**, nessuna riscrittura della lobby, del percorso audio, dei conductor/director. Test:
+  `testAddingTheClockTowerNeededNoAudioPathChange`. Riverwood/Skypool **invariati** (test).
+- **L'invariante architetturale centrale: DUE INTERFACCE, UN SOLO PREDICATO.** Il non vedente compone in
+  un **box** (sblocca *Conferma* quando la **selezione** è una combinazione legale); il vedente
+  **trascina** sul tavolo (sblocca i terminali quando il **tavolo** è valido). Entrambi interrogano lo
+  **stesso predicato PURO del motore** (`MachiavelliRules.classify`/`isValidTable`); **nessuna logica di
+  validazione nella UI**, in nessuna delle due modalità. Il substrato comune è `MachiavelliWorkspace`
+  (UI): **puro bookkeeping** per indice di istanza (gestisce i duplicati dei due mazzi e il riuso di una
+  carta nello stesso turno), che **non giudica mai** la legalità — la chiede al motore. Test:
+  `testBoxGateIsExactlyTheEnginePredicate`, `testBoxAndDragReachTheSameValidStateViaTheSamePredicate`.
+- **Stato IPOTETICO + turno ripetibile.** Il box seleziona un **pool** che non tocca il tavolo finché non
+  si conferma; deselezionare è gratis. Confermata una combinazione il turno **continua** (si riapre
+  Piazza, si riprende una carta appena calata). Il workspace è **transitoriamente invalido** consentito
+  (rubare una carta e lasciare un'altra combinazione rotta, da sistemare dopo): solo il **terminale**
+  (Passa) è gated sulla validità dell'intero tavolo; **Piazza/Conferma** sono gated sulla combinazione
+  selezionata. Il turno si chiude **solo** con Passa/Pesca. Test: hypothetical, riuso carta, terminale,
+  carta di tavolo mai in mano (conservazione).
+- **La catena e i knob di bordo tavolo.** Il box è diviso in due metà: **bassa** = catena scorribile
+  (mano · divisore "tavolo" · carte calate), **alta** = pool. **Distinzione acustica IMPOSTA
+  (non negoziabile):** le carte della metà **bassa NON annunciano stato**, ogni carta della metà **alta
+  si annuncia "selezionata"** — così dopo decine di swipe il cieco sa **in quale zona è** senza doverlo
+  ricordare (il vedente lo sa dalla posizione: parità, non aiuto). Sul **bordo inferiore** di ogni
+  combinazione un **knob**: decorazione per il vedente, per il cieco un elemento swipe-navigabile che
+  annuncia il **titolo** della combinazione (`MachiavelliSpeechMap.meldTitle`: "scala di picche dal
+  cinque al dieci", "tris di assi") con **azioni personalizzate** per navigare verticalmente le sue
+  carte. È il **colpo d'occhio** che il vedente ha gratis, restituito al cieco.
+- **DESCRIVE lo stato, non CONSIGLIA la mossa (principio permanente, CONVENTIONS §4).** La lettura in
+  cima al box dà **quante** carte e **cosa** è la selezione ("quattro carte, scala di cuori incompleta") —
+  descrizione, esattamente ciò che il vedente vede nel pool. **Mai** "manca il sette" (sarebbe giocare al
+  posto del giocatore). Quando la selezione diventa **valida** l'annuncio è dato subito ("scala di cuori
+  dal cinque al nove, valida"): è la stessa informazione che il vedente riceve dal pulsante che si
+  sblocca — un **fatto compiuto**, non un consiglio. Test:
+  `testSelectionReadOutDescribesStateWithoutAdvising` (usa solo le 6 chiavi dichiarate, nessuna nomina una
+  carta mancante).
+- **Attesa del bot UDIBILE, sul canale AMBIENTALE.** I bot pensano fino a ~10–15 s (D-070). Il motore
+  emette già `botThinkingBegan/Ended`; il `MachiavelliAudioDirector`, su thinking, **crossfada** la musica
+  erudita alla sua sezione **"thinking"** (archi più cercanti) e torna al calm alla fine: dichiara "sta
+  pensando" **senza rivelare cosa trova** e **senza mai** un annuncio della coda VoiceOver che
+  interromperebbe l'ascolto. Slot ambient dichiarati (`amb_clocktower_*`), fallback lounge.
+- **La voce del ClockTower: figura NON croupier, personaggio da definire.** Nel Machiavelli non c'è
+  piatto/puntate/showdown: la figura che parla **scandisce i turni, dichiara le combinazioni, annuncia i
+  punteggi**. Registro **erudito, misurato, colto** scritto nei testi; **personaggio e genere lasciati
+  APERTI** (li decide l'utente prima di produrre le voci). Slot `vo_it_clock_*` (informativi → sintesi
+  fallback, D-030), colore bot `vob_clock_*` (ambientali → silenzio, D-066), attributi del **casinò** via
+  la palette (D-067). Nessun anti-pattern D-051 (contenuto specifico → solo sintesi; generico → solo
+  fallback di registro, mai entrambi con lo stesso testo).
+- **Sistema di incontri progressivo (D-070) cablato.** `MachiavelliMatchmaker` sceglie **1–2** avversari
+  per **partite giocate** (`MachiavelliProgressStore` persistente): prima lo **Studente**, poi
+  Studente/Bibliotecario, poi insieme, più avanti il **Professore**, fino al solo Professore. Il giocatore
+  **incontra persone**, non un livello.
+- **Stabilità del sottoalbero d'accessibilità (D-046/D-052).** Nel box il giocatore fa decine di
+  selezioni: le carte NON ristrutturano il sottoalbero allo stato — la selezione commuta un overlay per
+  **opacity** (sempre presente) e la label della carta-catena è **costante** (nessuno stato → nessun
+  re-atterraggio del focus). Lo stato vive nella metà alta (pool), non nella label della catena.
+- **Vincoli rispettati:** direzione dipendenze UI→GameWorld→GameEngine; **motore Machiavelli non
+  toccato** (una sola aggiunta al DRIVER GameWorld: `matchEnded` emesso da `playHand`/`endSession` così
+  una UI guida le mani a una a una col gate); predicato di validità **unica fonte** per entrambe le
+  modalità; nessun import incrociato; eventi descrittivi; `BotContext` redatto; **nessun
+  `UIAccessibility.post` diretto** (tutto via `AnnouncementQueue`); ogni `CheckedContinuation` col suo
+  timeout (riuso `SpokenChannelPacing`); cache dallo stato corrente; `.voiceOverFocusLanding()` su
+  schermata, hero, e box. **Riverwood e Skypool intatti.** **405 test verdi** (389 + 16 nuovi).

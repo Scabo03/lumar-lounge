@@ -73,6 +73,9 @@ public struct AppRootView: View {
         case let .omaha(rules):
             OmahaTableScreen(rules: rules, audio: audio, mode: voMode, returnLabel: returnLabel,
                              casinoAudio: palette, onLeave: onLeave)
+        case let .machiavelli(rules):
+            MachiavelliTableScreen(rules: rules, audio: audio, mode: voMode, casinoAudio: palette,
+                                   returnLabel: returnLabel, onLeave: onLeave)
         }
     }
 
@@ -101,8 +104,9 @@ public struct AppRootView: View {
     /// is produced (D-035/D-066). The Skypool gets its cool urban bed.
     private func casinoBed(_ casino: Casino) -> SoundID {
         switch casino.id {
-        case "skypool": return bed(SoundCatalog.ambSkypoolCalm1, SoundCatalog.ambLoungeCalm2)
-        default:        return bed(SoundCatalog.ambRiverwoodCalm1, SoundCatalog.ambLoungeCalm2)
+        case "skypool":    return bed(SoundCatalog.ambSkypoolCalm1, SoundCatalog.ambLoungeCalm2)
+        case "clocktower": return bed(SoundCatalog.ambClocktowerCalm1, SoundCatalog.ambLoungeCalm2)
+        default:           return bed(SoundCatalog.ambRiverwoodCalm1, SoundCatalog.ambLoungeCalm2)
         }
     }
 

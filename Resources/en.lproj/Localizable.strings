@@ -393,3 +393,86 @@
 "skypool.croupier.pot" = "The pot changes hands.";
 "skypool.croupier.split" = "Split pot. Nobody leaves happy.";
 "skypool.croupier.stakesup" = "Stakes are up. Whoever stays means business.";
+
+/* ===== ClockTower + Machiavelli (D-072) ===== */
+"clocktower.spoken.a11y" = "Clock Tower";
+"clocktower.tagline" = "Where you play for pride, not money.";
+"home.clocktower.blurb" = "An ancient tower tied to the university. Erudite, refined, exclusive — and the most affordable.";
+"endgame.return.clocktower" = "Back to the ClockTower";
+"table.machiavelli.title" = "Machiavelli";
+"table.machiavelli.room" = "Hall of Clocks";
+
+"machiavelli.name.you" = "You";
+"machiavelli.name.student" = "the Student";
+"machiavelli.name.adult" = "the Librarian";
+"machiavelli.name.professor" = "the Professor";
+
+"machiavelli.meld.tris" = "three %@";
+"machiavelli.meld.poker" = "four %@";
+"machiavelli.meld.run" = "%1$@ run %2$@ %3$@";
+"machiavelli.meld.invalid" = "%d invalid cards";
+"machiavelli.prep.dal" = "from the %@";
+"machiavelli.prep.dal.vowel" = "from the %@";
+"machiavelli.prep.dal.fem" = "from the %@";
+"machiavelli.prep.al" = "to the %@";
+"machiavelli.prep.al.vowel" = "to the %@";
+"machiavelli.prep.al.fem" = "to the %@";
+
+"machiavelli.sel.none" = "No cards selected";
+"machiavelli.sel.valid" = "%1$d cards, %2$@, valid";
+"machiavelli.sel.samerank" = "%1$d cards of the same rank, %2$@";
+"machiavelli.sel.samesuit" = "%1$d %2$@ cards";
+"machiavelli.sel.samesuit.run" = "%1$d %2$@ cards, incomplete run";
+"machiavelli.sel.loose" = "%1$d cards selected";
+
+"machiavelli.voice.handstart" = "New hand.";
+"machiavelli.voice.yourturn" = "Your move.";
+"machiavelli.voice.meld" = "A combination.";
+"machiavelli.voice.drew" = "Draws.";
+"machiavelli.voice.passed" = "Passes.";
+"machiavelli.voice.handend" = "Hand over.";
+"machiavelli.voice.matchend" = "The match is decided.";
+
+"machiavelli.say.newhand" = "You hold %d cards.";
+"machiavelli.say.opp.melded" = "%1$@ lays %2$@.";
+"machiavelli.say.opp.recomposed" = "%1$@ reworks the table and lays %2$@.";
+"machiavelli.say.opp.placed" = "%1$@ lays %2$d cards.";
+"machiavelli.say.opp.drew" = "%@ draws a card.";
+"machiavelli.say.score.entry" = "%1$@ %2$d points";
+"machiavelli.say.handend" = "Hand over. %@.";
+"machiavelli.say.match.won" = "You won the match.";
+"machiavelli.say.match.lost" = "%@ won.";
+
+"machiavelli.box.pool" = "Selection";
+"machiavelli.box.pool.empty" = "No cards selected";
+"machiavelli.box.chain" = "Available cards";
+"machiavelli.box.tabledivider" = "Table";
+"machiavelli.box.tabledivider.a11y" = "Table. Below, the cards already laid.";
+"machiavelli.card.a11y.selected" = "%@, selected";
+"machiavelli.pool.card.hint" = "Double-tap to remove from the selection.";
+"machiavelli.chain.card.hint" = "Double-tap to add to the selection.";
+"machiavelli.box.close" = "Close";
+"machiavelli.box.restart" = "Restart";
+"machiavelli.box.restart.hint" = "Undo every move made this turn.";
+"machiavelli.box.confirm" = "Confirm";
+"machiavelli.box.confirm.a11y" = "Confirm the combination";
+"machiavelli.box.confirmed" = "Laid %@.";
+"machiavelli.turn.restarted" = "Turn restarted.";
+
+"machiavelli.dot.cards" = "%d cards";
+"machiavelli.dot.a11y" = "%1$@, %2$d cards, %3$d points";
+"machiavelli.dot.thinking" = "thinking";
+"machiavelli.scoretarget" = "target %d";
+"machiavelli.scoretarget.a11y" = "Match target: %d points.";
+"machiavelli.table.empty" = "Empty table.";
+"machiavelli.table.newcombo" = "New combination";
+"machiavelli.knob.card" = "card %1$d, %2$@";
+"machiavelli.hand.header" = "Your hand: %d cards";
+"machiavelli.hand.header.a11y" = "Your hand, %d cards.";
+"machiavelli.action.piazza" = "Lay";
+"machiavelli.action.piazza.hint" = "Open the box to compose a combination.";
+"machiavelli.action.pass" = "Pass";
+"machiavelli.action.pass.hint" = "End your turn having laid at least one card.";
+"machiavelli.action.draw" = "Draw";
+"machiavelli.action.draw.hint" = "End your turn by drawing a card.";
+"machiavelli.waiting" = "Waiting…";

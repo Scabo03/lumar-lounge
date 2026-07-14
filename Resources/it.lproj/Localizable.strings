@@ -405,3 +405,93 @@
 "skypool.croupier.pot" = "Il piatto cambia proprietario.";
 "skypool.croupier.split" = "Piatto diviso. Nessuno esce contento.";
 "skypool.croupier.stakesup" = "Le poste salgono. Chi resta, fa sul serio.";
+
+/* ===== ClockTower + Machiavelli (D-072) ===== */
+"clocktower.spoken.a11y" = "Clock Tower";
+"clocktower.tagline" = "Dove si gioca per il vanto, non per il denaro.";
+"home.clocktower.blurb" = "Una torre antica legata all'università. Erudito, raffinato, esclusivo — e il più accessibile.";
+"endgame.return.clocktower" = "Torna al ClockTower";
+"table.machiavelli.title" = "Machiavelli";
+"table.machiavelli.room" = "Sala degli Orologi";
+
+/* Nomi al tavolo */
+"machiavelli.name.you" = "Tu";
+"machiavelli.name.student" = "lo Studente";
+"machiavelli.name.adult" = "il Bibliotecario";
+"machiavelli.name.professor" = "il Professore";
+
+/* Titoli delle combinazioni */
+"machiavelli.meld.tris" = "tris di %@";
+"machiavelli.meld.poker" = "poker di %@";
+"machiavelli.meld.run" = "scala di %1$@ %2$@ %3$@";
+"machiavelli.meld.invalid" = "%d carte non valide";
+"machiavelli.prep.dal" = "dal %@";
+"machiavelli.prep.dal.vowel" = "dall'%@";
+"machiavelli.prep.dal.fem" = "dalla %@";
+"machiavelli.prep.al" = "al %@";
+"machiavelli.prep.al.vowel" = "all'%@";
+"machiavelli.prep.al.fem" = "alla %@";
+
+/* Stato della selezione (descrive, non consiglia) */
+"machiavelli.sel.none" = "Nessuna carta selezionata";
+"machiavelli.sel.valid" = "%1$d carte, %2$@, valida";
+"machiavelli.sel.samerank" = "%1$d carte dello stesso rango, %2$@";
+"machiavelli.sel.samesuit" = "%1$d carte di %2$@";
+"machiavelli.sel.samesuit.run" = "%1$d carte di %2$@, scala incompleta";
+"machiavelli.sel.loose" = "%1$d carte selezionate";
+
+/* La voce del ClockTower — registro erudito (fallback finché non prodotta) */
+"machiavelli.voice.handstart" = "Nuova mano.";
+"machiavelli.voice.yourturn" = "Tocca a te.";
+"machiavelli.voice.meld" = "Combinazione.";
+"machiavelli.voice.drew" = "Pesca.";
+"machiavelli.voice.passed" = "Passa.";
+"machiavelli.voice.handend" = "Fine mano.";
+"machiavelli.voice.matchend" = "Partita conclusa.";
+
+/* Linee sintetizzate (contenuto specifico) */
+"machiavelli.say.newhand" = "Hai %d carte in mano.";
+"machiavelli.say.opp.melded" = "%1$@ cala %2$@.";
+"machiavelli.say.opp.recomposed" = "%1$@ rimaneggia il tavolo e cala %2$@.";
+"machiavelli.say.opp.placed" = "%1$@ cala %2$d carte.";
+"machiavelli.say.opp.drew" = "%@ pesca una carta.";
+"machiavelli.say.score.entry" = "%1$@ %2$d punti";
+"machiavelli.say.handend" = "Fine mano. %@.";
+"machiavelli.say.match.won" = "Hai vinto la partita.";
+"machiavelli.say.match.lost" = "Ha vinto %@.";
+
+/* Il riquadro di composizione (Piazza) */
+"machiavelli.box.pool" = "Selezione";
+"machiavelli.box.pool.empty" = "Nessuna carta selezionata";
+"machiavelli.box.chain" = "Carte disponibili";
+"machiavelli.box.tabledivider" = "Tavolo";
+"machiavelli.box.tabledivider.a11y" = "Tavolo. Sotto, le carte già calate.";
+"machiavelli.card.a11y.selected" = "%@, selezionata";
+"machiavelli.pool.card.hint" = "Tocca due volte per togliere dalla selezione.";
+"machiavelli.chain.card.hint" = "Tocca due volte per aggiungere alla selezione.";
+"machiavelli.box.close" = "Chiudi";
+"machiavelli.box.restart" = "Ricomincia";
+"machiavelli.box.restart.hint" = "Annulla tutte le mosse di questo turno.";
+"machiavelli.box.confirm" = "Conferma";
+"machiavelli.box.confirm.a11y" = "Conferma la combinazione";
+"machiavelli.box.confirmed" = "Calata %@.";
+"machiavelli.turn.restarted" = "Turno ricominciato.";
+
+/* Il tavolo */
+"machiavelli.dot.cards" = "%d carte";
+"machiavelli.dot.a11y" = "%1$@, %2$d carte, %3$d punti";
+"machiavelli.dot.thinking" = "sta pensando";
+"machiavelli.scoretarget" = "traguardo %d";
+"machiavelli.scoretarget.a11y" = "Traguardo della partita: %d punti.";
+"machiavelli.table.empty" = "Tavolo vuoto.";
+"machiavelli.table.newcombo" = "Nuova combinazione";
+"machiavelli.knob.card" = "carta %1$d, %2$@";
+"machiavelli.hand.header" = "La tua mano: %d carte";
+"machiavelli.hand.header.a11y" = "La tua mano, %d carte.";
+"machiavelli.action.piazza" = "Piazza";
+"machiavelli.action.piazza.hint" = "Apri il riquadro per comporre una combinazione.";
+"machiavelli.action.pass" = "Passa";
+"machiavelli.action.pass.hint" = "Chiudi il turno avendo calato almeno una carta.";
+"machiavelli.action.draw" = "Pesca";
+"machiavelli.action.draw.hint" = "Chiudi il turno pescando una carta.";
+"machiavelli.waiting" = "In attesa…";

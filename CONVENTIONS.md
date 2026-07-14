@@ -453,6 +453,29 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     finito), **descrittivo non prescrittivo** (dichiara il fatto + una durata attesa come
     *hint* di carattere, non ordina un suono), così UI e audio futuri possano riempire il
     silenzio. È lo stesso spirito dei safeguard sulle continuation del poker (D-056).
+    **Realizzazione (D-072):** l'attesa udibile va riempita sul **canale AMBIENTALE**
+    (es. la musica che passa a una sezione "thinking" e torna), **mai** con un annuncio
+    della `AnnouncementQueue` che interromperebbe l'ascolto del cieco; e il segnale
+    dichiara "sta pensando" **senza rivelare cosa il bot stia trovando**.
+  - **Il sistema DESCRIVE lo stato, non CONSIGLIA la mossa (regola permanente, D-072).**
+    Ogni lettura dinamica che accompagna la costruzione di una mossa (il pool di una
+    selezione, un contatore, uno stato parziale) deve dare al non vedente **esattamente
+    ciò che il vedente vede**, e **nulla di più**. "Quattro carte selezionate, scala di
+    cuori incompleta" è **descrizione** (il vedente lo vede nel pool). "Manca il sette per
+    completarla" è **suggerimento**: giocherebbe la partita **al posto** del giocatore,
+    cosa che al vedente non capita. Quando lo stato diventa un **fatto compiuto** (la
+    selezione è una combinazione legale, il pulsante si sblocca) l'annuncio va dato senza
+    esitazione ("scala di cuori dal cinque al nove, valida") — è la stessa informazione
+    che il vedente riceve dal pulsante. Il confine è: **descrivere sì, consigliare no.**
+  - **Marcatore di ZONA per stati grandi navigati a swipe (pattern accessibilità, D-072).**
+    Quando un'interfaccia ha due zone tra cui il non vedente si muove a lungo (es. la metà
+    "catena" e la metà "pool" del box di composizione), **una zona marca esplicitamente lo
+    stato dei suoi elementi e l'altra no**, così dopo decine di swipe il giocatore sa **in
+    quale zona è** senza doverlo ricordare (nel box: le carte del pool si annunciano
+    "selezionata", quelle della catena no). Il vedente ottiene la stessa informazione dalla
+    **posizione sullo schermo**: è **parità, non aiuto**. Vale con la stabilità del
+    sottoalbero (D-046/D-052): il marcatore sta nella zona-pool, **non** nella label della
+    catena, che resta costante così la selezione non ristruttura né sposta il focus.
 
 ## 5. Testabilità
 
