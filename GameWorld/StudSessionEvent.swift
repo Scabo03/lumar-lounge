@@ -93,9 +93,8 @@ public enum StudEventPayload: Equatable, Sendable {
     case handShown(seatID: Int, cards: [Card], category: HandCategory, bestFive: [Card])
     /// A pot (main or side, by index) was awarded to one or more winners.
     case potAwarded(potIndex: Int, amount: Int, winnerSeatIDs: [Int])
-    /// The HOUSE added a prize to the winning player's pot (D-078) — the ClockTower's
-    /// reward for winning the hardest game. Emitted only when the prize recipient won.
-    case housePrizeAwarded(playerID: Int, amount: Int)
+    // (D-079) No house-prize event: the prize is not a table event — it is paid at cash-out
+    // and narrated by the view model at the win. The table emits no chip injection.
 
     // End of a hand
     case handEnded(handNumber: Int, wentToShowdown: Bool, payouts: [Int: Int], chips: [Int: Int])

@@ -37,10 +37,11 @@ public final class MachiavelliAudioDirector {
 
     private var startedAmbient = false
     private var handNumber = 0
-    /// Which calm movement is playing (alternated between hands for variety).
-    private var calmToggle = false
     private var thinking = false
     private var lastColour: SoundID?
+    /// The mixing base scale of the main bed (D-080): Machiavelli plays quietest of all —
+    /// its long cognitive turn is on the audio channel, so the bed must not compete.
+    private var baseScale: Float { beds.bedVolume }
 
     public init(audio: AudioServicing, heroSeatID: Int, characters: [Int: MachiavelliCharacter],
                 beds: AmbientBeds, seed: UInt64, fastMode: Bool = false) {
@@ -53,7 +54,17 @@ public final class MachiavelliAudioDirector {
     }
 
     public func run(_ stream: AsyncStream<MachiavelliSessionEvent>) async {
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { await self.consume(stream) }
+            if beds.layerIsOccasional { group.addTask { await self.runClockDosing() } }
+            await group.next()
+            group.cancelAll()
+        }
+    }
+
+    private func consume(_ stream: AsyncStream<MachiavelliSessionEvent>) async {
         for await event in stream {
+            if Task.isCancelled { break }
             handle(event.payload)
         }
     }
@@ -64,8 +75,7 @@ public final class MachiavelliAudioDirector {
             startAmbientIfNeeded()
 
         case .handBegan:
-            handNumber += 1
-            calmToggle.toggle()                 // the music "moves on" to another movement
+            handNumber += 1                     // the music "moves on" to another movement
             if !thinking { crossfadeCalm() }
             audio.play(SoundCatalog.tblShuffle, category: .table)
 
@@ -105,18 +115,50 @@ public final class MachiavelliAudioDirector {
     private func startAmbientIfNeeded() {
         guard !startedAmbient else { return }
         startedAmbient = true
-        audio.crossfadeAmbient(to: bed(beds.calm1, beds.calm1Fallback), duration: 1.2)
-        audio.startAmbientLayer(bed(beds.layer, beds.layerFallback), volume: beds.layerVolume)
-        audio.setAmbientScale(1.0, duration: 1.0)
+        audio.crossfadeAmbient(to: calmMovement, duration: 1.2)
+        // The clock is DOSED (occasional) at the ClockTower: start its layer silent and let
+        // the dosing task fade it in/out; a continuous-layer casino starts it audibly (D-080).
+        if beds.layerIsOccasional {
+            audio.startAmbientLayer(bed(beds.layer, beds.layerFallback), volume: 0)
+        } else {
+            audio.startAmbientLayer(bed(beds.layer, beds.layerFallback), volume: beds.layerVolume)
+        }
+        audio.setAmbientScale(baseScale, duration: 1.0)   // Machiavelli mixing (D-080)
+    }
+
+    /// The calm bed for the current movement, FAVOURING calm_02 in the rotation (D-080).
+    private var calmMovement: SoundID {
+        ClockAmbientRotation.usesSecondMovement(handNumber)
+            ? bed(beds.calm2, beds.calm2Fallback)
+            : bed(beds.calm1, beds.calm1Fallback)
     }
 
     private func crossfadeCalm() {
-        let (preferred, fallback) = calmToggle ? (beds.calm2, beds.calm2Fallback) : (beds.calm1, beds.calm1Fallback)
-        audio.crossfadeAmbient(to: bed(preferred, fallback), duration: 1.0)
+        audio.crossfadeAmbient(to: calmMovement, duration: 1.0)
     }
 
     private func bed(_ preferred: SoundID, _ fallback: SoundID) -> SoundID {
         audio.isAvailable(preferred) ? preferred : fallback
+    }
+
+    // MARK: - Clock dosing (D-080)
+
+    /// Doses the tower clock in occasional short bursts with long gaps (D-080). Cancelled
+    /// when the session's event stream ends.
+    private func runClockDosing() async {
+        while !Task.isCancelled {
+            let (gap, on) = ClockChime.next(using: &rng)
+            await sleep(gap)
+            if Task.isCancelled { break }
+            audio.setAmbientLayerVolume(beds.layerVolume, duration: 1.5)
+            await sleep(on)
+            audio.setAmbientLayerVolume(0, duration: 2.0)
+        }
+    }
+
+    private func sleep(_ seconds: Double) async {
+        let effective = fastMode ? 0.01 : seconds
+        try? await Task.sleep(nanoseconds: UInt64(effective * 1_000_000_000))
     }
 
     // MARK: - Bot colour (ambient → silence, D-066)

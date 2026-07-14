@@ -1,4 +1,24 @@
-# ClockTower — catalogo VOCI da produrre (D-072/D-073, ElevenLabs)
+# ClockTower — catalogo VOCI (D-072/D-073, ElevenLabs)
+
+> ## ✅ STATO REALE (D-080): voci prodotte e CABLATE (naming dell'utente).
+> **Convenzione (dell'utente):** `vo_it_tower_*` = croupier di **poker**; `vo_it_clock_*` = arbitro
+> **Machiavelli**. Lo **stesso** custode anziano.
+> - **Machiavelli (`vo_it_clock_*`) cablati:** `your_turn`; `combination`→**rinominato** `meld`;
+>   `game_end`→**rinominato** `match_end`. **Non prodotti (minor verbosità, ok):** `hand_start`, `drew`
+>   ("pesca"), `passed` ("passa") — il contenuto parla, il registro tace. **Ambigui, ESCLUSI (non
+>   indovinati):** `opponent_shift`, `player_shift` — nessuna mappatura chiara; dimmi tu a cosa
+>   corrispondono e li cablo.
+> - **Poker croupier (`vo_it_tower_*`):** consegnato un set **generico/Texas**. Il solo tavolo di poker del
+>   ClockTower è lo **Stud**, che usa e **cabla**: `new_hand` (inizio mano), `showdown`, `pot_awarded`,
+>   `split_pot`, `game_end` (fine sessione). **Riservati** a un futuro tavolo Texas (bundle, non cablati):
+>   `big_blind`, `small_blind`, `flop`, `turn`, `river`, `role_button`, `stakes_rise`.
+> - **Fallback attivi:** `vo_it_tower_your_turn` e `vo_it_tower_house_prize` (non prodotti) → **sintesi**
+>   (il "tuo turno" e il premio restano detti); apertura strada / all-in Stud → **silenzio** di registro
+>   (il contenuto — carte scoperte, "punta tutto" — parla comunque); colore bot `vob_clock_*` → **silenzio**.
+> - **Se vuoi il set Stud proprio** (obbligata/ante, quarta–settima strada, all-in), producilo coi nomi che ti
+>   indico qui sotto e lo cablo; oggi lo Stud è **giocabile** coi file generici + i fallback.
+
+
 
 **Secondo dei due cataloghi del ClockTower**, a UI finita. Il primo (ambient/musica,
 StableAudio) è `ClockTower_audio_catalog_ambient.md`. Queste voci vanno su **ElevenLabs**.

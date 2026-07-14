@@ -167,22 +167,25 @@ public enum SoundCatalog {
     public static let voClockHandEnd = SoundID("vo_it_clock_hand_end")        // not delivered
     public static let voClockMatchEnd = SoundID("vo_it_clock_match_end")      // not delivered
 
-    // MARK: The ClockTower custode as POKER croupier — Seven-Card Stud (D-077/D-078, NOT delivered)
-    // The SAME old man who arbitrates the Machiavelli is the croupier at the ClockTower's
-    // Stud table, in an erudite, measured, ITALIAN register (no anglicisms in the spoken
-    // line — "rilancio", not "raise"). Each is INFORMATIVE, so it falls back to VoiceOver
-    // synthesis (D-030) declared in `StudSpeechMap` until the mp3 is produced (ElevenLabs).
-    public static let voClockPokerHandStart = SoundID("vo_it_clock_poker_hand_start")   // not delivered
-    public static let voClockPokerYourTurn = SoundID("vo_it_clock_poker_your_turn")     // not delivered
-    public static let voClockPokerStreet4 = SoundID("vo_it_clock_poker_fourth")         // not delivered
-    public static let voClockPokerStreet5 = SoundID("vo_it_clock_poker_fifth")          // not delivered
-    public static let voClockPokerStreet6 = SoundID("vo_it_clock_poker_sixth")          // not delivered
-    public static let voClockPokerStreet7 = SoundID("vo_it_clock_poker_seventh")        // not delivered
-    public static let voClockPokerShowdown = SoundID("vo_it_clock_poker_showdown")      // not delivered
-    public static let voClockPokerPot = SoundID("vo_it_clock_poker_pot")                // not delivered
-    public static let voClockPokerAllIn = SoundID("vo_it_clock_poker_all_in")           // not delivered
-    /// The distinctive House-Prize cue: the House rewards the winner of the hardest game.
-    public static let voClockPokerHousePrize = SoundID("vo_it_clock_poker_house_prize") // not delivered
+    // MARK: The ClockTower custode as POKER croupier — `vo_it_tower_*` (D-077/D-080)
+    // The SAME old man who arbitrates the Machiavelli (`vo_it_clock_*`) is the croupier at
+    // the ClockTower's poker tables (`vo_it_tower_*`), in an erudite, measured, ITALIAN
+    // register. The user PRODUCED a generic-poker set; the ClockTower's only poker table so
+    // far is Stud, which uses the cues below that map to its events. Missing cues fall back
+    // to synthesis (D-030) or, per the ClockTower's LOWER verbosity, to silence (D-080).
+    public static let voTowerNewHand = SoundID("vo_it_tower_new_hand")           // delivered → Stud hand start
+    public static let voTowerShowdown = SoundID("vo_it_tower_showdown")          // delivered → Stud showdown
+    public static let voTowerPotAwarded = SoundID("vo_it_tower_pot_awarded")     // delivered → Stud pot
+    public static let voTowerSplitPot = SoundID("vo_it_tower_split_pot")         // delivered → Stud split pot
+    public static let voTowerGameEnd = SoundID("vo_it_tower_game_end")           // delivered → Stud session end
+    /// NOT delivered → synthesis fallback (an ESSENTIAL turn signal, kept for accessibility).
+    public static let voTowerYourTurn = SoundID("vo_it_tower_your_turn")         // not delivered
+    /// NOT delivered → synthesis fallback (the rare full-table-win reward line, D-079).
+    public static let voTowerHousePrize = SoundID("vo_it_tower_house_prize")     // not delivered
+    // Also delivered, but RESERVED for a future ClockTower Texas/community table (they map to
+    // blinds/flop/turn/river/button/escalation, which Stud does not have): bundled in
+    // Resources/Audio, unwired for now — `vo_it_tower_big_blind/small_blind/flop/turn/river/
+    // role_button/stakes_rise`. Not catalogued (no table references them yet).
 
     // MARK: Bot voices — ClockTower archetypes (D-072, NOT delivered yet)
     // AMBIENT colour of the three learned archetypes (student, adult, professor). Each
@@ -245,11 +248,9 @@ public enum SoundCatalog {
         (voSkyPotLimit, .croupier), (voSkyStakesUp, .croupier),
         (voClockHandStart, .croupier), (voClockYourTurn, .croupier), (voClockMeld, .croupier),
         (voClockDrew, .croupier), (voClockPassed, .croupier), (voClockHandEnd, .croupier), (voClockMatchEnd, .croupier),
-        (voClockPokerHandStart, .croupier), (voClockPokerYourTurn, .croupier),
-        (voClockPokerStreet4, .croupier), (voClockPokerStreet5, .croupier),
-        (voClockPokerStreet6, .croupier), (voClockPokerStreet7, .croupier),
-        (voClockPokerShowdown, .croupier), (voClockPokerPot, .croupier),
-        (voClockPokerAllIn, .croupier), (voClockPokerHousePrize, .croupier),
+        (voTowerNewHand, .croupier), (voTowerShowdown, .croupier), (voTowerPotAwarded, .croupier),
+        (voTowerSplitPot, .croupier), (voTowerGameEnd, .croupier),
+        (voTowerYourTurn, .croupier), (voTowerHousePrize, .croupier),
         (vobClockStudentEager, .botVoice), (vobClockStudentPleased, .botVoice),
         (vobClockAdultPonders, .botVoice), (vobClockAdultPleased, .botVoice),
         (vobClockProfessorMasterstroke, .botVoice), (vobClockProfessorPleased, .botVoice),

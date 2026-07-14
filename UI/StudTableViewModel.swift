@@ -86,6 +86,9 @@ public final class StudTableViewModel: ObservableObject {
     private let mode: AppVoiceOverMode
     private let casinoAudio: CasinoAudio
     private let onLeave: (Int) -> Void
+    /// The House Prize amount, paid ONLY at cash-out on a full-table win (D-079). The
+    /// driver/table never sees it.
+    private let housePrize: Int
 
     private var leaveAfterHand = false
     private var eventQueue: [StudEventPayload] = []
@@ -111,6 +114,7 @@ public final class StudTableViewModel: ObservableObject {
         self.returnLabel = returnLabel
         self.casinoAudio = casinoAudio
         self.onLeave = onLeave
+        self.housePrize = rules.housePrize
 
         let rootSeed = seed ?? UInt64.random(in: .min ... .max)
         let startingChips = rules.buyIn
@@ -124,7 +128,6 @@ public final class StudTableViewModel: ObservableObject {
         }
         self.driver = StudSessionDriver(capacity: bots.count + 1, seats: assignments,
                                         ante: rules.ante, bringIn: rules.bringIn, bet: rules.bet,
-                                        housePrize: rules.housePrize, prizeRecipientID: 0,
                                         seed: seed, escalation: rules.escalation)
 
         var names = [0: uiLocalized("seat.name.you")]
@@ -132,7 +135,7 @@ public final class StudTableViewModel: ObservableObject {
         self.names = names
 
         self.audioDirector = StudAudioDirector(audio: audio, heroSeatID: 0, fastMode: fastMode,
-                                               ambient: casinoAudio.ambient)
+                                               seed: rootSeed, ambient: casinoAudio.ambient)
         self.conductor = SpeechConductor(audio: audio, queue: announcements)
 
         self.state = StudTableState(
@@ -143,7 +146,7 @@ public final class StudTableViewModel: ObservableObject {
     // MARK: - Leaving
 
     public func requestLeave() {
-        if outcome != nil { onLeave(state.seat(heroSeatID)?.chips ?? 0); return }
+        if outcome != nil { onLeave(heroCashOut); return }
         leaveAfterHand = true
         pendingLeave = true
     }
@@ -245,11 +248,6 @@ public final class StudTableViewModel: ObservableObject {
             speakPot(payload)
             await pace(payload)
 
-        case .housePrizeAwarded:
-            state = StudTableReducer.reduce(state, payload)
-            speak(payload, "house-prize")
-            await pace(payload)
-
         case .handEnded:
             state = StudTableReducer.reduce(state, payload)
             await gate.release()
@@ -345,7 +343,9 @@ public final class StudTableViewModel: ObservableObject {
         humanTurn = info
         state.activeSeatID = heroSeatID
         conductor.flushPending()
-        let (lead, fbKey) = casinoAudio.croupier(SoundCatalog.voClockPokerYourTurn)
+        // No tower "your turn" mp3 was delivered → the synthesis "A te la parola" speaks it
+        // (kept as an ESSENTIAL turn signal for the blind player, D-080).
+        let (lead, fbKey) = casinoAudio.croupier(SoundCatalog.voTowerYourTurn)
         conductor.say(lead: lead, synthesis: nil,
                       fallback: fbKey.map(uiLocalized) ?? uiLocalized("stud.announce.yourturn"),
                       priority: .high, reason: "your-turn")
@@ -423,18 +423,42 @@ public final class StudTableViewModel: ObservableObject {
 
     public func cancelRaise() { playUI(SoundCatalog.uiBoxClose); raiseBox = nil }
 
-    // MARK: - Outcome
+    // MARK: - Outcome & the House Prize (D-079)
+
+    /// Whether the player BEAT THE TABLE: they still have chips and both opponents are out.
+    private var beatTheTable: Bool {
+        HousePrize.beatTheTable(heroChips: state.seat(heroSeatID)?.chips ?? 0,
+                                opponentChips: state.opponents.map { $0.chips })
+    }
+
+    /// The chips to cash out: the hero's remaining table chips PLUS the House Prize, but
+    /// ONLY on a full-table win (D-079). This is the sole place the prize enters the
+    /// economy — a GameWorld pure function at the persistent-chips boundary; no table stack
+    /// is ever touched.
+    private var heroCashOut: Int {
+        HousePrize.cashOut(heroChips: state.seat(heroSeatID)?.chips ?? 0,
+                           opponentChips: state.opponents.map { $0.chips }, prize: housePrize)
+    }
 
     private func finishSession() {
         let heroChips = state.seat(heroSeatID)?.chips ?? 0
-        if leaveAfterHand { onLeave(heroChips); return }
+        if leaveAfterHand { onLeave(heroCashOut); return }
         let didWin = heroChips > 0
         outcome = didWin ? .won : .lost
-        conductor.say(lead: nil, synthesis: StudSpeechMap.text(for: didWin ? .sessionWon : .sessionLost),
+        // On a full-table win, the custode announces the House Prize (no mp3 delivered → the
+        // synthesis speaks the reward, D-079/D-080), spoken once, at the end.
+        if beatTheTable, housePrize > 0 {
+            let (lead, fbKey) = casinoAudio.croupier(SoundCatalog.voTowerHousePrize)
+            conductor.say(lead: lead, synthesis: StudSpeechMap.text(for: .housePrize(amount: housePrize)),
+                          fallback: fbKey.map(uiLocalized), priority: .high, reason: "house-prize")
+        }
+        // The custode's end-of-game flourish (mp3 delivered) leads the win/lose line.
+        let (endLead, _) = casinoAudio.croupier(SoundCatalog.voTowerGameEnd)
+        conductor.say(lead: endLead, synthesis: StudSpeechMap.text(for: didWin ? .sessionWon : .sessionLost),
                       priority: .high, reason: "session-end")
     }
 
-    public func returnToCasino() { onLeave(state.seat(heroSeatID)?.chips ?? 0) }
+    public func returnToCasino() { onLeave(heroCashOut) }
 
     // MARK: - Helpers
 

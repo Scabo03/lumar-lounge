@@ -12,6 +12,12 @@ final class RecordingAudioService: AudioServicing {
     private(set) var log: [Entry] = []
     private(set) var ambient: [SoundID] = []
     private(set) var stoppedAll = 0
+    /// Main-bed scale calls (for the ClockTower mixing test, D-080).
+    private(set) var ambientScales: [Float] = []
+    /// Layer starts (id + volume) — the clock starts silent (volume 0) when dosed (D-080).
+    private(set) var layerStarts: [(id: SoundID, volume: Float)] = []
+    /// Layer-volume fades — the clock dosing raises then drops the layer (D-080).
+    private(set) var layerVolumes: [Float] = []
     /// Raw values of sounds to report as NOT in the bundle (for the fallback test).
     var missing: Set<String> = []
 
@@ -26,8 +32,9 @@ final class RecordingAudioService: AudioServicing {
     func setMuted(_ muted: Bool) {}
     func spokenAudioRemaining() -> TimeInterval { 0 }
     func crossfadeAmbient(to id: SoundID, duration: TimeInterval) { ambient.append(id) }
-    func startAmbientLayer(_ id: SoundID, volume: Float) {}
-    func setAmbientScale(_ scale: Float, duration: TimeInterval) {}
+    func startAmbientLayer(_ id: SoundID, volume: Float) { layerStarts.append((id, volume)) }
+    func setAmbientLayerVolume(_ volume: Float, duration: TimeInterval) { layerVolumes.append(volume) }
+    func setAmbientScale(_ scale: Float, duration: TimeInterval) { ambientScales.append(scale) }
 
     /// Convenience view used by several tests.
     var played: [(id: SoundID, category: SoundCategory)] { log.map { ($0.id, $0.category) } }

@@ -59,8 +59,9 @@ public enum StudSpeechMap {
         switch payload {
 
         case .handBegan:
-            return StudSpeechPlan(croupier: SoundCatalog.voClockPokerHandStart,
-                                  croupierFallback: .streetName(.third))   // "Nuova mano." handled in text
+            // The custode's "new hand" flourish (mp3 delivered). No register fallback — if
+            // it were ever missing it stays silent (the ClockTower's lower verbosity, D-080).
+            return StudSpeechPlan(croupier: SoundCatalog.voTowerNewHand)
 
         case let .privateDownCards(seatID, cards) where seatID == heroSeatID:
             return StudSpeechPlan(synthesis: .heroDownCards(cards))
@@ -71,37 +72,33 @@ public enum StudSpeechMap {
         case let .bringInPosted(seatID, amount, _):
             return StudSpeechPlan(synthesis: .bringIn(who: name(seatID), amount: amount))
 
-        case let .streetBegan(street):
-            let croupier: SoundID
-            switch street {
-            case .fourth:  croupier = SoundCatalog.voClockPokerStreet4
-            case .fifth:   croupier = SoundCatalog.voClockPokerStreet5
-            case .sixth:   croupier = SoundCatalog.voClockPokerStreet6
-            case .seventh: croupier = SoundCatalog.voClockPokerStreet7
-            case .third:   return .silent
-            }
-            return StudSpeechPlan(croupier: croupier, croupierFallback: .streetName(street))
+        case .streetBegan:
+            // The Stud street cues were NOT produced (the delivered set is Texas-flavoured:
+            // flop/turn/river), so per the ClockTower's lower verbosity they are SILENT
+            // (D-080). The street's CONTENT — each new up card — is still announced as it is
+            // dealt (the `upCardDealt` synthesis above), so no information is lost.
+            return .silent
 
         case let .playerActed(seatID, action):
+            // No all-in croupier cue was delivered → silent register; the opponent action
+            // CONTENT ("il Professore punta tutto") still speaks (accessibility, D-080).
             let opponent = seatID != heroSeatID
-            if isAllIn(action) {
-                return StudSpeechPlan(croupier: SoundCatalog.voClockPokerAllIn,
-                                      synthesis: opponent ? .opponentAction(who: name(seatID), action: action) : nil)
-            }
             return opponent ? StudSpeechPlan(synthesis: .opponentAction(who: name(seatID), action: action)) : .silent
 
         case let .handShown(seatID, _, category, bestFive):
-            return StudSpeechPlan(croupier: SoundCatalog.voClockPokerShowdown,
+            return StudSpeechPlan(croupier: SoundCatalog.voTowerShowdown,
                                   synthesis: .shown(who: name(seatID), category: category, bestFive: bestFive))
 
         case let .potAwarded(_, _, winnerSeatIDs):
+            let split = winnerSeatIDs.count > 1
             let synthesis: StudSynthLine = winnerSeatIDs.contains(heroSeatID)
                 ? .heroWon(category: nil, bestFive: nil)
                 : .otherWon(who: winnerSeatIDs.map(name).joined(separator: ", "), category: nil, bestFive: nil)
-            return StudSpeechPlan(croupier: SoundCatalog.voClockPokerPot, synthesis: synthesis)
+            return StudSpeechPlan(croupier: split ? SoundCatalog.voTowerSplitPot : SoundCatalog.voTowerPotAwarded,
+                                  synthesis: synthesis)
 
-        case let .housePrizeAwarded(_, amount):
-            return StudSpeechPlan(croupier: SoundCatalog.voClockPokerHousePrize, synthesis: .housePrize(amount: amount))
+        // The House-Prize line (`.housePrize`) is not an event plan (D-079): the prize is
+        // paid at cash-out, and the view model narrates it directly at the win.
 
         default:
             return .silent

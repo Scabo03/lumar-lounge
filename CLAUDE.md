@@ -124,18 +124,23 @@ il **Machiavelli** (Sala degli Orologi) e il **Seven-Card Stud Pot Limit** (Sala
 D-078). `GameEngine` contiene **cinque motori**, tutti e cinque ora con driver, UI e audio. Navigazione
 Home → Casinò → Tavolo con gettoni persistenti e barriera economica (le poste del Machiavelli al
 ClockTower sono **rimborsabili** — prestigio; il suo tavolo di **Stud** invece paga: buy-in 3000 + il
-**Premio della Casa** che ricompensa ogni mano vinta dal giocatore, D-078).
+**Premio della Casa** — 1500 al cash-out **solo se il giocatore batte il tavolo** bustando entrambi gli
+avversari, D-079). Il **ClockTower ha ora la sua voce vera** (custode anziano `vo_it_tower_*`/`vo_it_clock_*`)
+e la sua **musica** (archi al poker, clockwork dosato al Machiavelli — D-080).
 
 **Slot audio** (stato reale, dettaglio in `Skypool_audio_catalog.md`):
 - **Skypool (D-068): file reali PRODOTTI e CABLATI** — croupier 12/14, ambient 4/4, colore-bot
   6/7. Lo Skypool **parla con la sua voce vera** e i bot urbani si sentono. Restano scoperti (col
   fallback): `vo_it_sky_hand_start` (chime→silenzio), `vo_it_sky_pot_limit` (riservato),
   `vob_sky_aggressor_bluff_giveaway_01` (file `aggressor_nervous` ambiguo, non cablato).
-- **ClockTower (D-072/D-077): NESSUN file prodotto, tutto a fallback.** Custode Machiavelli (7 slot
-  `vo_it_clock_*` → sintesi), **custode poker/Stud (10 slot `vo_it_clock_poker_*` → sintesi**, incluso
-  il cue del **premio della Casa**), colore bot (`vob_clock_*` → silenzio), ambient/musica
-  (`amb_clocktower_*` → fallback lounge). Catalogo: `ClockTower_audio_catalog_voices.md` (§2 Stud
-  cablata) + `ClockTower_audio_catalog_ambient.md`.
+- **ClockTower (D-080): file reali PRODOTTI e CABLATI.** Ambient/musica 7/7 (archi poker + clockwork
+  Machiavelli + orologio), custode Machiavelli `vo_it_clock_*` (your_turn, meld, match_end), croupier poker
+  `vo_it_tower_*` (new_hand, showdown, pot, split, game_end). **Missaggio** per-tavolo (poker −20%,
+  Machiavelli −35%) e **orologio dosato** (presenza occasionale, non continuo). **Scoperti col fallback (per
+  minor verbosità voluta):** street/all-in Stud (registro silente, contenuto parla), `vo_it_tower_your_turn`/
+  `_house_prize` (sintesi), colore bot `vob_clock_*` (silenzio, non prodotti). **Ambigui esclusi:**
+  `vo_it_clock_opponent_shift`/`player_shift`. **Riservati (bundle, futuro Texas):** `vo_it_tower_big_blind`/
+  `small_blind`/`flop`/`turn`/`river`/`role_button`/`stakes_rise`. Cataloghi aggiornati.
 - **Storici ancora aperti:** mondo M2 (`amb_home_neutral`, `amb_riverwood_calm_*`,
   `vo_it_high_stakes`, `ui_navigation`), croupier Draw (`vo_it_ante`, `vo_it_draw_phase`,
   `vo_it_pass_and_out`, `vo_it_carried_pot`, `vo_it_openers_disqualified`, `vo_it_high_stakes_draw`),
@@ -2352,3 +2357,85 @@ non il prestigio), due avversari.
   `CheckedContinuation` col timeout (riuso `SpokenChannelPacing`); cache dallo stato corrente; Riverwood/
   Skypool/Machiavelli invariati. **460 test verdi** (420 → +40) + XCUITest del tavolo Stud. **Caricato su
   TestFlight (build 1784060127).** **Girano ora QUATTRO giochi di poker + il Machiavelli in TRE casinò.**
+
+### D-079 — Premio della Casa dello Stud: da per-mano a traguardo di fine partita (correzione)
+Il premio della Casa (D-078) era erogato **a ogni mano vinta** dal giocatore, aggiunto alle sue fiches al
+tavolo. **Perché era sbagliato (motivazione onesta).** Nel diff di D-078 avevo *notato* che il premio
+perturbava il gioco più del previsto (aggiungere fiches cambia lo stack, i bot vedono gli stack, e in Pot
+Limit il tetto dipende da stack e piatto) e l'avevo trattato come una **curiosità tecnica**. Era invece il
+**sintomo che il design era sbagliato**: il premio stava diventando un **moltiplicatore di vantaggio dentro
+la partita** (chi vince la prima mano gioca la seconda da posizione migliore → **valanga**) invece di un
+**riconoscimento dopo la partita**. Il prompt originale ("ogni volta che il giocatore vince una mano") era
+formulato male; l'intento era **vincere la PARTITA**.
+- **Correzione:** il premio **non si eroga mai durante la sessione**, non tocca gli stack, non entra nel
+  piatto, non è visibile al tavolo, i bot non ne vedono nulla. È pagato **solo al cash-out di fine
+  sessione**, e **solo se il giocatore ha eliminato TUTTI gli avversari** (bustati entrambi). Chi si alza
+  in attivo senza aver bustato il tavolo tiene le fiches vinte e **nient'altro**. È il riconoscimento di
+  **aver battuto il tavolo** (compreso il Professore), non un cashback proporzionale.
+- **Dove vive:** `HousePrize.beatTheTable(heroChips:opponentChips:)` e `cashOut(...)` — funzioni **pure in
+  GameWorld** che il **view model** invoca al cash-out (identico pattern del `MachiavelliRefund`, D-075). Il
+  **motore e il driver (il tavolo) non sanno nulla**: dal driver è stato rimosso ogni `housePrize`/
+  iniezione. **Invariante ripristinato e testato:** *le uniche fiches che entrano in un tavolo sono i
+  buy-in* (`testTableChipsAlwaysConserved`). Il vecchio test "il totale al tavolo cresce dei premi" **non
+  ha più ragione di esistere** ed è stato rimosso (dichiarato).
+- **Ricalibrazione:** 200 (per erogazione frequente per-mano) → **1500** (metà del buy-in di 3000).
+  Erogazione **unica e rara** (bustare due avversari, incluso il paziente Professore): 1500 è un
+  riconoscimento reale sopra i ~6000 netti già vinti prendendo tutto il tavolo, senza rendere il tavolo una
+  macchina da soldi (scatta al più una volta, solo su vittoria del tavolo). Il custode annuncia il premio
+  **una volta**, a fine partita (voce).
+- **Testato col movimento REALE dei gettoni, `DEBUG_FREE_PLAY` OFF:** il premio arriva al saldo persistente
+  **se e solo se** entrambi gli avversari sono eliminati; **mai** per chi si alza in attivo senza bustare;
+  **mai** su bust. **Principio permanente in CONVENTIONS §8:** un'iniezione economica dentro una sessione di
+  poker non è mai neutra — gli stack sono leva strategica e i bot li vedono.
+
+### D-080 — Cablaggio audio del ClockTower + missaggio per-tavolo + dosatura dell'orologio
+L'utente ha prodotto i file audio del ClockTower (ElevenLabs/StableAudio) e li ha depositati. Cablati; il
+cablaggio **non ha richiesto modifiche alla logica** (gli slot esistevano già), salvo il **comportamento
+nuovo** esplicitamente richiesto: missaggio e dosatura. Riscontro catalogo↔pool: **22 file cablati, 2
+ambigui esclusi**.
+- **Convenzione di naming (dell'utente, rispettata):** `vo_it_tower_*` = croupier ai tavoli di **poker**;
+  `vo_it_clock_*` = arbitro al **Machiavelli**. È **lo stesso custode anziano**, due insiemi di battute.
+  Perciò gli slot `vo_it_clock_poker_*` (miei, D-078) sono stati **rinominati `vo_it_tower_*`**.
+- **Riscontro completo:**
+  - *Ambient (7/7 presenti):* i sei nomi esatti + `amb_clocktower_machiavelli_thinking` **rinominato**
+    `…_thinking_01` (mancava `_01`). Tutti cablati.
+  - *Machiavelli (`vo_it_clock_*`):* `your_turn` esatto; `combination` **rinominato** `vo_it_clock_meld`
+    (semantica = la combinazione calata); `game_end` **rinominato** `vo_it_clock_match_end` (fine partita,
+    D-075). **Ambigui, NON indovinati (lasciati fuori, segnalati):** `vo_it_clock_opponent_shift`,
+    `vo_it_clock_player_shift` — nessuna mappatura chiara a un evento (turno? attesa?). **Non prodotti (per
+    minor verbosità, ok):** `hand_start`, `drew` ("pesca"), `passed` ("passa") → il contenuto informativo
+    (conteggio carte / "il Professore pesca") parla comunque; il **registro** tace.
+  - *Poker croupier (`vo_it_tower_*`):* l'utente ha prodotto un set **generico/Texas** (blind, flop/turn/
+    river, button). Il solo tavolo di poker del ClockTower è lo **Stud**, che ne usa: `new_hand`→hand start,
+    `showdown`, `pot_awarded`, `split_pot`, `game_end`→fine sessione. **Cablati.** Gli altri sette
+    (`big_blind`/`small_blind`/`flop`/`turn`/`river`/`role_button`/`stakes_rise`) **non mappano** su eventi
+    dello Stud (niente blind/comuni/button): **depositati** in `Resources/Audio` (bundle) ma **non
+    catalogati né cablati** — riservati a un **futuro tavolo Texas** del ClockTower.
+- **Minor verbosità del custode (scelta dell'utente, D-080):** "ciò che non c'è nel pool va escluso del
+  tutto." Applicato al **registro del croupier**: gli eventi Stud senza file (apertura strada, all-in) sono
+  **SILENZIOSI** (nessun fallback di sintesi del registro), ma il **CONTENUTO** informativo (carte scoperte
+  annunciate a una a una, azione dell'avversario "punta tutto", vincitore, mano allo showdown) **parla
+  sempre** — è informazione di gioco, non verbosità (accessibilità preservata). **Eccezioni tenute come
+  sintesi (funzionali/rare, segnalate):** il **"tuo turno"** (segnale essenziale per il cieco) e il **premio
+  della Casa** (ricompensa rara). Nessun anti-pattern D-051 (con i file presenti l'mp3 suona e il fallback è
+  soppresso; nessuna voce dichiara sintesi + fallback dello stesso testo — verificato).
+- **Missaggio per-tavolo (comportamento nuovo, D-080):** attributi **dati** sui letti (`AmbientBeds.bedVolume`,
+  applicato come scala base del bed): poker del ClockTower a **0.80** (~−20% degli altri casinò), Machiavelli
+  a **0.65** (~−35%, perché il turno è lungo lavoro cognitivo sul canale audio e la musica non deve
+  competere). Riverwood/Skypool restano a **1.0** (invariati, testato). Rotazione che **favorisce calm_02**
+  (`ClockAmbientRotation`, ~2/3).
+- **Dosatura dell'orologio (comportamento nuovo, D-080):** `amb_clocktower_clock` **non** è più un letto
+  continuo. È una **presenza occasionale** (`ClockChime`: pause silenziose ~30–70 s, apparizioni ~4–12 s,
+  la pausa **sempre** maggiore dell'apparizione), dosata dai director via il nuovo `AudioServicing.
+  setAmbientLayerVolume` (fade del layer già avviato, senza riavviarlo). Così l'orologio della torre si fa
+  sentire **ogni tanto**, mai un ticchettio costante (tortura in partite lunghe). Gli altri casinò tengono il
+  loro layer **continuo** (`layerIsOccasional` default false).
+- **Ritmo con voci reali (D-056/D-068 verificato):** la voce cablata più lunga è ~3.4 s (showdown) + il
+  contenuto (~2–3 s) ≈ ≤6 s; il tetto anti-freeze del ritmo adattivo (VoiceOver-ON) è **8 s**, sopra la voce
+  più lunga (backstop, non budget di parlato); i timeout di completamento per-clip dell'`AudioEngine`
+  (durata + margine) reggono le durate reali.
+- **Vincoli:** motore Stud e altri **non toccati**; `Audio` resta trasversale (aggiunta solo una primitiva di
+  fade del layer); nessuna iniezione di fiches al tavolo; nessun `UIAccessibility.post` diretto; eventi
+  descrittivi; Riverwood/Skypool **invariati** (palette identità pin verde); rimborso Machiavelli non toccato.
+  **472 test verdi** (+6 dal cablaggio/missaggio/dosatura). Cataloghi audio aggiornati allo **stato reale**.
+  **Caricato su TestFlight (build 1784066297).**

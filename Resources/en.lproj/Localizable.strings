@@ -503,8 +503,6 @@
 "stud.stakes.a11y" = "Ante %1$d chips, bring-in %2$d, bet %3$d.";
 "stud.community" = "Community:";
 "stud.community.a11y" = "Community card, shared: %@.";
-"stud.prize.banner" = "HOUSE PRIZE +%d";
-"stud.prize.a11y" = "The House adds a prize of %d chips.";
 
 "stud.street.3" = "Third street";
 "stud.street.4" = "Fourth street";
@@ -536,5 +534,5 @@
 "stud.announce.action.bet" = "%1$@ bets %2$d.";
 "stud.announce.action.raise" = "%1$@ raises to %2$d.";
 "stud.announce.action.allin" = "%@ is all in.";
-"stud.announce.houseprize" = "The House adds %d chips to your pot.";
+"stud.announce.houseprize" = "You beat the table. The House rewards you with %d chips.";
 "stud.announce.yourturn" = "Your turn.";

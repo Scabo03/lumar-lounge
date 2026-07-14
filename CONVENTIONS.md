@@ -591,3 +591,20 @@ accessibilità e localizzazione. Vedi [`ROADMAP.md`](ROADMAP.md).
   attive" **finché non viene rimosso**. I test che coprono il comportamento **reale** (non
   quello di debug) devono disattivare esplicitamente il flag, così restano validi dopo la
   rimozione.
+
+## 8. Economia di sessione
+
+- **Un'iniezione economica DENTRO una sessione di poker non è mai neutra (principio
+  permanente, D-079).** Aggiungere fiches a un giocatore *durante* la partita — un premio,
+  un bonus, un rimborso in-play — cambia il suo **stack**, e lo stack è una **leva
+  strategica**, non un semplice contatore: **i bot lo vedono** (il `BotContext` redatto porta
+  gli stack pubblici), e nei tavoli a struttura di puntata dipendente dallo stack o dal
+  piatto (**Pot Limit** su tutti) il tetto di puntata **dipende** dagli stack e dal piatto.
+  Perciò un premio erogato per-mano diventa un **moltiplicatore di vantaggio strutturale** —
+  chi vince presto gioca il resto da una posizione migliore, e si innesca una **valanga** —
+  invece di un riconoscimento. **Regola:** un premio/bonus/rimborso deve vivere **fuori dalla
+  sessione** — calcolato da una funzione pura in `GameWorld` e applicato al **cash-out** (il
+  confine dei gettoni persistenti), **mai** aggiunto a uno stack al tavolo. L'invariante da
+  proteggere e testare: **le uniche fiches che entrano in un tavolo sono i buy-in.** È così
+  che funzionano il **premio della Casa** dello Stud (D-079, pagato solo a fine sessione, solo
+  se il giocatore ha battuto il tavolo) e il **rimborso** del Machiavelli (D-075).

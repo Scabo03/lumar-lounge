@@ -1,4 +1,15 @@
-# ClockTower — catalogo AMBIENT & MUSICA da produrre (D-072, StableAudio)
+# ClockTower — catalogo AMBIENT & MUSICA (D-072, StableAudio)
+
+> ## ✅ STATO REALE (D-080): tutte e 7 le tracce PRODOTTE e CABLATE.
+> `amb_clocktower_calm_01/02`, `amb_clocktower_thinking_01` (poker: archi), `amb_clocktower_machiavelli_01/02`,
+> `amb_clocktower_machiavelli_thinking_01` (clockwork), `amb_clocktower_clock_01` (orologio) sono in
+> `Resources/Audio/` e attivi. *(Il file consegnato `…_machiavelli_thinking` senza `_01` è stato rinominato
+> `…_machiavelli_thinking_01`.)* **Comportamento di riproduzione (D-080):** missaggio per-tavolo — poker a
+> **0.80** (~−20% degli altri casinò), Machiavelli a **0.65** (~−35%); rotazione che **favorisce calm_02**;
+> l'**orologio è DOSATO** (presenza occasionale ~4–12 s con pause ~30–70 s, **non** un letto continuo).
+> Il ClockTower **suona con la sua vera aria vasta.**
+
+
 
 **Questo è il PRIMO dei due cataloghi del ClockTower.** Contiene **solo** le tracce
 **ambientali e musicali** — quelle che **non dipendono dalla UI** e che puoi cominciare a

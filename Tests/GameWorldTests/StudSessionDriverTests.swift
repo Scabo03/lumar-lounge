@@ -2,13 +2,13 @@ import XCTest
 @testable import GameWorld
 @testable import GameEngine
 
-/// The Stud session driver (D-077/D-078): chip conservation, determinism, private-card
-/// routing, and the HOUSE PRIZE economy with real chip movement.
+/// The Stud session driver (D-077/D-079): chip conservation (the table injects NOTHING but
+/// the buy-ins), determinism, private-card routing, and the HOUSE PRIZE — now paid only at
+/// cash-out, only on a full-table win.
 final class StudSessionDriverTests: XCTestCase {
 
     /// A driver with `id 0` as the "player" (a bot stand-in) plus bot opponents.
     private func driver(seed: UInt64?, stacks: [Int] = [3000, 3000, 3000],
-                        housePrize: Int = 0, prizeRecipient: Int? = nil,
                         escalation: StakeEscalation = .none) -> StudSessionDriver {
         let roster: [Personality] = [.eagerNovice, WorldPersonalities.clockTowerStudent,
                                      WorldPersonalities.clockTowerProfessor]
@@ -19,18 +19,19 @@ final class StudSessionDriverTests: XCTestCase {
                                                     seed: UInt64(pos) * 101 &+ 7, equitySamples: 16)))
         }
         return StudSessionDriver(capacity: stacks.count, seats: seats, ante: 25, bringIn: 25, bet: 50,
-                                 housePrize: housePrize, prizeRecipientID: prizeRecipient,
                                  seed: seed, escalation: escalation)
     }
 
     // MARK: - Chip conservation & determinism
 
-    func testChipsConservedWithoutPrize() async throws {
+    /// The ONLY chips that enter a table are the buy-ins (D-079): across a whole session the
+    /// total is invariant — the House Prize never touches a table stack anymore.
+    func testTableChipsAlwaysConserved() async throws {
         let d = driver(seed: 42)
         for _ in 0..<12 where d.canDealNextHand {
             let outcome = try await d.playHand()
-            XCTAssertEqual(outcome.chipsByPlayer.values.reduce(0, +), 9000, "chips conserved (no house prize)")
-            XCTAssertEqual(outcome.housePrizeAwarded, 0)
+            XCTAssertEqual(outcome.chipsByPlayer.values.reduce(0, +), 9000,
+                           "table chips are exactly the buy-ins — no injection")
         }
         await d.endSession()
     }
@@ -62,97 +63,58 @@ final class StudSessionDriverTests: XCTestCase {
         XCTAssertGreaterThan(distinct.count, 1, "production (nil seed) deals different cards each session")
     }
 
-    // MARK: - House Prize (D-078)
+    // MARK: - House Prize: paid ONLY at cash-out, ONLY on a full-table win (D-079)
 
-    /// The house prize is the ONLY chip injection: across a session the total chips grow
-    /// by exactly the sum of the prizes awarded, and every prize goes to the recipient.
-    func testHousePrizeIsTheOnlyChipInjection() async throws {
-        let d = driver(seed: 7, housePrize: 200, prizeRecipient: 0)
-        var totalPrizes = 0
-        var lastTotal = 9000
-        for _ in 0..<30 where d.canDealNextHand {
-            let outcome = try await d.playHand()
-            totalPrizes += outcome.housePrizeAwarded
-            // Each hand the prize is 0 or exactly the flat amount.
-            XCTAssertTrue(outcome.housePrizeAwarded == 0 || outcome.housePrizeAwarded == 200)
-            // Total chips == starting total + all prizes injected so far.
-            XCTAssertEqual(outcome.chipsByPlayer.values.reduce(0, +), 9000 + totalPrizes,
-                           "chips grow only by the house prize")
-            lastTotal = outcome.chipsByPlayer.values.reduce(0, +)
-        }
-        await d.endSession()
-        XCTAssertGreaterThan(totalPrizes, 0, "over 30 hands the player wins and is paid the prize at least once")
-        XCTAssertEqual(lastTotal, 9000 + totalPrizes)
+    /// The prize condition is pure: beating the table = the player has chips AND every
+    /// opponent is out.
+    func testBeatTheTablePredicate() {
+        XCTAssertTrue(HousePrize.beatTheTable(heroChips: 9000, opponentChips: [0, 0]), "busted both → beat the table")
+        XCTAssertFalse(HousePrize.beatTheTable(heroChips: 4500, opponentChips: [0, 4500]), "one opponent alive → no")
+        XCTAssertFalse(HousePrize.beatTheTable(heroChips: 5000, opponentChips: [2000, 2000]), "both alive → no")
+        XCTAssertFalse(HousePrize.beatTheTable(heroChips: 0, opponentChips: [0, 9000]), "hero busted → no")
+        XCTAssertFalse(HousePrize.beatTheTable(heroChips: 3000, opponentChips: []), "no opponents (degenerate) → no")
     }
 
-    /// A prize is awarded ONLY on a hand the recipient actually wins.
-    func testHousePrizeOnlyWhenRecipientWins() async throws {
-        let d = driver(seed: 7, housePrize: 200, prizeRecipient: 0)
-        let spectator = await d.events(as: .spectator)
-
-        // Track, per hand, whether seat 0 won a pot and whether a prize fired.
-        var prizeHands = 0
-        var wonWithoutPrize = 0
-        let collector = Task {
-            var seatZeroWonThisHand = false
-            for await e in spectator {
-                switch e.payload {
-                case let .potAwarded(_, _, winners): if winners.contains(0) { seatZeroWonThisHand = true }
-                case let .housePrizeAwarded(playerID, amount):
-                    XCTAssertEqual(playerID, 0); XCTAssertEqual(amount, 200)
-                    XCTAssertTrue(seatZeroWonThisHand, "a prize only fires on a hand seat 0 won")
-                    prizeHands += 1
-                case .handEnded:
-                    seatZeroWonThisHand = false
-                case .handBegan:
-                    seatZeroWonThisHand = false
-                default: break
-                }
-            }
-        }
-        var awarded = 0
-        for _ in 0..<25 where d.canDealNextHand { awarded += try await d.playHand().housePrizeAwarded }
-        await d.endSession()
-        _ = await collector.result
-        XCTAssertEqual(prizeHands, awarded / 200, "one prize event per prize-awarded hand")
+    /// `cashOut` adds the prize IFF the table was beaten — never otherwise.
+    func testCashOutAddsPrizeOnlyOnAFullTableWin() {
+        // Beat the table: chips + prize.
+        XCTAssertEqual(HousePrize.cashOut(heroChips: 9000, opponentChips: [0, 0], prize: 1500), 10500)
+        // Left in strong profit but an opponent is still alive: NO prize.
+        XCTAssertEqual(HousePrize.cashOut(heroChips: 6000, opponentChips: [0, 3000], prize: 1500), 6000)
+        // Busted out: NO prize.
+        XCTAssertEqual(HousePrize.cashOut(heroChips: 0, opponentChips: [0, 9000], prize: 1500), 0)
     }
 
-    func testNoPrizeWhenDisabled() async throws {
-        // Recipient set but prize 0 → never fires; and prize set but no recipient → off.
-        for d in [driver(seed: 3, housePrize: 0, prizeRecipient: 0),
-                  driver(seed: 3, housePrize: 200, prizeRecipient: nil)] {
-            for _ in 0..<10 where d.canDealNextHand {
-                let prize = try await d.playHand().housePrizeAwarded
-                XCTAssertEqual(prize, 0)
-            }
-            await d.endSession()
-        }
+    /// The full economy round-trip with `DEBUG_FREE_PLAY` OFF (the test that matters, D-079):
+    /// buy in from the persistent account, then cash out — the prize reaches the persistent
+    /// balance if and only if both opponents were eliminated, and never otherwise.
+    func testHousePrizeReachesBalanceOnlyOnFullTableWinFreePlayOff() {
+        let prize = HousePrize.clockTowerStud
+
+        // (a) Beat the table (busted both): the prize lands in the persistent balance.
+        let winner = PlayerAccount(store: InMemoryChipsStore(chips: 5000), freePlay: false)
+        XCTAssertTrue(winner.buyIn(3000)); XCTAssertEqual(winner.chips, 2000)
+        winner.cashOut(HousePrize.cashOut(heroChips: 9000, opponentChips: [0, 0], prize: prize))
+        XCTAssertEqual(winner.chips, 2000 + 9000 + prize, "beating the table pays the prize to the balance")
+
+        // (b) Stood up in strong profit WITHOUT busting both: no prize, ever.
+        let quitter = PlayerAccount(store: InMemoryChipsStore(chips: 5000), freePlay: false)
+        XCTAssertTrue(quitter.buyIn(3000))
+        quitter.cashOut(HousePrize.cashOut(heroChips: 5500, opponentChips: [0, 2500], prize: prize))
+        XCTAssertEqual(quitter.chips, 2000 + 5500, "leaving in profit without beating the table earns no prize")
+
+        // (c) Busted out: no prize.
+        let loser = PlayerAccount(store: InMemoryChipsStore(chips: 5000), freePlay: false)
+        XCTAssertTrue(loser.buyIn(3000))
+        loser.cashOut(HousePrize.cashOut(heroChips: 0, opponentChips: [0, 9000], prize: prize))
+        XCTAssertEqual(loser.chips, 2000, "a busted player cashes out nothing")
     }
 
-    /// The full economy round-trip with `DEBUG_FREE_PLAY` OFF (the test that matters,
-    /// D-078): buy in from the persistent account, play a session in which the player
-    /// wins prize hands, cash out the table chips, and confirm the house prize really
-    /// reached the persistent balance.
-    func testHousePrizeReachesThePersistentBalanceFreePlayOff() async throws {
-        let account = PlayerAccount(store: InMemoryChipsStore(chips: 5000), freePlay: false)
-        XCTAssertTrue(account.buyIn(3000), "sit down: 5000 → 2000 + 3000 table fiches")
-        XCTAssertEqual(account.chips, 2000)
-
-        let d = driver(seed: 7, housePrize: 200, prizeRecipient: 0)
-        var totalPrizes = 0
-        for _ in 0..<30 where d.canDealNextHand { totalPrizes += try await d.playHand().housePrizeAwarded }
-        await d.endSession()
-
-        let heroTableChips = d.chips(of: 0)!
-        account.cashOut(heroTableChips)   // stand up: table fiches → persistent chips
-        XCTAssertEqual(account.chips, 2000 + heroTableChips, "cash-out returns exactly the table chips")
-        XCTAssertGreaterThan(totalPrizes, 0, "the player won prize hands")
-        // The prize is baked into the table chips, so it flows straight into the persistent
-        // balance when the player stands up — they earned by their intellect (D-078). Across
-        // the whole session the total chips at the table grew by exactly the prizes injected.
-        let tableTotal = d.players.reduce(0) { $0 + $1.chips }
-        XCTAssertEqual(tableTotal, 9000 + totalPrizes,
-                       "the only chip injection into the session was the house prize")
+    /// The prize is a real recognition of the impresa, not a mancia: sized to the buy-in.
+    func testPrizeIsCalibratedToTheImpresa() {
+        XCTAssertEqual(HousePrize.clockTowerStud, 1500)
+        XCTAssertEqual(HousePrize.clockTowerStud, StudTableRules.clockTower.housePrize)
+        XCTAssertEqual(HousePrize.clockTowerStud, StudTableRules.clockTower.buyIn / 2, "half a buy-in — a real reward")
     }
 
     // MARK: - Private routing (D-015)

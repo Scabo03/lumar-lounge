@@ -99,6 +99,10 @@ public protocol AudioServicing: AnyObject {
     func crossfadeAmbient(to id: SoundID, duration: TimeInterval)
     /// Starts a second, continuous, low background layer (e.g. distant crowd).
     func startAmbientLayer(_ id: SoundID, volume: Float)
+    /// Fades the ALREADY-STARTED background layer to a new volume over `duration`, without
+    /// restarting it — used to DOSE an occasional layer (the ClockTower clock) in and out
+    /// (D-080).
+    func setAmbientLayerVolume(_ volume: Float, duration: TimeInterval)
     /// Scales the ambient bed's volume (1 = normal, <1 = ducked) over `duration`,
     /// e.g. to drop under a dramatic showdown pause.
     func setAmbientScale(_ scale: Float, duration: TimeInterval)
@@ -117,6 +121,7 @@ public extension AudioServicing {
     }
     func crossfadeAmbient(to id: SoundID, duration: TimeInterval) { startAmbient(id) }
     func startAmbientLayer(_ id: SoundID, volume: Float) {}
+    func setAmbientLayerVolume(_ volume: Float, duration: TimeInterval) {}
     func setAmbientScale(_ scale: Float, duration: TimeInterval) {}
 }
 

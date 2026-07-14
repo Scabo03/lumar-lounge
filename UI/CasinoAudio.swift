@@ -34,6 +34,30 @@ public struct AmbientBeds: Equatable, Sendable {
     /// real layer's inherent loudness varies: the Skypool's pool/water bed is a very
     /// quiet undertone, well below the Riverwood's distant-crowd layer (D-069).
     public let layerVolume: Float
+    /// The overall MIXING level of the main bed (0…1), applied as the base ambient scale
+    /// (D-080). Per-table because the ClockTower is mixed quieter than the other casinos —
+    /// its poker tables ~20% lower, its Machiavelli table ~35% lower, since the blind
+    /// player plays those games ON the audio channel and the music must not compete with
+    /// the listening. Default 1.0 → the other casinos are unchanged.
+    public let bedVolume: Float
+    /// Whether the layer is an OCCASIONAL sound dosed with long gaps (D-080), rather than a
+    /// continuous undertone. The ClockTower's clock is dosed — brief appearances of a few
+    /// seconds separated by dozens of seconds — so it reads as the tower's occasional
+    /// presence, never a constant tick that would be torture in a long game. Default false
+    /// → the other casinos keep their continuous layer.
+    public let layerIsOccasional: Bool
+
+    public init(calm1: SoundID, calm1Fallback: SoundID, calm2: SoundID, calm2Fallback: SoundID,
+                tense: SoundID, tenseFallback: SoundID, layer: SoundID, layerFallback: SoundID,
+                layerVolume: Float, bedVolume: Float = 1.0, layerIsOccasional: Bool = false) {
+        self.calm1 = calm1; self.calm1Fallback = calm1Fallback
+        self.calm2 = calm2; self.calm2Fallback = calm2Fallback
+        self.tense = tense; self.tenseFallback = tenseFallback
+        self.layer = layer; self.layerFallback = layerFallback
+        self.layerVolume = layerVolume
+        self.bedVolume = bedVolume
+        self.layerIsOccasional = layerIsOccasional
+    }
 
     /// The Riverwood/default beds — EXACTLY what the Texas `AudioDirector` plays today
     /// (lounge beds, distant crowd layer at 0.2). Preferred == fallback, all already
@@ -66,7 +90,9 @@ public struct AmbientBeds: Equatable, Sendable {
         calm2: SoundCatalog.ambClocktowerCalm2, calm2Fallback: SoundCatalog.ambLoungeCalm2,
         tense: SoundCatalog.ambClocktowerThinking, tenseFallback: SoundCatalog.ambLoungeTense,
         layer: SoundCatalog.ambClocktowerClock, layerFallback: SoundCatalog.ambCrowdDistant,
-        layerVolume: 0.12)
+        layerVolume: 0.12,
+        bedVolume: 0.80,             // ~20% below the other casinos (D-080)
+        layerIsOccasional: true)     // the clock is DOSED, not continuous (D-080)
 
     /// The ClockTower's MACHIAVELLI bed (D-073) — CLOCKWORK, not classical: rhythmic,
     /// ambient, vast, present without asking for attention. Machiavelli's long cognitive
@@ -80,7 +106,10 @@ public struct AmbientBeds: Equatable, Sendable {
         calm2: SoundCatalog.ambClocktowerMachiavelli2, calm2Fallback: SoundCatalog.ambLoungeCalm2,
         tense: SoundCatalog.ambClocktowerMachiavelliThinking, tenseFallback: SoundCatalog.ambLoungeTense,
         layer: SoundCatalog.ambClocktowerClock, layerFallback: SoundCatalog.ambCrowdDistant,
-        layerVolume: 0.08)
+        layerVolume: 0.08,
+        bedVolume: 0.65,             // ~35% below the other casinos — Machiavelli is played
+                                     // ON the audio channel, so its bed must not compete (D-080)
+        layerIsOccasional: true)     // the clock is DOSED, not continuous (D-080)
 }
 
 /// A casino's bots' colour voices (`vob_`). AMBIENT: a missing file falls back to

@@ -64,14 +64,12 @@ public struct StudTableState: Equatable, Sendable {
     public var activeSeatID: Int?
     /// The shared community card, if the deck was exhausted on seventh street (rare).
     public var communityCard: Card?
-    /// The house prize just awarded to the human, for a transient banner (D-078).
-    public var housePrizeAwarded: Int
     public var finished: Bool
 
     public init(seats: [StudSeatPresentation] = [], pot: Int = 0, ante: Int = 0, bringIn: Int = 0,
                 bet: Int = 0, street: StudStreet? = nil, handNumber: Int? = nil, heroSeatID: Int? = nil,
                 heroDown: [Card]? = nil, activeSeatID: Int? = nil, communityCard: Card? = nil,
-                housePrizeAwarded: Int = 0, finished: Bool = false) {
+                finished: Bool = false) {
         self.seats = seats
         self.pot = pot
         self.ante = ante
@@ -83,7 +81,6 @@ public struct StudTableState: Equatable, Sendable {
         self.heroDown = heroDown
         self.activeSeatID = activeSeatID
         self.communityCard = communityCard
-        self.housePrizeAwarded = housePrizeAwarded
         self.finished = finished
     }
 
@@ -128,7 +125,6 @@ public enum StudTableReducer {
             next.heroDown = nil
             next.activeSeatID = nil
             next.communityCard = nil
-            next.housePrizeAwarded = 0
             for snapshot in seats {
                 mutate(&next, snapshot.seatID) {
                     $0.chips = snapshot.chips
@@ -186,9 +182,6 @@ public enum StudTableReducer {
 
         case .potAwarded:
             break   // reflected by chip totals in handEnded
-
-        case let .housePrizeAwarded(_, amount):
-            next.housePrizeAwarded = amount
 
         case let .handEnded(_, _, _, chips):
             for (id, amount) in chips { mutate(&next, id) { $0.chips = amount } }

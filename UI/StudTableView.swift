@@ -123,7 +123,8 @@ struct StudTableCenterView: View {
                 pot
                 stakesLabel
                 if let community = state.communityCard { communityView(community) }
-                if state.housePrizeAwarded > 0 { prizeBanner }
+                // No in-play prize banner (D-079): the House Prize is invisible at the table
+                // — it is a cash-out reward for beating the whole table, not a per-hand event.
             }
             .padding(.horizontal, 12)
         }
@@ -165,14 +166,6 @@ struct StudTableCenterView: View {
         .accessibilityLabel(Text(verbatim: uiLocalized("stud.community.a11y", CardText.spoken(card))))
     }
 
-    private var prizeBanner: some View {
-        Text(verbatim: uiLocalized("stud.prize.banner", state.housePrizeAwarded))
-            .font(.caption.weight(.heavy)).foregroundStyle(.black)
-            .padding(.horizontal, 12).padding(.vertical, 4)
-            .background(Capsule().fill(ClockPalette.accent))
-            .accessibilityIdentifier("studtable.prize")
-            .accessibilityLabel(Text(verbatim: uiLocalized("stud.prize.a11y", state.housePrizeAwarded)))
-    }
 
     private var streetText: String {
         switch state.street {

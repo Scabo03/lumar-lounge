@@ -103,6 +103,13 @@ public final class AudioEngine: NSObject, AudioServicing, AVAudioPlayerDelegate 
         ambientPlayer?.setVolume(ambientGain, fadeDuration: duration)
     }
 
+    /// Fades the already-started layer to a new volume without restarting it — the clock
+    /// dosing (D-080) toggles the clock layer audible/silent with long gaps.
+    public func setAmbientLayerVolume(_ volume: Float, duration: TimeInterval) {
+        ambientLayerVolume = max(0, min(1, volume))
+        ambientLayerPlayer?.setVolume(muted ? 0 : ambientLayerVolume * masterVolume, fadeDuration: duration)
+    }
+
     // MARK: - One-shots
 
     public func play(_ id: SoundID, category: SoundCategory) {

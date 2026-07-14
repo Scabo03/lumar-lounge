@@ -29,10 +29,9 @@ public final class StudSessionDriver {
     public let bringIn: Int
     public let bet: Int
     public let escalation: StakeEscalation
-    /// The flat prize the House adds when the prize recipient wins a hand (D-078). 0 off.
-    public let housePrize: Int
-    /// The player id the house prize is paid to (the human). `nil` disables the prize.
-    public let prizeRecipientID: Int?
+    // NOTE (D-079): the House Prize is NOT here. The table injects no chips beyond the
+    // buy-in; the prize is paid purely at CASH-OUT (see `HousePrize`), and the driver knows
+    // nothing about it.
 
     /// The base seed. When set (tests) each hand derives a DETERMINISTIC per-hand seed;
     /// when `nil` (production) each hand draws a FRESH RANDOM seed, so no two hands — and
@@ -62,8 +61,6 @@ public final class StudSessionDriver {
                 ante: Int,
                 bringIn: Int,
                 bet: Int,
-                housePrize: Int = 0,
-                prizeRecipientID: Int? = nil,
                 seed: UInt64? = nil,
                 escalation: StakeEscalation = .none) {
         precondition((2...8).contains(capacity), "A Stud table seats 2–8.")
@@ -85,8 +82,6 @@ public final class StudSessionDriver {
         self.ante = ante
         self.bringIn = bringIn
         self.bet = bet
-        self.housePrize = housePrize
-        self.prizeRecipientID = prizeRecipientID
         self.escalation = escalation
         self.baseSeed = seed
         self.positions = ring
@@ -264,16 +259,8 @@ public final class StudSessionDriver {
             await emit(.potAwarded(potIndex: potIndex, amount: pot.amount, winnerSeatIDs: potWinners(pot, result)))
         }
 
-        // HOUSE PRIZE (D-078): if the prize recipient (the human) won this hand, the House
-        // tops up their pot. Added to their chips AFTER the pot, so `handEnded` reflects it.
-        var prizeAwarded = 0
-        if let recipient = prizeRecipientID, housePrize > 0,
-           (result.payouts[recipient] ?? 0) > 0, let current = chips(of: recipient) {
-            prizeAwarded = housePrize
-            setChips(recipient, to: current + housePrize)
-            await emit(.housePrizeAwarded(playerID: recipient, amount: housePrize))
-        }
-
+        // NO chip injection here (D-079): the only chips that enter a table stack are the
+        // buy-ins. The House Prize is paid at cash-out, and the table knows nothing of it.
         let chipsByPlayer = Dictionary(uniqueKeysWithValues: players.map { ($0.id, $0.chips) })
         await emit(.handEnded(handNumber: handNumber, wentToShowdown: result.wentToShowdown,
                               payouts: result.payouts, chips: chipsByPlayer))
@@ -281,7 +268,7 @@ public final class StudSessionDriver {
 
         let outcome = StudHandOutcome(handNumber: handNumber, participantIDs: participants.map { $0.id },
                                       result: result, ante: ante, bringIn: bringIn, bet: bet,
-                                      escalationLevel: level, housePrizeAwarded: prizeAwarded,
+                                      escalationLevel: level,
                                       bustedThisHand: busted.sorted(), chipsByPlayer: chipsByPlayer)
         handNumber += 1
         return outcome

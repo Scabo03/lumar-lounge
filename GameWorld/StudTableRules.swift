@@ -40,40 +40,60 @@ public struct StudTableRules: Equatable, Sendable {
     /// against two of the tower's learned regulars, buy-in 3000 (the highest of the
     /// ClockTower — money, not prestige, is the register of THIS table, D-078). Ante 25 /
     /// bring-in 25 / full bet 50 with a 3000 stack — deep, so the Pot-Limit betting has
-    /// room to breathe. The House adds a 200 prize to every hand the player wins.
+    /// room to breathe. The House prize (D-079) is paid at CASH-OUT, only if the player
+    /// BEATS THE TABLE (busts both opponents).
     ///
     /// The two seated opponents are the STUDENT and the PROFESSOR — a deliberate MIX
-    /// (D-078): the brilliant-but-green student is a soft spot the player can beat, so
-    /// the house prize is genuinely earnable; the old master is the wall. (The adult /
-    /// il Bibliotecario preset exists for a future third seat.)
+    /// (D-078): the brilliant-but-green student is a soft spot the player can beat first;
+    /// the old master is the wall. Beating BOTH is the impresa the House rewards (D-079).
+    /// (The adult / il Bibliotecario preset exists for a future third seat.)
     public static let clockTower = StudTableRules(
         ante: 25, bringIn: 25, bet: 50, buyIn: 3000,
         personalities: [WorldPersonalities.clockTowerStudent, WorldPersonalities.clockTowerProfessor],
         housePrize: HousePrize.clockTowerStud)
 }
 
-// MARK: - The House Prize economy (D-078)
+// MARK: - The House Prize economy (D-078 → moved in D-079)
 
-/// The ClockTower Stud "House Prize" — a bonus the House adds to the pot every time the
-/// PLAYER wins a hand. It is NOT a rake or a tax: it is an INCENTIVE that rewards winning
-/// the hardest game, giving this table a more competitive, money-tied character than the
-/// Machiavelli (cerebral, where the winner earns nothing). The ClockTower is still a
-/// casino, not just an academic circle: here you CAN earn by your intellect.
+/// The ClockTower Stud "House Prize" — a one-time reward the House pays the player for
+/// BEATING THE TABLE (eliminating both opponents). It is NOT a rake, not a tax, and NOT a
+/// per-hand cashback: it is the recognition of an IMPRESA — you beat the Professor, you
+/// didn't merely scrape a profit. It rewards winning the hardest game outright.
+///
+/// **Why it moved (D-079).** It was first paid every hand the player won (D-078), added to
+/// their table chips. But injecting chips into a live session is NEVER neutral in poker: the
+/// stacks are a strategic lever and the BOTS SEE THEM — in Pot Limit the betting cap depends
+/// on stacks and the pot, so a mid-session bonus turns a hand-win into a compounding
+/// structural advantage (a snowball), not a reward. So the prize is now paid ONLY at the end,
+/// ONLY on a full-table win, and it never touches a table stack — the ONLY chip injection at
+/// the table is the buy-in (invariant restored, D-079).
 ///
 /// It is an ECONOMY/SESSION mechanic, so it lives in GameWorld (like buy-in, `PlayerAccount`,
-/// `StakeEscalation`, `MachiavelliRefund`), NOT in the engine — the `StudHand` never knows
-/// about it. The driver adds it to the winner's chips at hand end and narrates it.
+/// `StakeEscalation`, `MachiavelliRefund`), NOT in the engine — the `StudHand` and the
+/// `StudSessionDriver` (the table) know NOTHING about it. It is applied purely at CASH-OUT,
+/// mirroring the Machiavelli refund: a GameWorld pure function the table's view model calls.
 public enum HousePrize {
 
-    /// The flat prize added to the player's pot each hand they win at the ClockTower Stud
-    /// table (D-078). Calibrated to the 3000 buy-in and the pots this Pot-Limit table
-    /// produces: roughly several third-street ante rounds, a small fraction of a contested
-    /// pot — PERCEPTIBLE as a reward for winning, but far from a money machine that would
-    /// wreck the economy (verified with `DEBUG_FREE_PLAY` OFF on real chip movement).
-    public static let clockTowerStud = 200
+    /// The one-time prize for beating the ClockTower Stud table (D-079). Calibrated to the
+    /// 3000 buy-in and to the RARITY of the feat — busting both regulars, including the
+    /// patient, unshakeable Professor, is an impresa: half a buy-in (1500) is a real
+    /// recognition, clearly perceptible on top of the ~6000 net the player already won by
+    /// taking the whole table, without turning the table into a money machine (it fires at
+    /// most once, and only on a full-table win). Verified with `DEBUG_FREE_PLAY` OFF.
+    public static let clockTowerStud = 1500
 
-    /// The prize a player is awarded for a hand: the flat amount when they won, else 0.
-    public static func award(won: Bool, prize: Int) -> Int { won ? prize : 0 }
+    /// Whether the player BEAT THE TABLE: they survive with chips AND every opponent has been
+    /// eliminated (zero chips). Pure, testable — the sole condition for the prize (D-079).
+    public static func beatTheTable(heroChips: Int, opponentChips: [Int]) -> Bool {
+        heroChips > 0 && !opponentChips.isEmpty && opponentChips.allSatisfy { $0 == 0 }
+    }
+
+    /// The chips the player cashes out at session end: their remaining table chips, PLUS the
+    /// prize ONLY if they beat the table. The prize is thus never in a table stack — it is
+    /// added here, at the persistent-chips boundary (D-079).
+    public static func cashOut(heroChips: Int, opponentChips: [Int], prize: Int) -> Int {
+        heroChips + (beatTheTable(heroChips: heroChips, opponentChips: opponentChips) ? prize : 0)
+    }
 }
 
 // MARK: - ClockTower poker personalities (D-078)

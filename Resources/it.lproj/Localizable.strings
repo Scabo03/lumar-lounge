@@ -522,8 +522,6 @@
 "stud.stakes.a11y" = "Ante %1$d fiche, obbligata %2$d, puntata %3$d.";
 "stud.community" = "Comune:";
 "stud.community.a11y" = "Carta comune, per tutti: %@.";
-"stud.prize.banner" = "PREMIO DELLA CASA +%d";
-"stud.prize.a11y" = "La Casa aggiunge un premio di %d fiche.";
 
 "stud.street.3" = "Terza strada";
 "stud.street.4" = "Quarta strada";
@@ -555,5 +553,5 @@
 "stud.announce.action.bet" = "%1$@ apre a %2$d.";
 "stud.announce.action.raise" = "%1$@ rilancia a %2$d.";
 "stud.announce.action.allin" = "%@ punta tutto.";
-"stud.announce.houseprize" = "La Casa aggiunge %d fiche al tuo piatto.";
+"stud.announce.houseprize" = "Hai battuto il tavolo. La Casa ti premia con %d fiche.";
 "stud.announce.yourturn" = "A te la parola.";

@@ -32,8 +32,6 @@ public enum StudAudioScore {
             return [.play(SoundCatalog.tblCardFlipSingle, .table)]
         case .potAwarded:
             return [.play(SoundCatalog.tblChipsPotCollect, .table)]
-        case .housePrizeAwarded:
-            return [.play(SoundCatalog.tblChipsStack, .table)]   // the House adds chips
         case let .playerBusted(playerID):
             return [.play(playerID == heroSeatID ? SoundCatalog.fxBustHero : SoundCatalog.fxBustPlayer, .effect)]
         default:

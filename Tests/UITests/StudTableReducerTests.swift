@@ -4,7 +4,7 @@ import XCTest
 @testable import GameEngine
 
 /// The pure Stud table reducer (D-077): folding events into presentation state, with the
-/// per-seat UP cards that power the accessibility interrogation, and the house-prize banner.
+/// per-seat UP cards that power the accessibility interrogation.
 final class StudTableReducerTests: XCTestCase {
 
     private func c(_ r: Rank, _ s: Suit) -> Card { Card(r, s) }
@@ -54,15 +54,6 @@ final class StudTableReducerTests: XCTestCase {
         XCTAssertTrue(s.seat(1)?.upCards.isEmpty ?? false, "a folded seat mucks — no board to read")
     }
 
-    func testHousePrizeSetsTheBanner() {
-        var s = started()
-        s = StudTableReducer.reduce(s, .housePrizeAwarded(playerID: 0, amount: 200))
-        XCTAssertEqual(s.housePrizeAwarded, 200)
-        // handBegan clears it for the next hand.
-        s = StudTableReducer.reduce(s, .handBegan(handNumber: 1, ante: 25, bringIn: 25, bet: 50,
-            seats: [0, 1, 2].map { StudSeatSnapshot(seatID: $0, position: $0, chips: 3000) }))
-        XCTAssertEqual(s.housePrizeAwarded, 0)
-    }
 
     func testHandShownRevealsSevenCardsAndHandEndedSetsChips() {
         var s = started()

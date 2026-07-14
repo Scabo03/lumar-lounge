@@ -50,8 +50,6 @@ public struct StudHandOutcome: Sendable {
     public let bet: Int
     /// The escalation level in force this hand (0 = base stakes).
     public let escalationLevel: Int
-    /// The house prize the player was awarded this hand (0 if they didn't win, D-078).
-    public let housePrizeAwarded: Int
     public let bustedThisHand: [Int]
     public let chipsByPlayer: [Int: Int]
 }

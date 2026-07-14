@@ -37,16 +37,38 @@ final class StudSpeechMapTests: XCTestCase {
         XCTAssertEqual(other, .silent)
     }
 
-    func testHousePrizeHasItsOwnCroupierCueAndSynthesis() {
-        let plan = StudSpeechMap.plan(for: .housePrizeAwarded(playerID: 0, amount: 200), heroSeatID: 0, names: names)
-        XCTAssertEqual(plan.croupier, SoundCatalog.voClockPokerHousePrize)
-        if case .housePrize(200)? = plan.synthesis {} else { XCTFail("the prize is narrated with its amount") }
+    /// The House Prize is NOT an event plan (D-079): it is paid at cash-out and narrated by
+    /// the view model at the win — the map produces no prize plan. Its synth LINE still
+    /// renders (used by that win narration).
+    func testHousePrizeIsNarratedByLineNotByEventPlan() {
+        // The prize line renders with its amount.
+        XCTAssertFalse(StudSpeechMap.text(for: .housePrize(amount: 1500)).isEmpty)
+        XCTAssertEqual(StudSpeechMap.priority(for: .housePrize(amount: 1500)), .high)
     }
 
-    func testAllInGetsTheCroupierCue() {
+    /// The all-in croupier cue was not delivered → its register is SILENT (lower verbosity,
+    /// D-080), but the opponent action CONTENT still speaks (accessibility preserved).
+    func testAllInHasNoCroupierCueButKeepsTheActionContent() {
         let plan = StudSpeechMap.plan(for: .playerActed(seatID: 2, action: .raised(to: 400, amount: 400, isAllIn: true)),
                                       heroSeatID: 0, names: names)
-        XCTAssertEqual(plan.croupier, SoundCatalog.voClockPokerAllIn)
+        XCTAssertNil(plan.croupier, "no all-in register cue (silenced, D-080)")
+        if case .opponentAction? = plan.synthesis {} else { XCTFail("the all-in action content still speaks") }
+    }
+
+    /// A split pot uses the delivered split-pot cue; a single-winner pot the pot cue (D-080).
+    func testPotUsesTheDeliveredCue() {
+        let single = StudSpeechMap.plan(for: .potAwarded(potIndex: 0, amount: 300, winnerSeatIDs: [2]),
+                                        heroSeatID: 0, names: names)
+        XCTAssertEqual(single.croupier, SoundCatalog.voTowerPotAwarded)
+        let split = StudSpeechMap.plan(for: .potAwarded(potIndex: 0, amount: 300, winnerSeatIDs: [1, 2]),
+                                       heroSeatID: 0, names: names)
+        XCTAssertEqual(split.croupier, SoundCatalog.voTowerSplitPot)
+    }
+
+    /// The Stud street change is silent (the delivered set has no Stud street cues); the up
+    /// cards still carry the progression (D-080).
+    func testStreetChangeIsSilent() {
+        XCTAssertEqual(StudSpeechMap.plan(for: .streetBegan(street: .fifth), heroSeatID: 0, names: names), .silent)
     }
 
     /// No event is ever spoken by BOTH a synthesis line AND a croupier fallback with the
@@ -60,7 +82,6 @@ final class StudSpeechMapTests: XCTestCase {
             .playerActed(seatID: 1, action: .raised(to: 100, amount: 100, isAllIn: false)),
             .handShown(seatID: 1, cards: [], category: .pair, bestFive: []),
             .potAwarded(potIndex: 0, amount: 300, winnerSeatIDs: [1]),
-            .housePrizeAwarded(playerID: 0, amount: 200),
         ]
         for e in events {
             let plan = StudSpeechMap.plan(for: e, heroSeatID: 0, names: names)

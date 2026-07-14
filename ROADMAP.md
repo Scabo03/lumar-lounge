@@ -462,6 +462,20 @@ anziano** in italiano erudito (10 slot `vo_it_clock_poker_*` → fallback sintes
 Motori esistenti invariati. **460 test verdi** (420 → +40) + XCUITest Stud. **Caricato su TestFlight (build
 1784060127).**
 
+### ✅ Premio della Casa → traguardo + cablaggio audio ClockTower (D-079/D-080)
+Due lavori. **(1) Premio della Casa corretto (D-079):** da erogazione **per-mano** (che, aggiungendo fiches
+allo stack, dava un vantaggio strutturale composto — i bot vedono gli stack, il Pot Limit dipende dallo
+stack) a **ricompensa unica al cash-out**, pagata **solo se il giocatore batte il tavolo** (busta entrambi
+gli avversari). Funzione pura in GameWorld (`HousePrize`), applicata al cash-out come il rimborso Machiavelli;
+il tavolo non inietta più fiches (invariante *solo i buy-in entrano al tavolo* ripristinato e testato).
+Ricalibrato **200 → 1500** (metà buy-in, un traguardo raro). Testato con **`DEBUG_FREE_PLAY` OFF**. Nuovo
+principio permanente (CONVENTIONS §8). **(2) Audio ClockTower cablato (D-080):** 22 file (ambient 7/7,
+custode Machiavelli `vo_it_clock_*`, croupier poker `vo_it_tower_*`) — il ClockTower parla e suona con la sua
+voce vera; **missaggio per-tavolo** (poker −20%, Machiavelli −35%), **orologio DOSATO** (occasionale, non
+continuo), rotazione favorisce calm_02. Minor verbosità voluta: registri Stud senza file → silenzio (il
+contenuto parla). 2 file ambigui esclusi (segnalati), 7 riservati a un futuro Texas. **472 test verdi.**
+**Caricato su TestFlight (build 1784066297).**
+
 > **Residui aperti del ClockTower (dichiarati):** i **file audio** (ambient/musica su StableAudio →
 > `ClockTower_audio_catalog_ambient.md`, ora con i **due letti** archi/clockwork; voci su ElevenLabs →
 > `ClockTower_audio_catalog_voices.md`, ora col **personaggio deciso** — l'uomo anziano custode) sono
