@@ -1807,3 +1807,22 @@ auto-bundled). Nessun tocco a SpeechMap/conductor/CasinoAudio.
   come backstop anti-freeze (migliora la sincronia, non cambia il suono; VoiceOver-OFF invariato).
 **347 test verdi** (343 + 4 nuovi di cablaggio/canale/anti-double). Solo `UI`/`Audio` + asset; motori/
 driver/flusso intatti. **Lo Skypool ora parla con la sua voce vera; i bot urbani si sentono.**
+
+### D-069 — Rifinitura livelli audio Skypool dopo l'ascolto: croupier normalizzato, water abbassato (M2)
+Ascolto dell'utente sui file reali: (1) `amb_skypool_water` troppo alto; (2) alcune voci croupier più
+basse di altre (in particolare i due `blind` e la `turn`; misurato: anche `role_button`). Fix a due
+livelli, senza toccare la logica di gioco:
+- **Croupier — normalizzazione di loudness sui FILE** (il livello è una proprietà del file, non del
+  codice). I 12 `vo_it_sky_*` avevano uno spread enorme (~-16 dB i "buoni" vs ~-28 dB i "bassi", ffmpeg
+  `volumedetect`). Riprocessati **dagli originali** con `acompressor` gentile (doma il crest dei file ad
+  alto picco così arrivano al target senza clippare) + `loudnorm` EBU R128 **I=-18 LUFS, TP=-1.5 dBTP**:
+  ora tutti in **~-18…-20.8 LUFS** (spread ~12 dB → ~2.8 dB), i `blind`/`turn` che l'utente segnalava
+  allineati ai più forti, **nessun clipping** (picchi ≤ -1.8 dB), durate invariate. Backup degli
+  originali nello scratchpad.
+- **Water — abbassato via VOLUME DI LAYER** (è un letto di fondo, non un one-shot): nuovo
+  `AmbientBeds.layerVolume` per-casinò; Skypool **0.18/0.2 → 0.05** (~-11 dB, "molto abbassato"),
+  Riverwood **resta 0.2** (il suo layer è `amb_crowd_distant`, non consegnato → silenzioso: nessun
+  cambio percepibile). Usato in `AudioDirector`/`OmahaAudioDirector` al posto del valore cablato.
+- **Riverwood invariato:** solo dati/asset dello Skypool; `layerVolume` Riverwood = 0.2 come prima;
+  nessun file del Riverwood toccato; palette identità (`CasinoAudioTests`) verde. 347 test verdi. Solo
+  `UI` (`AmbientBeds`) + ri-encoding dei 12 mp3 croupier. **La conferma finale resta l'ascolto sul device.**

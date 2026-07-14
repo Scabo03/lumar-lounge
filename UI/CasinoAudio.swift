@@ -30,23 +30,30 @@ public struct AmbientBeds: Equatable, Sendable {
     public let calm2: SoundID,  calm2Fallback: SoundID
     public let tense: SoundID,  tenseFallback: SoundID
     public let layer: SoundID,  layerFallback: SoundID
+    /// Playback gain (0…1) of the continuous background layer. Per-casino because a
+    /// real layer's inherent loudness varies: the Skypool's pool/water bed is a very
+    /// quiet undertone, well below the Riverwood's distant-crowd layer (D-069).
+    public let layerVolume: Float
 
     /// The Riverwood/default beds — EXACTLY what the Texas `AudioDirector` plays today
-    /// (lounge beds, distant crowd layer). Preferred == fallback, all already bundled,
-    /// so nothing changes for the Riverwood (D-067 regression).
+    /// (lounge beds, distant crowd layer at 0.2). Preferred == fallback, all already
+    /// bundled, so nothing changes for the Riverwood (D-067 regression).
     public static let riverwood = AmbientBeds(
         calm1: SoundCatalog.ambLoungeCalm1, calm1Fallback: SoundCatalog.ambLoungeCalm1,
         calm2: SoundCatalog.ambLoungeCalm2, calm2Fallback: SoundCatalog.ambLoungeCalm2,
         tense: SoundCatalog.ambLoungeTense, tenseFallback: SoundCatalog.ambLoungeTense,
-        layer: SoundCatalog.ambCrowdDistant, layerFallback: SoundCatalog.ambCrowdDistant)
+        layer: SoundCatalog.ambCrowdDistant, layerFallback: SoundCatalog.ambCrowdDistant,
+        layerVolume: 0.2)
 
-    /// The Skypool beds — cool urban stone/water, falling back to lounge until the
-    /// StableAudio files are produced (D-066).
+    /// The Skypool beds — cool urban stone/water. The water layer is kept VERY low
+    /// (0.05, a subtle undertone) after the real StableAudio file proved too loud at
+    /// the old 0.18/0.2 (D-069); it falls back to the distant-crowd bed until produced.
     public static let skypool = AmbientBeds(
         calm1: SoundCatalog.ambSkypoolCalm1, calm1Fallback: SoundCatalog.ambLoungeCalm1,
         calm2: SoundCatalog.ambSkypoolCalm2, calm2Fallback: SoundCatalog.ambLoungeCalm2,
         tense: SoundCatalog.ambSkypoolTense, tenseFallback: SoundCatalog.ambLoungeTense,
-        layer: SoundCatalog.ambSkypoolWater, layerFallback: SoundCatalog.ambCrowdDistant)
+        layer: SoundCatalog.ambSkypoolWater, layerFallback: SoundCatalog.ambCrowdDistant,
+        layerVolume: 0.05)
 }
 
 /// A casino's bots' colour voices (`vob_`). AMBIENT: a missing file falls back to

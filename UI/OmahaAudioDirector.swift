@@ -80,7 +80,7 @@ public final class OmahaAudioDirector {
         switch payload {
         case let .sessionBegan(seats, _, _):
             audio.startAmbient(calmBed)
-            audio.startAmbientLayer(bed(ambient.layer, ambient.layerFallback), volume: 0.18)
+            audio.startAmbientLayer(bed(ambient.layer, ambient.layerFallback), volume: ambient.layerVolume)
             for s in seats { startChips[s.seatID] = s.chips }
 
         case let .handBegan(_, _, _, _, _, _, _, seats):

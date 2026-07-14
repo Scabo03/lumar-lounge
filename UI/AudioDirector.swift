@@ -94,7 +94,7 @@ public final class AudioDirector {
         switch payload {
         case let .sessionBegan(seats, _, _):
             audio.startAmbient(bed(ambient.calm1, ambient.calm1Fallback))
-            audio.startAmbientLayer(bed(ambient.layer, ambient.layerFallback), volume: 0.2)
+            audio.startAmbientLayer(bed(ambient.layer, ambient.layerFallback), volume: ambient.layerVolume)
             for s in seats { startChips[s.seatID] = s.chips }
             heroChips = startChips[heroSeatID] ?? 0
 
