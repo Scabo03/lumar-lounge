@@ -231,6 +231,48 @@ final class MachiavelliUITests: XCTestCase {
         XCTAssertTrue(ws.meldCards.allSatisfy { MachiavelliRules.classify($0) != nil })
     }
 
+    // MARK: - The composition box RIBBON (D-074): a linear, structured sequence
+
+    func testBoxRibbonIsHandThenTitledCombinations() {
+        let hand = [MachiavelliChainCard(index: 0, card: c(.two, .clubs), isHand: true),
+                    MachiavelliChainCard(index: 1, card: c(.king, .hearts), isHand: true)]
+        let group0 = [MachiavelliChainCard(index: 2, card: c(.five, .spades), isHand: false),
+                      MachiavelliChainCard(index: 3, card: c(.six, .spades), isHand: false),
+                      MachiavelliChainCard(index: 4, card: c(.seven, .spades), isHand: false)]
+        let group1 = [MachiavelliChainCard(index: 5, card: c(.ace, .spades), isHand: false),
+                      MachiavelliChainCard(index: 6, card: c(.ace, .hearts), isHand: false),
+                      MachiavelliChainCard(index: 7, card: c(.ace, .diamonds), isHand: false)]
+        let box = MachiavelliBoxState(handCards: hand, tableGroups: [group0, group1], selected: [4, 2])
+
+        // The ribbon runs: hand cards, then each combination's cards, in order.
+        XCTAssertEqual(box.allCards.map { $0.index }, [0, 1, 2, 3, 4, 5, 6, 7])
+        // Each combination's divider announces the SAME title as its table-edge knob.
+        XCTAssertEqual(MachiavelliSpeechMap.knobTitle(group0.map { $0.card }), "machiavelli.meld.run")
+        XCTAssertEqual(MachiavelliSpeechMap.knobTitle(group1.map { $0.card }), "machiavelli.meld.tris")
+        // The pool reads in selection order (the zone with the "selected" marker).
+        XCTAssertEqual(box.poolEntries.map { $0.index }, [4, 2])
+        XCTAssertEqual(box.selectedCards, [c(.seven, .spades), c(.five, .spades)])
+    }
+
+    // MARK: - Announcement discipline: close events serialize, never truncate (D-074)
+
+    @MainActor
+    func testCloseMeldAnnouncementsSerializeInOrderWithoutTruncation() async {
+        // The queue the Machiavelli table now shares with the poker tables (D-032/D-074):
+        // several combination announcements arriving close together are spoken serially,
+        // in order, with none truncated by the next.
+        let queue = AnnouncementQueue()
+        queue.voiceOverOverride = false            // no VoiceOver → drains in order, synchronously
+        var spoken: [String] = []
+        queue.synthesisObserver = { spoken.append($0) }
+        queue.enqueue("il Professore cala tris di assi", priority: .medium)
+        queue.enqueue("il Bibliotecario cala scala di picche dal cinque al dieci", priority: .medium)
+        queue.enqueue("lo Studente pesca dal tallone", priority: .medium)
+        await Task.yield()
+        XCTAssertEqual(spoken.count, 3, "every close announcement is spoken — none truncated")
+        XCTAssertEqual(spoken.first, "il Professore cala tris di assi")
+    }
+
     // MARK: - Every Machiavelli localization key used actually exists (real text ships)
 
     func testMachiavelliKeysExistInItalian() throws {

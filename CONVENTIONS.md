@@ -491,6 +491,25 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     consiglio, e non si dà. Un pulsante bloccato preferibilmente **non si disabilita**
     (resta agganciabile e, toccato, spiega): un pulsante disabilitato che "non fa niente"
     è la **peggior forma di stallo** per il cieco, che non sa nemmeno cosa cercare.
+  - **Per chi naviga a SWIPE, una struttura LINEARE è più leggibile di una griglia
+    (regola permanente, D-074).** Il gesto di VoiceOver è **lineare** (swipe avanti/
+    indietro lungo una sequenza); quando il contenuto è una **griglia** (righe che
+    entrano ed escono dalla vista mentre si scorre), il giocatore deve **tradurre** tra
+    un gesto lineare e una struttura bidimensionale, e in uno stato grande (decine di
+    carte) **si perde**. Preferire una **sequenza pura** (un nastro): il gesto e la
+    struttura coincidono, nessuna traduzione. E la sequenza può **portare la struttura
+    con sé** intercalando **divisori titolati** (es. nel box del Machiavelli: mano →
+    divisore "tavolo" → per ogni combinazione il suo divisore col titolo, poi le sue
+    carte), così l'organizzazione **arriva mentre si scorre** invece di doverla
+    ricostruire a memoria. Vale con la stabilità del sottoalbero (D-052): la struttura
+    del nastro sia **fissa** e la selezione commuti per opacity, mai per inserimento.
+  - **Layout come ACCESSIBILITÀ, non solo estetica (D-074).** L'**ordine di lettura** di
+    VoiceOver segue le **posizioni sullo schermo**: allineare elementi affini su **una
+    linea** (es. i knob di bordo tavolo, tutti in fondo) li rende **consecutivi** nella
+    navigazione a swipe e **vicini** a ciò che sta loro accanto (i pulsanti d'azione), così
+    il non vedente li raggiunge **subito** invece di attraversare mezza interfaccia.
+    Verticalizzare in colonne per allineare i knob è quindi una scelta di **accessibilità
+    che passa dal layout**, non dagli annunci.
   - **Marcatore di ZONA per stati grandi navigati a swipe (pattern accessibilità, D-072).**
     Quando un'interfaccia ha due zone tra cui il non vedente si muove a lungo (es. la metà
     "catena" e la metà "pool" del box di composizione), **una zona marca esplicitamente lo

@@ -31,20 +31,30 @@ public struct MachiavelliChainCard: Equatable, Sendable, Identifiable {
     public var id: Int { index }
 }
 
-/// The state of the modal composition box: the lower-half CHAIN (hand cards, a table
-/// divider, then all laid cards) and the SELECTION (the pool, upper half). Selection is
+/// The state of the modal composition box (D-074). The lower half is a single
+/// horizontal RIBBON — a pure linear sequence, the most legible structure for a player
+/// who navigates by swipe (the gesture is linear, so the structure should be too, no
+/// translation between the two): first the ordered HAND cards, then a "tavolo" divider,
+/// then each laid COMBINATION preceded by its own TITLED divider (same title as the
+/// table-edge knob), so the table's structure arrives while scrolling instead of having
+/// to be rebuilt from memory. The upper half is the SELECTION (the pool). Selection is
 /// kept in selection order so the pool reads in the order the player built it.
 public struct MachiavelliBoxState: Equatable, Sendable {
-    public var chain: [MachiavelliChainCard]
+    /// The hand cards, ordered (ribbon: before the "tavolo" divider).
+    public var handCards: [MachiavelliChainCard]
+    /// Each laid combination's cards, in canonical order (ribbon: each preceded by its
+    /// own titled divider).
+    public var tableGroups: [[MachiavelliChainCard]]
     public var selected: [Int]           // instance indices, in selection order
 
     public func isSelected(_ index: Int) -> Bool { selected.contains(index) }
-    public var handCount: Int { chain.filter { $0.isHand }.count }
+    /// Every ribbon card, flat (hand then table), for index lookups.
+    public var allCards: [MachiavelliChainCard] { handCards + tableGroups.flatMap { $0 } }
     public var selectedCards: [Card] {
-        selected.compactMap { idx in chain.first { $0.index == idx }?.card }
+        selected.compactMap { idx in allCards.first { $0.index == idx }?.card }
     }
     public var poolEntries: [MachiavelliChainCard] {
-        selected.compactMap { idx in chain.first { $0.index == idx } }
+        selected.compactMap { idx in allCards.first { $0.index == idx } }
     }
 }
 
@@ -219,31 +229,33 @@ public final class MachiavelliTableViewModel: ObservableObject {
             // spoken flourish before it. No register fallback, so no D-051 double-speak.
             conductor.say(lead: v.sound, synthesis: MachiavelliSpeechMap.newHand(count: heroCount),
                           priority: .medium, reason: "hand-start")
-            await pace(0.8)
+            await pace(0.8, spoke: true)
 
         case let .tableChanged(seatID, table, placed, rearranged):
             let oldMelds = state.melds
             state = MachiavelliTableReducer.reduce(state, payload)
-            if seatID != heroSeatID {
+            let spoke = seatID != heroSeatID
+            if spoke {
                 speakOpponentMeld(seatID: seatID, oldMelds: oldMelds, newMelds: table,
                                   placed: placed, rearranged: rearranged)
             }
-            await pace(0.6)
+            await pace(0.6, spoke: spoke)
 
         case let .playerDrew(seatID, _):
             state = MachiavelliTableReducer.reduce(state, payload)
-            if seatID != heroSeatID {
+            let spoke = seatID != heroSeatID
+            if spoke {
                 let v = MachiavelliSpeechMap.voice(.drew)
                 conductor.say(lead: v.sound, synthesis: MachiavelliSpeechMap.opponentDrew(name: name(seatID)),
                               priority: .medium, reason: "opp-drew")
             }
-            await pace(0.5)
+            await pace(0.5, spoke: spoke)
 
         case .handEnded:
             state = MachiavelliTableReducer.reduce(state, payload)
             speakHandEnd(payload)
             await gate.release()
-            await pace(1.2)
+            await pace(1.2, spoke: true)
 
         case let .matchEnded(winnerID, _, _):
             state = MachiavelliTableReducer.reduce(state, payload)
@@ -252,7 +264,7 @@ public final class MachiavelliTableViewModel: ObservableObject {
                           synthesis: MachiavelliSpeechMap.matchResult(heroWon: winnerID == heroSeatID,
                                                                       winnerName: name(winnerID)),
                           priority: .high, reason: "match-end")
-            await pace(0.6)
+            await pace(0.6, spoke: true)
 
         case .sessionEnded:
             state = MachiavelliTableReducer.reduce(state, payload)
@@ -263,13 +275,25 @@ public final class MachiavelliTableViewModel: ObservableObject {
             // Reflected in state (thinking flag, hand, active seat); the ambient director
             // fills the audible wait. No spoken line here.
             state = MachiavelliTableReducer.reduce(state, payload)
-            await pace(0.12)
+            await pace(0.12, spoke: false)
         }
     }
 
-    private func pace(_ human: Double) async {
+    /// Human pacing between events, coordinated with the SPOKEN CHANNEL (D-074). The
+    /// discipline the poker tables already have, applied to Machiavelli: after an event
+    /// that SPOKE, wait for the serial spoken channel (conductor + queue) to be quiet
+    /// before advancing — in BOTH VoiceOver modes — so consecutive announcements never
+    /// step on / truncate each other. Non-speaking events keep the fluid fixed pause
+    /// (mode OFF) or the adaptive wait (mode ON). The wait is bounded by
+    /// `SpokenChannelPacing`'s anti-freeze safeguard (a backstop above the longest voice,
+    /// NOT a speech budget — D-056/D-068), so a stuck voice can never freeze the UI.
+    private func pace(_ human: Double, spoke: Bool) async {
         announcements.pacedWhenSilent = mode.isEnabled
-        if mode.isEnabled { await awaitSpokenChannelQuiet() } else { await pause(human) }
+        if mode.isEnabled || spoke {
+            await awaitSpokenChannelQuiet()
+        } else {
+            await pause(human)
+        }
     }
 
     private func awaitSpokenChannelQuiet() async {
@@ -384,13 +408,11 @@ public final class MachiavelliTableViewModel: ObservableObject {
     /// table is untouched until a combination is confirmed (D-072).
     public func openBox() {
         guard let ws = workspace else { return }
-        var chain: [MachiavelliChainCard] = ws.handCards.map {
-            MachiavelliChainCard(index: $0.index, card: $0.card, isHand: true)
+        let handCards = ws.handCards.map { MachiavelliChainCard(index: $0.index, card: $0.card, isHand: true) }
+        let tableGroups = ws.tableEntries.map { group in
+            group.map { MachiavelliChainCard(index: $0.index, card: $0.card, isHand: false) }
         }
-        for group in ws.tableEntries {
-            chain += group.map { MachiavelliChainCard(index: $0.index, card: $0.card, isHand: false) }
-        }
-        box = MachiavelliBoxState(chain: chain, selected: [])
+        box = MachiavelliBoxState(handCards: handCards, tableGroups: tableGroups, selected: [])
         playUI(SoundCatalog.uiBoxOpen)
     }
 

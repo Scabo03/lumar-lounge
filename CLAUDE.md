@@ -2109,3 +2109,59 @@ accessibilità nel diff di D-072.
   validità nella UI; nessun `UIAccessibility.post` diretto; Riverwood/Skypool invariati; nessun tavolo di
   poker costruito al ClockTower (solo letto previsto nel catalogo); pulsanti d'azione non uniformati.
   **411 test verdi** (405 + 6). **TestFlight caricato: build 1784043541.**
+
+### D-074 — Correzione UI Machiavelli dopo il primo test reale: nastro, colonne, ritmo
+Tre correzioni dopo il primo test dell'utente sul telefono (il gioco funziona; queste tre cose
+andavano riviste). Il primo punto nasce da un malinteso nel prompt di D-072, non da un mio errore: la
+struttura qui è quella che l'utente aveva in mente dall'inizio.
+- **Il box di composizione è un NASTRO ORIZZONTALE unico, non una griglia.** La metà bassa scorreva
+  verticalmente su più righe: difetto **fatale** per il cieco emerso solo giocando — le combinazioni
+  **escono dalla vista** mentre si scorre e la navigazione diventa caotica. Un **nastro orizzontale
+  unico** è una **sequenza pura**, senza strati né righe che entrano/escono: la struttura più leggibile
+  per chi naviga a swipe, perché **il gesto è lineare e la struttura è lineare** (nessuna traduzione tra
+  i due — principio permanente in CONVENTIONS §4). Struttura del nastro: **carte in mano ordinate** →
+  **divisore verticale "tavolo"** → per ogni combinazione un **proprio divisore TITOLATO** (stesso
+  titolo e stesso tipo di annuncio dei knob: "scala di picche dal cinque al dieci", "tris di assi")
+  seguito dalle **sue carte**. Così scorrendo il giocatore incontra titolo → carte → titolo → carte, e
+  **la struttura del tavolo gli arriva mentre scorre**, senza ricostruirla a memoria. La metà alta (il
+  **pool**) e la **distinzione acustica imposta** restano invariate: le carte del nastro **non** hanno
+  annuncio di stato, ogni carta del pool si annuncia **"selezionata"** (marcatore di zona). **Nessuna
+  azione di salto** tra i divisori (l'utente vuole prima la struttura pura; non anticipato). La
+  **stabilità del sottoalbero** è preservata: la struttura del nastro è **fissa** per la vita del box
+  (selezionare cambia solo il pool, mai il tavolo), la label di una carta è **costante**, la selezione
+  commuta un overlay per **opacity** — nessun add/remove di sottoviste (cruciale con decine di selezioni
+  consecutive).
+- **Il tavolo dispone le combinazioni in COLONNE.** Ogni combinazione è una **colonna** (carte impilate
+  verticalmente, **più strette** per far stare le colonne), e i **knob** sul bordo inferiore risultano
+  **tutti allineati su UNA linea** in fondo, **vicini ai pulsanti d'azione**. Non è estetica: allineati e
+  in fondo significa **consecutivi nell'ordine di lettura di VoiceOver** (stessa y → una riga letta dopo
+  le carte) e **a un passo** dai tasti — così il cieco che vuole il **quadro del tavolo** lo raggiunge
+  **subito** invece di attraversare mezza interfaccia. **È accessibilità che passa dal LAYOUT, non dagli
+  annunci.** Realizzazione: `HStack` orizzontale di colonne, ciascuna `frame(maxHeight: .infinity)` con
+  la knob spinta in fondo dallo `Spacer` → knob su una linea. **Le carte della colonna sono
+  `accessibilityHidden`**: il cieco legge **solo i knob** (uno per colonna) e ne percorre le carte con le
+  **azioni personalizzate** (o col nastro del box) — niente clutter, i knob sono il quadro. **Sacrificio
+  per far stare le colonne:** le carte sono rese **slim** (34×46) impilate a ventaglio verticale con
+  offset calcolato per stare in un'area fissa (così colonne di lunghezza diversa restano alte uguali e i
+  knob restano allineati); mostrano il simbolo **in alto** per restare leggibili nel ventaglio.
+- **Trascinamento con carte strette (vedente):** le colonne sono **drop target** (trascini una carta di
+  mano nella combinazione), le carte slim del ventaglio sono **draggabili** dalla loro striscia visibile,
+  e **toccando una colonna** questa si **espande** in un overlay orizzontale a grandezza piena per
+  afferrarle comodamente. Tutto **sighted-only** e `accessibilityHidden`: **nessun effetto** sul cieco
+  (che raggiunge le carte via knob + nastro).
+- **Ritmo degli annunci: applicata la disciplina che il Machiavelli aveva saltato.** Al tavolo gli
+  annunci si **troncavano** l'un l'altro. Causa: in modalità VoiceOver-app **OFF** il `pace` usava una
+  **pausa fissa breve** anche dopo un evento **parlato**, così l'annuncio successivo si accodava mentre
+  il precedente parlava (i tavoli di poker **aspettano** il canale parlato). Fix: `pace(_:spoke:)` —
+  dopo un evento che ha **parlato**, la UI **attende il canale parlato quieto** (conductor + coda) prima
+  di avanzare **in ENTRAMBE le modalità**, così annunci ravvicinati (es. più combinazioni in sequenza)
+  **non si sovrappongono né si troncano**; gli eventi **muti** mantengono la pausa fissa fluida (OFF) o
+  l'attesa adattiva (ON). L'attesa è **limitata dal safeguard anti-freeze** di `SpokenChannelPacing`
+  (backstop **sopra** la voce più lunga, **non** un budget di parlato — D-056/D-068). Tutto passa già
+  dalla `AnnouncementQueue` (serializzata, priorità, drop) col `SpeechConductor`; nessuna
+  `UIAccessibility.post` diretta; ogni continuation ha il suo timeout. Le voci di fine mano/partita
+  arrivano una volta (nessuna dedup necessaria).
+- **Vincoli:** motore Machiavelli e altri **non toccati**; predicato **unica fonte** per box e drag;
+  nessuna logica di validità nella UI; **stabilità del sottoalbero** rigorosa; focus-landing sul box;
+  la dichiarazione dello **stallo del tavolo rotto** (D-073) resta e funziona (il Passa bloccato resta
+  agganciabile e spiega); descrivi-non-consigliare inviolato; Riverwood/Skypool intatti. **413 test verdi** (411 + 2). **TestFlight caricato: build 1784047983.**

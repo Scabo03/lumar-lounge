@@ -413,6 +413,20 @@ combinazione incompleta e il Passa bloccato ne annuncia la ragione — **descriv
 nessun cieco resta bloccato senza sapere perché e dove. **411 test verdi**; Riverwood/Skypool invariati.
 **Caricato su TestFlight (build 1784043541).**
 
+### ✅ Correzione UI Machiavelli dopo il primo test reale (D-074)
+Tre correzioni dopo il primo test dell'utente sul telefono. **(1) Box = NASTRO orizzontale** unico
+(non griglia): sequenza pura mano → divisore "tavolo" → per ogni combinazione il suo **divisore
+titolato** + le sue carte, così la struttura del tavolo arriva **mentre si scorre** (una griglia con
+righe che entrano/escono era caotica per chi naviga a swipe). Pool e distinzione acustica invariati.
+**(2) Tavolo in COLONNE:** combinazioni verticali (carte più strette), **knob allineati su una linea**
+in fondo, vicini ai pulsanti d'azione → **consecutivi** nell'ordine di VoiceOver e raggiungibili subito
+(accessibilità dal **layout**); le carte di colonna sono `accessibilityHidden`, il cieco usa i knob +
+il nastro. Drag del vedente: colonne drop-target + carte draggabili + espansione al tocco. **(3) Ritmo
+annunci:** applicata la disciplina dei tavoli di poker (attesa del canale parlato dopo un evento
+parlato, in entrambe le modalità, col safeguard anti-freeze) → annunci ravvicinati non si troncano più.
+Motore non toccato; predicato unica fonte; **413 test verdi**. **Caricato su TestFlight (build
+1784047983).**
+
 > **Residui aperti del ClockTower (dichiarati):** i **file audio** (ambient/musica su StableAudio →
 > `ClockTower_audio_catalog_ambient.md`, ora con i **due letti** archi/clockwork; voci su ElevenLabs →
 > `ClockTower_audio_catalog_voices.md`, ora col **personaggio deciso** — l'uomo anziano custode) sono

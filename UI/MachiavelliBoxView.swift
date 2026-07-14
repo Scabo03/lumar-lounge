@@ -1,12 +1,18 @@
 // MachiavelliBoxView.swift
 // =====================================================================
-// The modal COMPOSITION box ("Piazza", D-072) — much larger than the poker Raise box,
-// divided into two halves. LOWER HALF: a swipe-scrollable CHAIN — the player's hand
-// cards, a divider announced as "tavolo", then every card already laid on the table.
-// The player selects freely from it, own cards or anyone's laid cards. UPPER HALF: the
-// POOL of what is selected so far.
+// The modal COMPOSITION box ("Piazza", D-072/D-074), divided into two halves. LOWER
+// HALF: a single HORIZONTAL RIBBON — a pure linear sequence, the most legible structure
+// for a player who navigates by swipe (the gesture is linear, so the structure is too:
+// no translation between the two). It runs: the ordered HAND cards → a vertical "tavolo"
+// divider → then each laid COMBINATION preceded by its own TITLED divider (the same
+// title as the table-edge knob, e.g. "scala di picche dal cinque al dieci"). Scrolling
+// the ribbon, the player meets a title, then that combination's cards, then the next
+// title, and so on — the table's structure ARRIVES while scrolling instead of having to
+// be rebuilt from memory. (A grid of rows that enter and leave the view — the earlier
+// design — was caotic for exactly this reason: D-074.) UPPER HALF: the POOL of selected
+// cards.
 //
-// THE IMPOSED ACOUSTIC DISTINCTION (D-072, non-negotiable): chain cards (lower) carry NO
+// THE IMPOSED ACOUSTIC DISTINCTION (D-072, non-negotiable): ribbon cards (lower) carry NO
 // state in their VoiceOver label; every pool card (upper) announces itself as SELECTED.
 // So after dozens of swipes a blind player always knows WHICH ZONE they are in without
 // having to remember. The sighted player gets the same from on-screen position — parity,
@@ -17,10 +23,11 @@
 // per the engine (`viewModel.boxCanConfirm`). The pool is hypothetical: the table is
 // untouched until Confirm, and deselecting is always free.
 //
-// SUBTREE STABILITY (D-046/D-052): a chain card's label is CONSTANT (just the card) and
-// its selection highlight is toggled by opacity, never by inserting/removing subviews —
-// so selecting never restructures the subtree and VoiceOver never re-lands. The pool is
-// a separate section; growing it doesn't touch any chain element.
+// SUBTREE STABILITY (D-046/D-052/D-074): the ribbon's structure is FIXED for the box's
+// life (selecting only changes the pool, never the table), a ribbon card's label is
+// CONSTANT (just the card), and its selection highlight is toggled by opacity — so a
+// selection never restructures the subtree and VoiceOver never re-lands. Crucial with a
+// ribbon where the player makes dozens of consecutive selections.
 
 import SwiftUI
 import GameEngine
@@ -30,6 +37,7 @@ struct MachiavelliBoxView: View {
     let box: MachiavelliBoxState
 
     private let columns = [GridItem(.adaptive(minimum: 46), spacing: 6)]
+    private let ribbonCardHeight: CGFloat = 74   // == CardView .medium height
 
     var body: some View {
         VStack(spacing: 14) {
@@ -43,7 +51,7 @@ struct MachiavelliBoxView: View {
 
             poolHalf
             Divider().overlay(TablePalette.accent.opacity(0.5))
-            chainHalf
+            ribbonHalf
             buttons
         }
         .padding(18)
@@ -91,41 +99,58 @@ struct MachiavelliBoxView: View {
         .accessibilityHint(Text(uiLocalized("machiavelli.pool.card.hint")))
     }
 
-    // MARK: - Lower half: the chain (hand · "tavolo" · table). NO state in labels.
+    // MARK: - Lower half: the HORIZONTAL RIBBON (hand · "tavolo" · titled combinations)
 
-    private var chainHalf: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(verbatim: uiLocalized("machiavelli.box.chain"))
-                    .font(.subheadline.weight(.semibold)).foregroundStyle(TablePalette.secondaryText)
-                    .accessibilityAddTraits(.isHeader)
-                LazyVGrid(columns: columns, spacing: 6) {
-                    ForEach(box.chain.filter { $0.isHand }) { chainCard($0) }
+    private var ribbonHalf: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(verbatim: uiLocalized("machiavelli.box.chain"))
+                .font(.subheadline.weight(.semibold)).foregroundStyle(TablePalette.secondaryText)
+                .accessibilityAddTraits(.isHeader)
+            ScrollView(.horizontal, showsIndicators: true) {
+                HStack(spacing: 6) {
+                    // 1. Hand cards.
+                    ForEach(box.handCards) { ribbonCard($0) }
+                    // 2. The "tavolo" divider.
+                    tavoloDivider
+                    // 3. Each laid combination: its titled divider, then its cards.
+                    ForEach(Array(box.tableGroups.enumerated()), id: \.offset) { groupIndex, group in
+                        HStack(spacing: 6) {
+                            combinationDivider(group.map { $0.card }, index: groupIndex)
+                            ForEach(group) { ribbonCard($0) }
+                        }
+                    }
                 }
-                dividerElement
-                LazyVGrid(columns: columns, spacing: 6) {
-                    ForEach(box.chain.filter { !$0.isHand }) { chainCard($0) }
-                }
+                .padding(.vertical, 4).padding(.horizontal, 2)
             }
+            .frame(height: ribbonCardHeight + 16)
         }
-        .frame(maxHeight: 300)
     }
 
-    /// The "tavolo" divider — an accessibility element the blind player hears between the
-    /// hand cards and the laid cards; decoration for the sighted.
-    private var dividerElement: some View {
-        HStack(spacing: 8) {
-            Rectangle().fill(TablePalette.accent.opacity(0.4)).frame(height: 1)
-            Text(verbatim: uiLocalized("machiavelli.box.tabledivider"))
-                .font(.caption.weight(.bold)).foregroundStyle(TablePalette.secondaryText)
-            Rectangle().fill(TablePalette.accent.opacity(0.4)).frame(height: 1)
-        }
-        .accessibilityElement()
-        .accessibilityIdentifier("machiavelli.box.divider")
-        .accessibilityLabel(Text(uiLocalized("machiavelli.box.tabledivider.a11y")))
+    /// The vertical "tavolo" divider — an accessibility element the blind player hears
+    /// between the hand cards and the laid combinations; a thin bar for the sighted.
+    private var tavoloDivider: some View {
+        verticalDivider
+            .accessibilityElement()
+            .accessibilityIdentifier("machiavelli.box.divider")
+            .accessibilityLabel(Text(uiLocalized("machiavelli.box.tabledivider.a11y")))
     }
 
-    private func chainCard(_ entry: MachiavelliChainCard) -> some View {
+    /// A combination's titled divider — preceding its cards in the ribbon; announces the
+    /// SAME title as the table-edge knob (D-074), e.g. "scala di picche dal cinque al dieci".
+    private func combinationDivider(_ cards: [Card], index: Int) -> some View {
+        verticalDivider
+            .accessibilityElement()
+            .accessibilityIdentifier("machiavelli.box.combodivider.\(index)")
+            .accessibilityLabel(Text(verbatim: MachiavelliSpeechMap.knobTitle(cards)))
+    }
+
+    private var verticalDivider: some View {
+        RoundedRectangle(cornerRadius: 1)
+            .fill(TablePalette.accent.opacity(0.55))
+            .frame(width: 3, height: ribbonCardHeight)
+    }
+
+    private func ribbonCard(_ entry: MachiavelliChainCard) -> some View {
         let selected = box.isSelected(entry.index)
         return Button { model.toggleBoxCard(entry.index) } label: {
             ZStack {

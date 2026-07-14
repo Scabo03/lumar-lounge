@@ -132,37 +132,68 @@ struct MachiavelliOpponentBand: View {
 
 // MARK: - Centre: the table of laid combinations, each with an edge knob
 
+/// A table column model: its group index (present only during the human's turn, for
+/// drag/drop) and its cards as (optional index, card) entries.
+private struct MachiavelliColumnModel: Identifiable {
+    let id: Int
+    let groupIndex: Int?
+    let entries: [(index: Int?, card: Card)]
+    var cards: [Card] { entries.map { $0.card } }
+}
+
+/// The centre: laid combinations as VERTICAL COLUMNS (D-074). Cards are stacked
+/// vertically (narrow), and each column's KNOB sits at the BOTTOM. All columns are
+/// forced to equal height so the knobs land on ONE aligned line at the bottom, right
+/// above the action bar — which puts them CONSECUTIVE in VoiceOver's reading order and
+/// a short swipe from the action buttons. That is accessibility through LAYOUT, not
+/// announcements (D-074): the blind player reaches the whole table overview at once.
 struct MachiavelliTableCentre: View {
     @ObservedObject var model: MachiavelliTableViewModel
+    /// The column a sighted player has tapped to expand for easy dragging (nil = none).
+    @State private var expandedColumn: Int?
 
-    /// Editable groups (index + cards) during the human's turn, else the committed table.
-    private var groups: [(groupIndex: Int?, cards: [Card])] {
+    private var columns: [MachiavelliColumnModel] {
         if let ws = model.workspace {
-            return ws.tableEntries.enumerated().map { (groupIndex: $0.offset, cards: $0.element.map { $0.card }) }
+            return ws.tableEntries.enumerated().map { i, group in
+                MachiavelliColumnModel(id: i, groupIndex: i, entries: group.map { (index: Optional($0.index), card: $0.card) })
+            }
         }
-        return model.state.melds.map { (groupIndex: nil, cards: $0) }
+        return model.state.melds.enumerated().map { i, meld in
+            MachiavelliColumnModel(id: i, groupIndex: nil, entries: meld.map { (index: nil, card: $0) })
+        }
     }
 
     var body: some View {
-        ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], alignment: .leading, spacing: 12) {
-                ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
-                    MachiavelliMeldBlock(model: model, cards: group.cards, groupIndex: group.groupIndex)
-                }
-                if model.workspace != nil { newCombinationDropZone }
-            }
-            .padding(10)
-            if groups.isEmpty && model.workspace == nil {
-                Text(verbatim: uiLocalized("machiavelli.table.empty"))
-                    .font(.subheadline).foregroundStyle(TablePalette.secondaryText)
-                    .accessibilityIdentifier("machiavelli.table.empty")
-            }
-        }
-        .background(
+        ZStack {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(TablePalette.felt.opacity(0.5))
                 .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(TablePalette.feltEdge.opacity(0.5), lineWidth: 2)))
+                    .strokeBorder(TablePalette.feltEdge.opacity(0.5), lineWidth: 2))
+
+            if columns.isEmpty && model.workspace == nil {
+                Text(verbatim: uiLocalized("machiavelli.table.empty"))
+                    .font(.subheadline).foregroundStyle(TablePalette.secondaryText)
+                    .accessibilityIdentifier("machiavelli.table.empty")
+            } else {
+                ScrollView(.horizontal, showsIndicators: true) {
+                    HStack(alignment: .bottom, spacing: 10) {
+                        ForEach(columns) { column in
+                            MachiavelliColumn(model: model, column: column,
+                                              onExpand: { expandedColumn = column.id })
+                                .frame(maxHeight: .infinity)   // equal height → knobs align at the bottom
+                        }
+                        if model.workspace != nil { newCombinationDropZone }
+                    }
+                    .padding(10)
+                    .frame(maxHeight: .infinity)
+                }
+            }
+
+            // Sighted-only spread overlay for dragging cards out of a narrow column.
+            if let id = expandedColumn, let column = columns.first(where: { $0.id == id }) {
+                expandOverlay(column)
+            }
+        }
         .accessibilityIdentifier("machiavelli.table")
     }
 
@@ -171,63 +202,116 @@ struct MachiavelliTableCentre: View {
         RoundedRectangle(cornerRadius: 10, style: .continuous)
             .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
             .foregroundStyle(TablePalette.accent.opacity(0.5))
-            .frame(minHeight: 74)
+            .frame(width: 60).frame(maxHeight: .infinity)
             .overlay(Text(verbatim: uiLocalized("machiavelli.table.newcombo"))
-                .font(.caption).foregroundStyle(TablePalette.secondaryText))
+                .font(.caption2).foregroundStyle(TablePalette.secondaryText).padding(4))
             .dropDestination(for: String.self) { items, _ in
                 guard let idx = items.first.flatMap({ Int($0) }) else { return false }
                 model.drop(cardIndex: idx, onGroup: nil); return true
             }
-            .accessibilityHidden(true)   // sighted-only; the blind path is the box
+            .accessibilityHidden(true)   // sighted-only; the blind path is the box + knobs
+    }
+
+    /// The sighted expand overlay: a column's cards spread horizontally at full size,
+    /// each draggable, over a tap-to-dismiss scrim. Entirely `accessibilityHidden` so it
+    /// never perturbs the blind player's tree (the blind uses knobs + the box, D-074).
+    private func expandOverlay(_ column: MachiavelliColumnModel) -> some View {
+        ZStack {
+            Color.black.opacity(0.5).ignoresSafeArea().onTapGesture { expandedColumn = nil }
+            HStack(spacing: 8) {
+                ForEach(Array(column.entries.enumerated()), id: \.offset) { _, entry in
+                    draggableCard(CardView(face: .up(entry.card), size: .medium), index: entry.index)
+                }
+            }
+            .padding(20)
+            .background(RoundedRectangle(cornerRadius: 14).fill(TablePalette.cardBack)
+                .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(TablePalette.accent, lineWidth: 2)))
+        }
+        .accessibilityHidden(true)
     }
 }
 
-/// One laid combination: its cards (each focusable) plus the table-edge KNOB below.
-struct MachiavelliMeldBlock: View {
+/// One laid combination as a COLUMN: narrow cards fanned vertically (decoration + drag
+/// for the sighted, `accessibilityHidden`) with the KNOB at the bottom — the single
+/// accessible overview element for the blind (title + custom actions to walk the cards).
+struct MachiavelliColumn: View {
     @ObservedObject var model: MachiavelliTableViewModel
-    let cards: [Card]
-    let groupIndex: Int?
+    fileprivate let column: MachiavelliColumnModel
+    let onExpand: () -> Void
 
-    /// Whether the combination above this knob is broken — asked of the ENGINE predicate
-    /// (D-073); true only transiently during the human's turn. Drives the knob's colour
-    /// and its declaration, both PROPERTY changes (no subtree restructure — D-052).
+    private let cardsAreaMax: CGFloat = 200
+    private let slimW: CGFloat = 34
+    private let slimH: CGFloat = 46
+
+    private var cards: [Card] { column.cards }
+    /// Broken? Asked of the ENGINE predicate (D-073); transient during the human's turn.
     private var isBroken: Bool { MachiavelliRules.classify(cards) == nil }
 
     var body: some View {
         VStack(spacing: 4) {
-            HStack(spacing: 4) {
-                ForEach(Array(cards.enumerated()), id: \.offset) { _, card in
-                    CardView(face: .up(card), size: .normal)
-                }
-            }
+            fan
+            Spacer(minLength: 4)
             knob
         }
-        .padding(6)
+        .padding(.horizontal, 4).padding(.vertical, 6)
         .background(RoundedRectangle(cornerRadius: 8)
             .fill((isBroken ? TablePalette.redSuit : Color.black).opacity(0.2)))
-        .modifier(GroupDropModifier(model: model, groupIndex: groupIndex))
+        .modifier(GroupDropModifier(model: model, groupIndex: column.groupIndex))
+        .contentShape(Rectangle())
+        .onTapGesture { if column.groupIndex != nil { onExpand() } }   // sighted expand
     }
 
-    /// The table-edge knob: decoration for the sighted, an overview element for the blind
-    /// (title + custom actions to walk the cards vertically — D-072). When the combination
-    /// is BROKEN it recolours and DECLARES itself incomplete (D-073) — both toggled by the
-    /// element's own properties (fill colour, label), never by adding/removing subviews.
+    /// The narrow cards fanned vertically, accessibilityHidden (blind uses the knob).
+    private var fan: some View {
+        let n = column.entries.count
+        let step = n > 1 ? Swift.min(slimH - 6, (cardsAreaMax - slimH) / CGFloat(n - 1)) : 0
+        return ZStack(alignment: .top) {
+            ForEach(Array(column.entries.enumerated()), id: \.offset) { i, entry in
+                draggableCard(slimCard(entry.card), index: entry.index)
+                    .offset(y: CGFloat(i) * step)
+            }
+        }
+        .frame(width: slimW, height: n > 0 ? slimH + CGFloat(max(0, n - 1)) * step : slimH, alignment: .top)
+        .frame(maxHeight: cardsAreaMax, alignment: .top)
+        .accessibilityHidden(true)
+    }
+
+    private func slimCard(_ card: Card) -> some View {
+        RoundedRectangle(cornerRadius: 4, style: .continuous)
+            .fill(TablePalette.cardFace)
+            .frame(width: slimW, height: slimH)
+            .overlay(alignment: .top) {
+                Text(verbatim: CardText.symbol(card))
+                    .font(.caption.weight(.bold)).minimumScaleFactor(0.6)
+                    .foregroundStyle(TablePalette.suitColor(card.suit)).padding(.top, 2)
+            }
+            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Color.black.opacity(0.25), lineWidth: 0.5))
+    }
+
+    /// The knob — the accessible overview element (title + broken declaration + custom
+    /// actions to walk the cards). Aligned at the column bottom (D-074). Colour/label
+    /// toggle by property only — no subtree restructure (D-052).
     private var knob: some View {
         RoundedRectangle(cornerRadius: 3)
-            .fill(isBroken ? TablePalette.redSuit : TablePalette.accent.opacity(0.35))
-            .frame(height: isBroken ? 7 : 5)
+            .fill(isBroken ? TablePalette.redSuit : TablePalette.accent.opacity(0.5))
+            .frame(width: slimW + 6, height: isBroken ? 8 : 6)
             .accessibilityElement()
-            .accessibilityIdentifier(groupIndex.map { "machiavelli.knob.\($0)" } ?? "machiavelli.knob")
+            .accessibilityIdentifier(column.groupIndex.map { "machiavelli.knob.\($0)" } ?? "machiavelli.knob.\(column.id)")
             .accessibilityLabel(Text(verbatim: MachiavelliSpeechMap.knobTitle(cards)))
             .accessibilityActions {
                 ForEach(Array(cards.enumerated()), id: \.offset) { index, card in
                     Button(uiLocalized("machiavelli.knob.card", index + 1, CardText.spoken(card))) {
-                        // Walk the combination's cards vertically: announce each on demand.
                         model.announce(CardText.spoken(card))
                     }
                 }
             }
     }
+}
+
+/// Makes a card view draggable only when it carries an instance index (the human's turn).
+@ViewBuilder
+private func draggableCard<V: View>(_ view: V, index: Int?) -> some View {
+    if let index { view.draggable(String(index)) } else { view }
 }
 
 /// Applies a drop destination to a meld block only during the human's turn (a group
