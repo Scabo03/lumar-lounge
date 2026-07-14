@@ -45,15 +45,16 @@ public struct AmbientBeds: Equatable, Sendable {
         layer: SoundCatalog.ambCrowdDistant, layerFallback: SoundCatalog.ambCrowdDistant,
         layerVolume: 0.2)
 
-    /// The Skypool beds — cool urban stone/water. The water layer is kept VERY low
-    /// (0.05, a subtle undertone) after the real StableAudio file proved too loud at
-    /// the old 0.18/0.2 (D-069); it falls back to the distant-crowd bed until produced.
+    /// The Skypool beds — cool urban stone/water. The water layer is kept a BARE
+    /// whisper (0.02) after two listening passes found it too loud even at 0.05 — from
+    /// the original 0.18/0.2 that is ~-19 dB, a faint undertone (D-069); it falls back
+    /// to the distant-crowd bed until the StableAudio file is produced.
     public static let skypool = AmbientBeds(
         calm1: SoundCatalog.ambSkypoolCalm1, calm1Fallback: SoundCatalog.ambLoungeCalm1,
         calm2: SoundCatalog.ambSkypoolCalm2, calm2Fallback: SoundCatalog.ambLoungeCalm2,
         tense: SoundCatalog.ambSkypoolTense, tenseFallback: SoundCatalog.ambLoungeTense,
         layer: SoundCatalog.ambSkypoolWater, layerFallback: SoundCatalog.ambCrowdDistant,
-        layerVolume: 0.05)
+        layerVolume: 0.02)
 }
 
 /// A casino's bots' colour voices (`vob_`). AMBIENT: a missing file falls back to
