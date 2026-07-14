@@ -43,6 +43,11 @@ qualcuno o *quanto* ha puntato vive più in alto (`GameWorld`, `UI`).
 | `OmahaSeat`/`OmahaSeatState`/`OmahaStreet`/`OmahaAction`/`OmahaResult`/`OmahaLegalActions` | I tipi del motore Omaha, distinti da Texas/Draw: posto con **quattro** carte private, azioni con semantica "to" e maxima già cappati al Pot Limit, esito con mano vincolata mostrata allo showdown. |
 | `OmahaBot`/`OmahaBotContext`/`OmahaStrength`/`HeuristicOmahaBot` | Bot dell'Omaha: forza pre-flop **euristica sulle quattro carte** (coordinazione, nut) + equity **Monte Carlo vincolata** a costo contenuto (D-063). Due leve additive di `Personality` (`omahaCoordination`/`omahaNuttiness`). |
 | `DrawStrategy` | Euristiche pure e testabili del draw: forza statica di 5 carte + scarto "da manuale" (stand pat sui punti fatti, tieni le forti, pesca ai progetti). |
+| `MachiavelliRules` | **Il predicato di validità del Machiavelli** (D-070): unica fonte di verità sulla legalità. `classify(_:)` (una selezione è una combinazione legale? quale?), `isValidCombination`, `isValidTable`. Due decidono/tris con semi distinti, scale ≥3 stesso seme, asso ai due capi (mai wrap). Interrogato da due interfacce future (box del cieco / drag del vedente) → stesso gioco per entrambi. Vive in `Machiavelli/`, quarto motore indipendente. |
+| `Meld`/`MeldForm`/`MachiavelliConstants` | Combinazione validata (sempre legale, ordine canonico) + forma (group/run) + costanti del ruleset (due mazzi/104 carte, mano 13, min 3). |
+| `MachiavelliTurnContext`/`MachiavelliProposal` | **Il modello del turno** (D-070): il turno è una **sequenza** di trasformazioni chiusa da un terminale. Stato **ipotetico** — `evaluate(_:)` valuta una proposta di tavolo **senza applicarla**, `apply(_:)` la conferma; ogni proposta è validata contro lo **snapshot d'inizio turno**, così **la stessa carta può muoversi più volte** e solo lo stato finale deve essere valido. `canPass`/`mustDraw` = legalità del terminale. |
+| `MachiavelliBot`/`MachiavelliBotContext`/`MachiavelliTurnPlan`/`MachiavelliSearchBudget` | L'interfaccia del bot: vista **redatta** (tavolo pubblico + conteggio mani avversarie, mai le loro carte, D-009) → un **piano di turno**; budget di ricerca a **nodi (deterministico) e/o tempo (produzione)**. |
+| `HeuristicMachiavelliBot` | Bot su **due assi indipendenti** (D-070): `machiavelliSearchDepth` (quanto esplora le ricomposizioni; scala nodi+tempo) e `machiavelliPatience` (se trattiene una mossa trovata e pesca aspettando di meglio). Ricerca **interrompibile** (greedy + exact-cover limitato), mossa migliore entro il budget, **mai sforo**. |
 
 Gestisce i casi particolari del poker: l'Asso che vale 1 nella scala minima
 `A-2-3-4-5` (la *wheel*) o 14 nella scala massima, la distinzione tra scala
@@ -127,6 +132,59 @@ e farsi scoprire). Valori scelti: **novice** discipline bassa / bluff bassa /
 opening media; **rock** discipline alta / bluff quasi nulla / opening altissima;
 **aggressor** discipline media / bluff alta / opening bassa.
 
+### Filosofia del modulo Machiavelli (ricombinazione)
+
+Il **quarto** gioco (D-070) vive in `Machiavelli/` ed è un **animale nuovo**: non è
+poker. Niente piatto, puntate, blind, bluff, showdown. È un gioco di **ricombinazione**
+— i giocatori calano scale e tris e possono **smontare e ricomporre** qualunque
+combinazione già sul tavolo (propria o altrui), purché a fine turno tutto sia valido;
+vince chi si libera per primo delle carte. Nessuna infrastruttura del poker
+(`BotContext`-con-equity, `Pot`, leve di rischio/aggressione) è riusata: non c'entra.
+Condivide **solo** i fondazionali `Card`/`Rank`/`Suit`/`Deck`. Nessun import incrociato.
+
+Regole canoniche fissate (D-070), dichiarate perché una sessione futura non le
+riscopra:
+
+- **Due mazzi da 52 = 104 carte, nessun jolly.** L'assenza di wildcard è deliberata:
+  rende la ricombinazione pura (ogni carta è sé stessa).
+- **Group (tris/poker):** 3–4 carte dello **stesso rango**, semi **tutti distinti**.
+- **Run (scala):** 3+ carte dello **stesso seme**, **consecutive**. L'**asso** sta a
+  **entrambi i capi** — alto (Q-K-A) o basso (A-2-3) — ma **non wrappa** (K-A-2 illegale).
+- **Mano di 13 carte**; il resto è **stock**. Si pesca **una** carta se non si cala nulla.
+- **Turno = sequenza di trasformazioni** chiusa da un **terminale esplicito**: *passare*
+  (legale solo se si è calata ≥1 carta) o *pescare* (se non si è calato nulla). Vince chi
+  svuota la mano.
+
+**Due pilastri, entrambi accessibilità travestita da architettura:**
+
+1. **Il predicato di validità è l'UNICA fonte di verità, nel motore (mai nella UI).**
+   `MachiavelliRules.classify`/`isValidTable` sono interrogati da **due interfacce**
+   future indipendenti — il cieco compone in un box (sblocca *Conferma* quando la
+   **selezione** è legale), il vedente trascina sul tavolo (sblocca *fine turno* quando
+   il **tavolo** è valido). Un solo predicato ⇒ vedente e non vedente giocano lo **stesso**
+   gioco; se la validazione vivesse nella UI, divergerebbero al primo bug.
+
+2. **Stato ipotetico + la stessa carta si muove più volte.** `MachiavelliTurnContext`
+   valuta una proposta **senza applicarla** (`evaluate`) e la conferma solo su richiesta
+   (`apply`); ogni proposta è validata contro lo **snapshot d'inizio turno**, non contro
+   lo stato corrente — così una carta calata presto può essere ripresa e ricomposta
+   quante volte si vuole, e **solo lo stato finale** deve essere valido. Un esploratore
+   lento non è mai punito per la lunghezza dell'esplorazione, solo per la qualità della
+   mossa finale.
+
+**Bot su due assi INDIPENDENTI** (non tre gradi di una scala, D-070):
+`machiavelliSearchDepth` (quanto esplora le ricomposizioni — scala nodi **e** tempo) e
+`machiavelliPatience` (se trattiene una mossa già trovata per pescare qualcosa di meglio).
+Additivi, default 0.5, inerti negli altri giochi. Tre archetipi: **studente** (profondità
+bassa, poca pazienza — cala in fretta), **adulto** (profondità alta, pazienza alta —
+aspetta il meglio), **professore** (profondità massima, pazienza media — rimaneggia il
+tavolo). La ricerca è **interrompibile** (greedy garantito + exact-cover limitato con
+restart), tenuta da `MachiavelliSearchBudget` a **nodi** (deterministico, per i test) e/o
+**tempo** (produzione, ~10 s studente → ~15 s professore): ritorna sempre la migliore
+mossa trovata entro il budget, **profondità adattiva**, **mai uno sforo** (lavoro
+per-nodo limitato). Il tempo del professore è **carattere**, non lag. **Solo
+motore+bot**: driver, eventi, UI, audio e casinò ospitante sono fuori da `GameEngine`.
+
 ## Cosa NON contiene (per scelta architetturale)
 
 Niente **giocatori**, **tavoli**, **partite** o **stato di gioco** in corso.
@@ -144,14 +202,14 @@ decisioni in [`../CLAUDE.md`](../CLAUDE.md).
 
 ## Prossimo pezzo previsto
 
-`GameEngine` contiene ora **due motori di gioco** completi (Hold'em No Limit e
-Five-Card Draw) più i loro bot. Il prossimo lavoro esce dal motore puro:
-`GameWorld` deve orchestrare una **sessione di Five-Card Draw** (un `DrawSession`
-che replichi per il Draw ciò che `SessionDriver` fa per il Texas: tavolo,
-gettoni, pot progressivo tra le mani annullate, azioni bot/umano) e la relativa
-UI, per rendere entrabile la "Sala Whiskey" del Riverwood. Restano raffinamenti
-additivi qui: nuove personalità, equity con narrowing del range (D-011), tilt
-cross-mano.
+`GameEngine` contiene ora **quattro motori di gioco** (Hold'em No Limit, Five-Card
+Draw, Omaha Pot Limit, Machiavelli) più i loro bot. Il Machiavelli (D-070) ha già
+il suo driver di sessione, gli eventi e il matchmaking progressivo in `GameWorld`,
+ma **non è giocabile**: mancano **UI**, **audio** e il **casinò ospitante** (il terzo
+casinò, non ancora anticipato). Il prossimo lavoro è dunque fuori dal motore puro:
+`MachiavelliTableView` e la sua UII accessibile — box di composizione per il cieco,
+drag per il vedente, entrambi sopra lo stesso predicato — e la voce che riempie
+l'attesa udibile dei bot che pensano.
 
 ## Test
 
@@ -170,7 +228,13 @@ draw con rimpiazzo carte, showdown corretto, openers da dimostrare
 positivo/negativo + bluff riuscito su fold-out, determinismo, azioni illegali);
 **bot Draw** (`DrawBotTests`: dial delle personalità, scarto da manuale, azioni e
 scarti sempre legali e deterministici, disciplina di apertura, simulazione
-multi-mano con fiches conservate).
+multi-mano con fiches conservate); **motore Machiavelli** (`MachiavelliTests`:
+predicato di validità su ogni frontiera — group a semi distinti, run con asso ai
+due capi ma senza wrap, minimi, tavolo valido; modello del turno — valutazione
+ipotetica senza mutazione, apply, terminale pass/draw; ricombinazione che tiene o
+rompe il tavolo; **stessa carta mossa più volte**; i **due assi indipendenti** dei
+bot; la ricerca che **non sfora mai** il budget di tempo; determinismo dato seed+nodi;
+**retrocompatibilità additiva** — le dimensioni Machiavelli non cambiano Texas/Omaha).
 
 ## Dimensioni di fold della Personality (D-048)
 

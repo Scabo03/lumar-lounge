@@ -187,6 +187,21 @@ l'informazione di gioco. Il ritmo adattivo (VoiceOver-ON) è stato rilassato (te
 perché le voci vere, più lunghe, non facessero scattare il backstop a metà parlato. Riverwood
 invariato. **347 unit test verdi.**
 
+**Quarto motore — Machiavelli (motore + bot + driver, non ancora giocabile, D-070).** `GameEngine`
+contiene ora un **quarto motore**, il **Machiavelli** (in `Machiavelli/`, indipendente dai tre
+poker): il gioco italiano di **ricombinazione** — si calano scale e tris e si possono **smontare e
+ricomporre** le combinazioni già sul tavolo (proprie o altrui), purché a fine turno tutto sia valido;
+vince chi svuota per primo la mano. Regole canoniche fissate (2 mazzi/104 carte no jolly, group a semi
+distinti, run con asso ai due capi mai wrap). Il **turno è una sequenza di trasformazioni** con **stato
+ipotetico** (si valuta senza applicare) validato contro lo snapshot d'inizio turno, così **la stessa
+carta può muoversi più volte**; il **predicato di validità è unico e vive nel motore**, pronto per due
+UI future (box del cieco / drag del vedente) che giocheranno lo **stesso** gioco. Bot su **due assi
+indipendenti** (profondità di ricerca × pazienza) con tre archetipi (studente/adulto/professore) e una
+ricerca **interrompibile** che non sfora mai il budget. `MachiavelliSessionDriver` in `GameWorld` con
+eventi propri, **attesa udibile** dei bot che pensano, e **matchmaking progressivo** a partite giocate.
+**Solo motore+bot+driver: manca UI, audio e casinò ospitante** (terzo casinò non anticipato). **382 unit
+test verdi**; i tre giochi esistenti invariati.
+
 > **🏁 La prima fase è completa.** Il gioco base è funzionante end-to-end — motore
 > completo, bot credibili, sessione multi-mano, flusso di eventi, UI giocabile e
 > accessibile, e **audio pieno**: i 47 file mp3 consegnati (atmosfera, carte,

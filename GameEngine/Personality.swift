@@ -90,6 +90,26 @@ public struct Personality: Equatable, Sendable {
     /// commits big only near the nuts; 0 = pays off with second-best made hands.
     public let omahaNuttiness: Double
 
+    // MARK: Machiavelli dimensions (D-070)
+    //
+    // Machiavelli personalities are NOT three difficulty levels — they are attitudes
+    // toward the table, expressed on TWO INDEPENDENT AXES (D-070). Modelling them as
+    // one scale would give three copies of the same bot with a different number.
+    // Neither axis is read by any poker bot, so their defaults are free; 0.5 is
+    // neutral and keeps Texas/Draw/Omaha behaviour untouched (additive, CONVENTIONS
+    // §1). They are LEVERS, not tuned values — calibration comes after real play.
+
+    /// SEARCH DEPTH — how far the bot explores the space of possible recompositions.
+    /// Low = glances and lays down what it plainly sees; high = dismantles and rebuilds
+    /// the table (its own and others') to place more cards. Also scales the bot's time
+    /// budget: a deep searcher is allowed to deliberate longer (D-070).
+    public let machiavelliSearchDepth: Double
+    /// PATIENCE — the propensity to HOLD a placement it has already found and draw
+    /// instead, waiting to draw something that makes a better move. Independent of
+    /// depth: a bot can search deeply yet be greedy, or search deeply yet be patient.
+    /// 0 = lays down whatever it found immediately; 1 = often forgoes small placements.
+    public let machiavelliPatience: Double
+
     public init(name: String,
                 tightness: Double,
                 aggression: Double,
@@ -104,7 +124,9 @@ public struct Personality: Equatable, Sendable {
                 drawBluffiness: Double = 0.3,
                 openingDiscipline: Double = 0.7,
                 omahaCoordination: Double = 0.5,
-                omahaNuttiness: Double = 0.5) {
+                omahaNuttiness: Double = 0.5,
+                machiavelliSearchDepth: Double = 0.5,
+                machiavelliPatience: Double = 0.5) {
         self.name = name
         self.tightness = tightness.clamped01
         self.aggression = aggression.clamped01
@@ -120,6 +142,8 @@ public struct Personality: Equatable, Sendable {
         self.openingDiscipline = openingDiscipline.clamped01
         self.omahaCoordination = omahaCoordination.clamped01
         self.omahaNuttiness = omahaNuttiness.clamped01
+        self.machiavelliSearchDepth = machiavelliSearchDepth.clamped01
+        self.machiavelliPatience = machiavelliPatience.clamped01
     }
 
     // MARK: - Pressure heuristic (pure, shared by both bots — D-048)
@@ -207,6 +231,48 @@ public extension Personality {
 
     /// The starting roster. More personalities arrive with game progression.
     static let starting: [Personality] = [.eagerNovice, .conservativeRock, .hotAggressor]
+
+    // MARK: - Machiavelli archetypes (D-070)
+    //
+    // Three attitudes toward the table, placed at distinct corners of the two
+    // independent axes (search depth × patience) — NOT three grades of one dial. The
+    // poker dials are left at neutral defaults: no Machiavelli bot reads them, and no
+    // poker bot reads the Machiavelli dials, so these presets change nothing elsewhere.
+
+    /// The student — young, quick. Scans little and lays down what it sees. Shallow
+    /// search, little patience: it plays fast and takes the placement in front of it.
+    static let machiavelliStudent = Personality(
+        name: "Machiavelli Student",
+        tightness: 0.5, aggression: 0.5, bluffFrequency: 0, riskTolerance: 0.5,
+        positionAwareness: 0.3, rationality: 0.5, tiltReactivity: 0.4,
+        machiavelliSearchDepth: 0.20,   // glances at the table
+        machiavelliPatience: 0.15       // grabs the first placement it finds
+    )
+
+    /// The adult — searches the table well but is patient, sometimes forgoing a
+    /// placement it has already spotted to wait for a better draw. Deep search, high
+    /// patience: the two axes pulling in different directions.
+    static let machiavelliAdult = Personality(
+        name: "Machiavelli Adult",
+        tightness: 0.5, aggression: 0.5, bluffFrequency: 0, riskTolerance: 0.5,
+        positionAwareness: 0.5, rationality: 0.7, tiltReactivity: 0.2,
+        machiavelliSearchDepth: 0.70,   // reads the table thoroughly
+        machiavelliPatience: 0.80       // holds, waiting for something better
+    )
+
+    /// The professor — old, a master who dismantles and rebuilds the table (yours
+    /// included) with relish. Deepest search; moderate patience — it usually acts on
+    /// what its deep search unearths. Takes its time, and that time is character.
+    static let machiavelliProfessor = Personality(
+        name: "Machiavelli Professor",
+        tightness: 0.5, aggression: 0.6, bluffFrequency: 0, riskTolerance: 0.5,
+        positionAwareness: 0.6, rationality: 0.9, tiltReactivity: 0.1,
+        machiavelliSearchDepth: 1.00,   // exhausts the recomposition space
+        machiavelliPatience: 0.50       // reworks the table and plays it
+    )
+
+    /// The three Machiavelli archetypes, in progression order.
+    static let machiavelliRoster: [Personality] = [.machiavelliStudent, .machiavelliAdult, .machiavelliProfessor]
 }
 
 // MARK: - Small numeric helper

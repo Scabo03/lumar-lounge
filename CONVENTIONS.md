@@ -407,6 +407,42 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     perde niente" applicato al **tempo**. Le meccaniche di sessione vivono in **GameWorld**
     (non nel motore) come **parametri configurabili del tavolo**, riusabili da ogni gioco
     (es. `StakeEscalation`, D-064), non feature prigioniere di un singolo gioco.
+  - **Un solo PREDICATO di legalità, nel motore, interrogato da interfacce diverse
+    (regola permanente, D-070).** Quando un gioco ammette due modi di esprimere la stessa
+    mossa — tipicamente uno pensato per il **cieco** (comporre in un box, sbloccare
+    *Conferma* quando la selezione è valida) e uno per il **vedente** (trascinare sul
+    tavolo, sbloccare *fine turno* quando il tavolo è valido) — la **validità deve vivere
+    in un unico predicato puro nel `GameEngine`**, mai duplicata nella UI. Motivazione di
+    accessibilità, non di eleganza: due implementazioni della stessa regola **divergono al
+    primo bug**, e il vedente e il non vedente finirebbero a giocare due giochi
+    leggermente diversi. Il motore non deve sapere **chi** gioca né **come** esprime la
+    mossa. (Machiavelli: `MachiavelliRules.classify`/`isValidTable`.)
+  - **Lo stato di lavoro di una mossa è IPOTETICO finché non confermato (D-070).** Se la
+    UII permette di costruire una mossa per gradi (selezionare/deselezionare, comporre,
+    rimaneggiare), il motore deve saper **valutare una trasformazione proposta senza
+    applicarla** e applicarla **solo su conferma** (`evaluate` vs `apply`). È ciò che rende
+    il box "un posto sicuro dove sbagliare", e vale **molto più per un cieco** che esplora
+    a swipe che per un vedente che trascina. Corollario: quando una regola ammette di
+    **cambiare idea nello stesso turno** (rimuovere una carta già calata e ricomporla),
+    la validazione va fatta contro lo **snapshot d'inizio turno**, non contro lo stato
+    corrente, così **la stessa carta può muoversi più volte** e **solo lo stato finale**
+    conta. Un esploratore lento non è mai punito per la lentezza dell'esplorazione, solo
+    per la qualità della mossa finale — accessibilità travestita da regola di gioco.
+  - **La ricerca dei bot deve essere INTERROMPIBILE e a profondità ADATTIVA, mai a
+    profondità fissa che possa sforare (D-070).** Un bot con un budget di riflessione
+    (di tempo e/o di nodi) deve tenere sempre una **mossa migliore valida** e restituirla
+    **nell'istante** in cui il budget scade, con lavoro **per-nodo limitato** così l'overrun
+    è trascurabile. Il **budget di tempo può essere un tratto di CARATTERE** (uno pensa in
+    fretta, un altro medita): la differenza va **resa**, non nascosta. Determinismo e tempo
+    si riconciliano così: il risultato è deterministico dato **seed + budget di nodi** (i
+    test pinnano i nodi); sotto un puro tetto di tempo la profondità raggiunta varia per
+    macchina ed è **intenzionale** (produzione adattiva).
+  - **L'attesa deve essere UDIBILE (D-070).** Se un bot può deliberare per secondi, per un
+    cieco quel silenzio è indistinguibile da un gioco bloccato. Il motore/driver deve
+    emettere un **evento esplicito** che dichiara che un bot **sta pensando** (e uno che ha
+    finito), **descrittivo non prescrittivo** (dichiara il fatto + una durata attesa come
+    *hint* di carattere, non ordina un suono), così UI e audio futuri possano riempire il
+    silenzio. È lo stesso spirito dei safeguard sulle continuation del poker (D-056).
 
 ## 5. Testabilità
 

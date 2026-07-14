@@ -98,12 +98,27 @@ nei file collegati.
   Skypool** (registro cittadino, cinico), non più quelli del Riverwood. Il **Riverwood è la palette
   identità/default** → invariato per costruzione (pin di regressione). Un casinò nuovo eredita il
   croupier **senza toccare il percorso audio**.
+- **`GameEngine`/`GameWorld` M?.? — Machiavelli (D-070):** **quarto motore**, il gioco italiano di
+  **ricombinazione**, in `Machiavelli/`, **indipendente** (nessun import incrociato; solo i
+  fondazionali). **Non è poker.** Regole canoniche fissate (2 mazzi/104 carte no jolly, group a semi
+  distinti, run con asso ai due capi mai wrap, mano 13, pesca 1, vince chi svuota). Il **turno è una
+  sequenza di trasformazioni** chiusa da un terminale (pass/draw); **stato ipotetico** (`evaluate` senza
+  applicare, `apply` conferma) validato contro lo **snapshot d'inizio turno** → **la stessa carta si
+  muove più volte**. Il **predicato di validità** (`MachiavelliRules`) è **unico e nel motore**,
+  interrogato da due interfacce future (box del cieco / drag del vedente) → stesso gioco per entrambi.
+  Bot su **due assi indipendenti** (`machiavelliSearchDepth`/`machiavelliPatience`, additivi) con tre
+  archetipi (studente/adulto/professore); ricerca **interrompibile** (exact-cover limitato) che **non
+  sfora mai** il budget (nodi=deterministico / tempo=produzione, ~10–15 s = carattere). `MachiavelliSessionDriver`
+  in GameWorld con eventi propri e **attesa udibile** (`botThinkingBegan/Ended`), matchmaking progressivo
+  a **partite giocate**. **Solo motore+bot+driver: nessuna UI, nessun audio, nessun casinò ospitante
+  (terzo casinò non anticipato).** 382 test verdi; giochi esistenti invariati.
 
 **🏢 Fase 1 (M1) completa; Fase 2 (M2) in corso.** Girano end-to-end **tre giochi** in **due
 casinò**: al **Riverwood** Texas Hold'em No Limit (Classico/Rapido) e **Five-Card Draw** (Sala
 Whiskey); allo **Skypool** Texas (Classico/Rapido) e **Omaha Pot Limit** (Marble). `GameEngine`
-contiene **tre motori**, tutti e tre ora con driver, UI e audio (Omaha via lo Skypool). Navigazione
-Home → Casinò → Tavolo con gettoni persistenti e barriera economica.
+contiene **quattro motori**: i tre poker (tutti con driver, UI e audio) più il **Machiavelli**
+(motore+bot+driver, **non ancora giocabile** — manca UI/audio/casinò). Navigazione Home → Casinò →
+Tavolo con gettoni persistenti e barriera economica.
 
 **Slot audio** (stato reale, dettaglio in `Skypool_audio_catalog.md`):
 - **Skypool (D-068): file reali PRODOTTI e CABLATI** — croupier 12/14, ambient 4/4, colore-bot
@@ -119,7 +134,9 @@ Home → Casinò → Tavolo con gettoni persistenti e barriera economica.
 (dopo che l'utente ha giocato entrambi); **produzione dei file audio Skypool** (croupier + ambient +
 `vob_sky_*`) e cablaggio delle `vob_sky_*` quando arrivano (oggi silenti); cassa/DLC per ricarica
 gettoni; **NPC narrativi**; piscina/discoteca come luoghi. Il **terzo casinò non è anticipato**.
-(Il croupier per-casinò — debito D-066 — è **chiuso** in D-067.)
+(Il croupier per-casinò — debito D-066 — è **chiuso** in D-067.) Per il **Machiavelli** (D-070, motore
+pronto) restano **UI** accessibile (box del cieco + drag del vedente sullo stesso predicato), **audio**
+(voce che riempie l'attesa udibile dei bot), e il **casinò ospitante** — tutti fuori da questa sessione.
 
 **Stato completo, sempre aggiornato:** sezione *Stato di sviluppo* in
 [`README.md`](README.md).
@@ -1826,3 +1843,85 @@ livelli, senza toccare la logica di gioco:
 - **Riverwood invariato:** solo dati/asset dello Skypool; `layerVolume` Riverwood = 0.2 come prima;
   nessun file del Riverwood toccato; palette identità (`CasinoAudioTests`) verde. 347 test verdi. Solo
   `UI` (`AmbientBeds`) + ri-encoding dei 12 mp3 croupier. **La conferma finale resta l'ascolto sul device.**
+
+### D-070 — Machiavelli: quarto motore (ricombinazione), regole canoniche, modello del turno, predicato unico, bot a due assi (M?, solo motore)
+Apertura del motore del **Machiavelli** (gioco italiano di ricombinazione), destinato a un
+terzo casinò **non ancora anticipato**. Sessione di **solo motore, bot e driver**: nessuna
+UI, nessun audio, nessun casinò. Vive in `GameEngine/Machiavelli/`, **quarto motore
+parallelo e indipendente** (nessun import incrociato con Texas/Draw/Omaha; condivide **solo**
+`Card`/`Rank`/`Suit`/`Deck`). **Non è poker:** niente piatto, puntate, blind, bluff, showdown —
+quindi **nulla** dell'infrastruttura poker (`BotContext`-con-equity, `Pot`, side pot, leve di
+rischio/aggressione) è riusato; costruito come **animale nuovo**.
+- **Regole canoniche fissate (dichiarate perché una sessione futura non le riscopra).** Due
+  mazzi da 52 = **104 carte, nessun jolly** (l'assenza di wildcard rende la ricombinazione
+  pura). **Group (tris/poker):** 3–4 carte stesso rango, **semi distinti** (con due mazzi due
+  copie identiche non fanno gruppo). **Run (scala):** 3+ carte **stesso seme consecutive**;
+  **asso ai due capi** (Q-K-A **oppure** A-2-3) ma **mai wrap** (K-A-2 illegale). **Mano 13
+  carte**, resto = **stock**; si pesca **una** carta se non si cala. **Vince** chi svuota la
+  mano. Nessuna soglia di apertura a punti (semplificazione deliberata: complicherebbe senza
+  aggiungere alla ricombinazione). Su queste ho avuto **libertà di scelta** (come per Omaha) e
+  ho preso le più diffuse.
+- **Il modello del turno è la decisione architetturale centrale.** Il turno **non è una mossa**:
+  è una **sequenza di trasformazioni** del tavolo chiusa da un **terminale esplicito** — *passare*
+  (legale solo se si è calata ≥1 carta) o *pescare* (se non si è calato nulla). Le trasformazioni
+  intermedie non chiudono il turno. Implementato in `MachiavelliTurnContext`.
+- **La regola imposta (non negoziabile): la stessa carta può muoversi più volte nello stesso
+  turno.** Realizzata validando **ogni proposta contro lo snapshot d'INIZIO turno** (tavolo bloccato
+  + mano iniziale), non contro lo stato corrente: così una carta calata presto può essere ripresa e
+  ricomposta quante volte si vuole, e **solo lo stato finale** deve essere valido. È **accessibilità
+  travestita da regola**: un cieco che scopre una mossa migliore dopo venti swipe non è punito per la
+  lentezza dell'esplorazione, solo per la qualità della mossa finale.
+- **Stato ipotetico:** `evaluate(_:)` valuta una proposta di tavolo **senza applicarla** (nessuna
+  mutazione, dice legalità + carte piazzate + mano risultante); `apply(_:)` conferma. È il cuore del
+  "box come posto sicuro dove sbagliare". Conservazione enforced: le carte del tavolo a inizio turno
+  devono **restare sul tavolo** (rimescolabili tra combinazioni, mai prese in mano); gli extra vengono
+  dalla mano.
+- **Il predicato di validità è l'UNICA fonte di verità, NEL MOTORE.** `MachiavelliRules.classify`
+  (una selezione è una combinazione legale? quale?) e `isValidTable` (tutto il tavolo è valido?)
+  vivono nel motore e **mai** nella UI, perché due interfacce future li interrogheranno da punti
+  diversi: il **cieco** compone in un box (sblocca *Conferma* sulla **selezione**), il **vedente**
+  trascina sul tavolo (sblocca *fine turno* sul **tavolo**). Un solo predicato ⇒ vedente e non vedente
+  giocano lo **stesso** gioco; se vivesse nella UI, divergerebbero al primo bug. **Principio permanente
+  in CONVENTIONS §4.**
+- **Bot su DUE ASSI INDIPENDENTI (non tre gradi di una scala).** Due nuove dimensioni **additive** di
+  `Personality` (default 0.5, inerti negli altri giochi — retrocompatibilità verificata):
+  `machiavelliSearchDepth` (quanto esplora le ricomposizioni) e `machiavelliPatience` (se **trattiene**
+  una mossa già trovata e pesca aspettando qualcosa di meglio). Sono ortogonali: un bot può cercare in
+  profondità **ed** essere avido, o in profondità **ed** essere paziente. Tre archetipi:
+  **studente** (profondità 0.2 / pazienza 0.15 — cala in fretta), **adulto** (0.70 / 0.80 — aspetta il
+  meglio), **professore** (1.0 / 0.50 — rimaneggia il tavolo). Solo leve, **non** calibrate (taratura
+  fine dopo il test reale). Il test di divergenza dimostra la **non-collinearità**: l'adulto, che cerca
+  **più a fondo** dello studente, **cala meno spesso** perché più paziente — "più ricerca" ≠ "più giocate".
+- **Ricerca interrompibile, profondità adattiva, MAI uno sforo.** `HeuristicMachiavelliBot` tiene sempre
+  una **baseline greedy valida** e la migliora con un **exact-cover limitato con restart** sull'intero
+  pool (tavolo + mano) per smontare e ricomporre combinazioni (compresa la ricomposizione delle altrui).
+  Bounded da `MachiavelliSearchBudget` a **nodi** e/o **tempo**: controlla il budget **prima di ogni
+  nodo**, lavoro per-nodo limitato ⇒ overrun trascurabile (microsecondi). **Riconciliazione
+  determinismo↔tempo:** il risultato è deterministico dato **seed + budget di NODI** (i test lo pinnano);
+  sotto un puro tetto di **tempo** la profondità raggiunta varia per macchina, **intenzionale** (produzione
+  adattiva, D-047 nello spirito). Il budget di tempo è **carattere**: ~10 s studente → ~15 s professore
+  (derivato da `searchDepth`); il tetto di nodi (~500 → 60 000) fa sì che lo studente ritorni presto anche
+  se avanza tempo (*glances*) e il professore studi (*studies*). Numeri **misurati**: exact-cover con MRV
+  + branchCap 8; il test `testTimeBudgetNeverOverrunsOnAComplexTable` gira con budget 300 ms su un tavolo
+  fitto + mano piena e ritorna **entro ~1 s** con un piano legale.
+- **Driver di sessione + eventi + attesa udibile (GameWorld).** `MachiavelliSessionDriver`, sorella dei
+  driver poker, con flusso `MachiavelliSessionEvent` proprio via `MachiavelliEventHub` (riusa solo
+  `EventAudience`/`EventViewer`). Eventi **descrittivi non prescrittivi**; audience privata esplicita (la
+  mano distribuita e la carta pescata solo al proprietario); il produttore non conosce il ritmo umano;
+  bot via **contesto redatto** (tavolo pubblico + conteggio mani avversarie, **mai** le loro carte, D-009);
+  ogni piano validato dallo **stesso predicato** del giocatore (un bot non può barare; un piano malformato
+  è coerciato a una pescata, D-013). **Seed casuale in produzione / iniettabile nei test** (D-047, non
+  riscoperto). **L'ATTESA È UDIBILE:** il driver emette `botThinkingBegan`(con la deliberazione attesa
+  come *hint* di carattere)/`botThinkingEnded` attorno a ogni turno bot, così UI/audio futuri riempiono il
+  silenzio; **nessun audio prodotto in questa sessione** — solo gli eventi.
+- **Matchmaking progressivo (incontri, non livelli).** `MachiavelliMatchmaker` sceglie **1–2** avversari
+  in base alle **partite giocate** (contatore, **mai** il tempo — regola D-064/D-070): primissime partite
+  quasi sempre lo **studente**, poi studente/adulto, poi insieme, più avanti il **professore**, fino a
+  partite col **solo professore**. Deterministico dato seed. Il giocatore non affronta una difficoltà,
+  **incontra delle persone**.
+- **Vincoli rispettati:** sottocartella dedicata, nessun import incrociato, predicato nel motore,
+  `Personality` additiva, determinismo dato seed / casuale in produzione, **motori esistenti intatti**,
+  **nessuna ricalibrazione** delle personalità esistenti. **382 test verdi** (347 + 35 nuovi); Texas/Draw/
+  Omaha invariati. **Residuo dichiarato (esplicito):** mancano **UI**, **audio** e il **casinò ospitante**
+  — Machiavelli è motore+bot+driver, **non giocabile**. Nessun TestFlight (niente di giocabile). Vedi
+  `ROADMAP.md`.

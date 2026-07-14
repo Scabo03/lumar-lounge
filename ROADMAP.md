@@ -352,6 +352,31 @@ Texas e Draw **invariati**. Niente TestFlight (nulla di giocabile).
 > e il **casinò ospitante** — Omaha sarà la specialità di un **secondo casinò** che non esiste
 > ancora e la cui identità/decisioni sono un mattone successivo, non anticipato qui.
 
+### ✅ Machiavelli — Motore + bot + driver di sessione (NON giocabile) (D-070)
+**Quarto motore** di `GameEngine`, in `Machiavelli/`, il gioco italiano di **ricombinazione**,
+**indipendente** da Texas/Draw/Omaha (nessun import incrociato; solo i fondazionali
+`Card`/`Rank`/`Suit`/`Deck`). **Non è poker** — niente piatto/puntate/blind/bluff/showdown, quindi
+nulla dell'infrastruttura poker è riusato. **Regole canoniche fissate** (2 mazzi/104 carte no jolly;
+group 3–4 stesso rango a semi distinti; run 3+ stesso seme consecutive con asso ai due capi ma mai
+wrap; mano 13, pesca 1, vince chi svuota). Il **turno è una sequenza di trasformazioni** chiusa da un
+terminale (pass/draw); **stato ipotetico** (`evaluate` senza applicare, `apply` conferma) validato
+contro lo **snapshot d'inizio turno** → **la stessa carta si muove più volte**, solo lo stato finale
+conta. Il **predicato di validità** (`MachiavelliRules`) è **unico e nel motore**, interrogato da due
+interfacce future (box del cieco / drag del vedente) → stesso gioco per entrambi. Bot su **due assi
+indipendenti** (`machiavelliSearchDepth`/`machiavelliPatience`, additivi) con tre archetipi
+(studente/adulto/professore); ricerca **interrompibile** (greedy + exact-cover limitato) che **non
+sfora mai** il budget (nodi=deterministico / tempo=produzione, ~10–15 s = carattere). In `GameWorld`:
+`MachiavelliSessionDriver` (sorella dei driver poker, seed casuale in produzione — D-047), flusso
+eventi proprio con **attesa udibile** (`botThinkingBegan/Ended`), e **matchmaking progressivo** a
+**partite giocate** (mai a tempo — D-064/D-070). **382 test verdi**; giochi esistenti invariati.
+Niente TestFlight (nulla di giocabile).
+
+> **Residuo aperto per Machiavelli (esplicito):** è **motore + bot + driver, ma non giocabile**.
+> Mancano la **UI** accessibile (box di composizione per il cieco + drag per il vedente, **entrambi
+> sopra lo stesso predicato**), l'**audio** (voce che riempie l'attesa udibile dei bot che pensano;
+> nessun file, nessuna `SpeechMap` in questa sessione — solo gli eventi dichiarati) e il **casinò
+> ospitante** — un **terzo casinò** che non esiste ancora e **non è anticipato** qui.
+
 ---
 
 ## Fase 3 — Audio trasversale (`Audio`)

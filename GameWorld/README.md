@@ -200,3 +200,31 @@ pass, bet/cap raddoppiati, intervallo 5–8, disattivazione) e dal boost bot in
   il Riverwood, scala crescente Fast 5000 < Classic 6000 < Marble 10000. Accesso **solo
   economico** (testato con `DEBUG_FREE_PLAY` off in `CasinoTests`). Riverwood **non
   ricalibrato** (calibrazione comparativa = mattone successivo).
+
+## Machiavelli: driver di sessione + eventi + matchmaking (D-070, solo motore)
+
+Il **quarto gioco** (Machiavelli, la ricombinazione) ha in `GameWorld` la sua
+sessione, **sorella** dei driver poker ma con vocabolario proprio. **Non è
+giocabile** (mancano UI/audio/casinò): qui c'è solo l'orchestrazione.
+
+- **`MachiavelliSessionDriver`** — gioca **una partita** a completamento (distribuisce
+  il shoe da due mazzi, fa girare i turni in ordine, lascia ogni posto rimaneggiare il
+  tavolo condiviso via il modello del turno del motore, finisce quando qualcuno svuota la
+  mano; stallo → risolto al giocatore con meno carte / tetto turni configurabile per test).
+  Cliente **puro** del motore: ogni piano validato dallo **stesso predicato**
+  (`MachiavelliTurnContext`) del giocatore (un bot non può barare; piano malformato →
+  pescata, D-013). **Seed casuale in produzione / iniettabile nei test** (D-047).
+- **`MachiavelliSessionEvent`/`MachiavelliEventHub`** — flusso proprio (melds,
+  ricomposizione, pescate, vittoria), **descrittivo non prescrittivo**, audience privata
+  (mano distribuita + carta pescata solo al proprietario), riusa solo
+  `EventAudience`/`EventViewer`. **Attesa udibile:** `botThinkingBegan`(con deliberazione
+  attesa come *hint*)/`botThinkingEnded` attorno a ogni turno bot, così UI/audio futuri
+  riempiono il silenzio dei bot che pensano.
+- **`MachiavelliTurnProvider`** — facciata async uniforme bot/umano (D-013); lo scambio è
+  un **piano di turno** (`MachiavelliTurnPlan`), non una singola azione, perché il turno è
+  una sequenza di trasformazioni.
+- **`MachiavelliMatchmaker`** — sistema di **incontri progressivi**: sceglie **1–2**
+  avversari in base alle **partite giocate** (contatore, **mai** il tempo — D-064/D-070):
+  primissime partite quasi solo lo **studente**, poi studente/adulto, poi insieme, più
+  avanti il **professore**, fino a partite col **solo professore**. Deterministico dato
+  seed. Il giocatore **incontra delle persone**, non un livello di difficoltà.
