@@ -398,7 +398,7 @@ titolo della combinazione e azioni personalizzate (il colpo d'occhio per il ciec
 **udibile** sul canale ambientale (musica "thinking"). Voce del ClockTower = figura **non-croupier**,
 personaggio **da decidere** (registro erudito scritto, slot dichiarati coi fallback). Matchmaking
 progressivo a **partite giocate**. Motore Machiavelli **non toccato** (una sola aggiunta al driver
-GameWorld). **405 test verdi**; Riverwood/Skypool invariati. **Caricato su TestFlight.**
+GameWorld). **405 test verdi**; Riverwood/Skypool invariati. **Caricato su TestFlight (build 1784038459).**
 
 > **Residui aperti del ClockTower (dichiarati):** i **file audio** (ambient/musica su StableAudio →
 > `ClockTower_audio_catalog_ambient.md`; voci su ElevenLabs → `ClockTower_audio_catalog_voices.md`) sono

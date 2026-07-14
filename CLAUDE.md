@@ -2054,4 +2054,5 @@ nessuna** delle altre: non è un tavolo da poker, è uno **spazio di ricombinazi
   modalità; nessun import incrociato; eventi descrittivi; `BotContext` redatto; **nessun
   `UIAccessibility.post` diretto** (tutto via `AnnouncementQueue`); ogni `CheckedContinuation` col suo
   timeout (riuso `SpokenChannelPacing`); cache dallo stato corrente; `.voiceOverFocusLanding()` su
-  schermata, hero, e box. **Riverwood e Skypool intatti.** **405 test verdi** (389 + 16 nuovi).
+  schermata, hero, e box. **Riverwood e Skypool intatti.** **405 test verdi** (389 + 16 nuovi); app iOS
+  compila. **TestFlight caricato: build 1784038459** (upload riuscito).
