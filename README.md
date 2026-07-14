@@ -199,8 +199,16 @@ UI future (box del cieco / drag del vedente) che giocheranno lo **stesso** gioco
 indipendenti** (profondità di ricerca × pazienza) con tre archetipi (studente/adulto/professore) e una
 ricerca **interrompibile** che non sfora mai il budget. `MachiavelliSessionDriver` in `GameWorld` con
 eventi propri, **attesa udibile** dei bot che pensano, e **matchmaking progressivo** a partite giocate.
-**Solo motore+bot+driver: manca UI, audio e casinò ospitante** (terzo casinò non anticipato). **382 unit
-test verdi**; i tre giochi esistenti invariati.
+**Solo motore+bot+driver: manca UI, audio e casinò ospitante** (terzo casinò non anticipato). I tre
+giochi esistenti invariati.
+
+**Machiavelli a punti — struttura mano↔partita (D-071).** Una partita non è più una mano sola: ogni
+**mano** è **segnata** (asso 10, figure 5, numerate 1; bonus per chi va out, malus per le carte
+rimaste in mano) e la **partita** finisce alla **soglia di vittoria** (~3 mani). Il punteggio dà
+**scopo a chi non vince la mano** e trasforma la pazienza dei bot in un **rischio calcolato**: una
+nuova dimensione additiva (`machiavelliMalusAversion`) fa sì che il bot paziente **scarichi le carte
+pesanti** e non resti con l'asso in mano quando un avversario sta per chiudere. Punteggio nel **motore**
+(`MachiavelliScoring`), soglia/struttura in **GameWorld**. Ancora **non giocabile**. **389 unit test verdi.**
 
 > **🏁 La prima fase è completa.** Il gioco base è funzionante end-to-end — motore
 > completo, bot credibili, sessione multi-mano, flusso di eventi, UI giocabile e

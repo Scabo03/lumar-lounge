@@ -332,13 +332,13 @@ final class MachiavelliTests: XCTestCase {
     func testMachiavelliDialsDoNotChangePokerBehaviour() {
         // Two personalities identical but for the Machiavelli dials must decide Texas,
         // Draw and Omaha identically.
-        func make(_ depth: Double, _ patience: Double) -> Personality {
+        func make(_ depth: Double, _ patience: Double, _ malus: Double) -> Personality {
             Personality(name: "p", tightness: 0.5, aggression: 0.5, bluffFrequency: 0.3, riskTolerance: 0.5,
                         positionAwareness: 0.5, rationality: 0.7, tiltReactivity: 0.3,
-                        machiavelliSearchDepth: depth, machiavelliPatience: patience)
+                        machiavelliSearchDepth: depth, machiavelliPatience: patience, machiavelliMalusAversion: malus)
         }
-        let a = make(0.0, 0.0)
-        let b = make(1.0, 1.0)
+        let a = make(0.0, 0.0, 0.0)
+        let b = make(1.0, 1.0, 1.0)
 
         // Texas.
         let texasCtx = BotContext(heroSeatID: 0, hole: Hand(c(.ace, .spades), c(.king, .spades)),
@@ -364,5 +364,96 @@ final class MachiavelliTests: XCTestCase {
                                        activeOpponents: 1, lateness: 0.5, aggressionFacedThisStreet: true)
         XCTAssertEqual(HeuristicOmahaBot(personality: a, seed: 5, equitySamples: 20).decide(omahaCtx),
                        HeuristicOmahaBot(personality: b, seed: 5, equitySamples: 20).decide(omahaCtx))
+    }
+
+    // MARK: - Hand scoring (D-071)
+
+    func testCardValueScale() {
+        XCTAssertEqual(MachiavelliScoring.cardValue(c(.ace, .spades)), 10)
+        XCTAssertEqual(MachiavelliScoring.cardValue(c(.king, .spades)), 5)
+        XCTAssertEqual(MachiavelliScoring.cardValue(c(.jack, .spades)), 5)
+        XCTAssertEqual(MachiavelliScoring.cardValue(c(.ten, .spades)), 1)   // ten is numbered, not a figure
+        XCTAssertEqual(MachiavelliScoring.cardValue(c(.two, .spades)), 1)
+    }
+
+    func testScoringRewardsOutBonusPlacedAndPenalisesRemaining() {
+        // Player A went out having placed an ace + a king (10+5=15): bonus 20 + 15 − 0.
+        let a = MachiavelliScoring.PlayerHandResult(playerID: 0,
+                    placed: [c(.ace, .spades), c(.king, .hearts)], remaining: [], wentOut: true)
+        // Player B placed two low cards (2) and is stuck with an ace (−10): 2 − 10.
+        let b = MachiavelliScoring.PlayerHandResult(playerID: 1,
+                    placed: [c(.two, .clubs), c(.three, .clubs)], remaining: [c(.ace, .diamonds)], wentOut: false)
+        let scores = MachiavelliScoring.score([a, b])
+        XCTAssertEqual(scores[0], MachiavelliScoring.outBonus + 15)
+        XCTAssertEqual(scores[1], 2 - 10)
+        // Going out and shedding the ace beats being caught holding it.
+        XCTAssertGreaterThan(scores[0]!, scores[1]!)
+    }
+
+    func testHoldingHeavyCardsIsHeavilyPenalised() {
+        // Same placement, but one player is stuck with an ace, the other with a deuce.
+        let stuckAce = MachiavelliScoring.score(.init(playerID: 0, placed: [], remaining: [c(.ace, .spades)], wentOut: false))
+        let stuckLow = MachiavelliScoring.score(.init(playerID: 0, placed: [], remaining: [c(.two, .spades)], wentOut: false))
+        XCTAssertEqual(stuckAce, -10)
+        XCTAssertEqual(stuckLow, -1)
+    }
+
+    // MARK: - Bots play SCORE-AWARE (D-071)
+
+    /// A context with an opponent that holds `opponentCount` cards (a closing threat).
+    private func context(hand: [Card], table: [[Card]], stock: Int, opponentCount: Int) -> MachiavelliBotContext {
+        MachiavelliBotContext(heroSeatID: 0, hand: hand, table: table.map { Meld($0)! }, stockCount: stock,
+                              seats: [MachiavelliPublicSeat(id: 0, handCount: hand.count, isHero: true),
+                                      MachiavelliPublicSeat(id: 1, handCount: opponentCount, isHero: false)])
+    }
+
+    /// A malus-averse bot prefers a plan that sheds an ACE over one that sheds two low
+    /// cards, even though the latter places more cards — value beats count for it.
+    func testMalusAverseBotShedsHighValueCards() {
+        // Table offers two independent extension points:
+        //  • a group of aces (place A♣, value 10, one card), and
+        //  • a spade run 4-5-6 that can grow with 7♠ then 8♠ (two low cards, value 2).
+        // The hand holds exactly A♣, 7♠, 8♠ — but placing the ace and placing the run
+        // tail both compete; a count-maximiser prefers the two low cards, a malus-averse
+        // bot prefers shedding the ace.
+        let hand = [c(.ace, .clubs), c(.seven, .spades), c(.eight, .spades)]
+        let table = [[c(.ace, .spades), c(.ace, .hearts), c(.ace, .diamonds)],
+                     [c(.four, .spades), c(.five, .spades), c(.six, .spades)]]
+
+        let averse = HeuristicMachiavelliBot(
+            personality: Personality(name: "averse", tightness: 0.5, aggression: 0.5, bluffFrequency: 0,
+                riskTolerance: 0.5, positionAwareness: 0.5, rationality: 0.7, tiltReactivity: 0,
+                machiavelliSearchDepth: 0.9, machiavelliPatience: 0, machiavelliMalusAversion: 1.0),
+            seed: 3, budget: .nodes(40_000))
+        let plan = averse.planTurn(context(hand: hand, table: table, stock: 40, opponentCount: 8))
+        XCTAssertEqual(plan.terminal, .meld)
+        let placed = plan.finalTable.flatMap { $0 }
+        XCTAssertTrue(placed.contains(c(.ace, .clubs)), "a malus-averse bot places its ace")
+    }
+
+    /// The core D-071 requirement: a PATIENT bot does not hold indefinitely once heavy
+    /// cards are at risk. With an opponent one card from out, the same patient
+    /// personality holds far LESS when it is also malus-averse.
+    func testMalusAversionStopsThePatientBotFromHoldingHeavies() {
+        func patient(malus: Double) -> Personality {
+            Personality(name: "p", tightness: 0.5, aggression: 0.5, bluffFrequency: 0, riskTolerance: 0.5,
+                        positionAwareness: 0.5, rationality: 0.5, tiltReactivity: 0.2,
+                        machiavelliSearchDepth: 0.6, machiavelliPatience: 1.0, machiavelliMalusAversion: malus)
+        }
+        // A small placement available (extend the 2s), a HEAVY hand (aces, kings), and an
+        // opponent about to go out (2 cards) — holding is dangerous.
+        let hand = [c(.two, .clubs), c(.ace, .hearts), c(.ace, .diamonds), c(.king, .clubs), c(.king, .hearts)]
+        let table = [[c(.two, .spades), c(.two, .hearts), c(.two, .diamonds)]]
+
+        var obliviousHolds = 0, averseHolds = 0
+        for seed in UInt64(0)..<40 {
+            let oblivious = HeuristicMachiavelliBot(personality: patient(malus: 0), seed: seed, budget: .nodes(2_000))
+            let averse = HeuristicMachiavelliBot(personality: patient(malus: 1), seed: seed, budget: .nodes(2_000))
+            let ctx = context(hand: hand, table: table, stock: 30, opponentCount: 2)
+            if oblivious.planTurn(ctx).terminal == .draw { obliviousHolds += 1 }
+            if averse.planTurn(ctx).terminal == .draw { averseHolds += 1 }
+        }
+        XCTAssertLessThan(averseHolds, obliviousHolds,
+                          "under closing threat, the malus-averse patient bot holds far less than the oblivious one")
     }
 }

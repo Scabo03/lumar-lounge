@@ -407,6 +407,16 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     perde niente" applicato al **tempo**. Le meccaniche di sessione vivono in **GameWorld**
     (non nel motore) come **parametri configurabili del tavolo**, riusabili da ogni gioco
     (es. `StakeEscalation`, D-064), non feature prigioniere di un singolo gioco.
+  - **Il PUNTEGGIO è logica di gioco (nel motore, puro); la STRUTTURA di partita è meccanica di
+    sessione (in GameWorld) (regola permanente, D-071).** Come il poker distingue *mano* e *sessione*,
+    un gioco a punti distingue *mano* e *partita*: **calcolare i punti di una mano dato lo stato finale**
+    è una funzione **pura e testabile** che vive nel `GameEngine` (es. `MachiavelliScoring`), mentre la
+    **soglia di vittoria**, l'accumulo dei totali e la sequenza di mani sono una **meccanica di sessione**
+    che vive nel driver di `GameWorld` (accanto a boost/ante/`StakeEscalation`). La soglia è un **parametro
+    configurabile del tavolo**. Motivazione di game design: il punteggio dà **uno scopo a chi non vince la
+    mano** (ogni progresso conta, ogni carta rimasta pesa) e toglie a una singola distribuzione il peso di
+    decidere tutto; va calibrato per una partita **breve e densa** (poche mani), su **dati misurati**, non
+    a intuito.
   - **Un solo PREDICATO di legalità, nel motore, interrogato da interfacce diverse
     (regola permanente, D-070).** Quando un gioco ammette due modi di esprimere la stessa
     mossa — tipicamente uno pensato per il **cieco** (comporre in un box, sbloccare

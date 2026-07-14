@@ -207,19 +207,27 @@ Il **quarto gioco** (Machiavelli, la ricombinazione) ha in `GameWorld` la sua
 sessione, **sorella** dei driver poker ma con vocabolario proprio. **Non è
 giocabile** (mancano UI/audio/casinò): qui c'è solo l'orchestrazione.
 
-- **`MachiavelliSessionDriver`** — gioca **una partita** a completamento (distribuisce
-  il shoe da due mazzi, fa girare i turni in ordine, lascia ogni posto rimaneggiare il
-  tavolo condiviso via il modello del turno del motore, finisce quando qualcuno svuota la
-  mano; stallo → risolto al giocatore con meno carte / tetto turni configurabile per test).
-  Cliente **puro** del motore: ogni piano validato dallo **stesso predicato**
-  (`MachiavelliTurnContext`) del giocatore (un bot non può barare; piano malformato →
-  pescata, D-013). **Seed casuale in produzione / iniettabile nei test** (D-047).
+- **`MachiavelliSessionDriver`** — gioca una **partita** (D-071) = **sequenza di mani**
+  segnate: `playHand()` distribuisce/gioca/**segna** una mano ed accumula i totali,
+  `playMatch()` ripete finché un giocatore **supera la soglia di vittoria**. Una mano
+  finisce quando qualcuno va out (o stallo → risolto al giocatore con meno carte). Il
+  primo di mano **ruota** tra le mani. Cliente **puro** del motore: ogni piano validato
+  dallo **stesso predicato** (`MachiavelliTurnContext`) del giocatore (un bot non può
+  barare; piano malformato → pescata, D-013). **Seed casuale in produzione / iniettabile
+  nei test** (D-047), determinismo su **tutta la partita**.
+- **Punteggio (D-071).** Il calcolo dei punti di una mano è **logica di gioco** e vive nel
+  **motore** (`MachiavelliScoring`: asso 10, figure 5, numerate 1; `outBonus + valore(calato)
+  − valore(rimasto)`); il driver **traccia** gli input (calato-per-mano, rimasto, out) e li
+  passa al calcolo puro, poi accumula i totali. La **soglia** (`defaultVictoryThreshold = 250`)
+  e la struttura mano↔partita sono **meccanica di sessione** e vivono **qui**, come il boost
+  mano decisiva, l'ante progressivo e `StakeEscalation`. Calibrata (D-071) per ~3 mani.
 - **`MachiavelliSessionEvent`/`MachiavelliEventHub`** — flusso proprio (melds,
-  ricomposizione, pescate, vittoria), **descrittivo non prescrittivo**, audience privata
-  (mano distribuita + carta pescata solo al proprietario), riusa solo
-  `EventAudience`/`EventViewer`. **Attesa udibile:** `botThinkingBegan`(con deliberazione
-  attesa come *hint*)/`botThinkingEnded` attorno a ogni turno bot, così UI/audio futuri
-  riempiono il silenzio dei bot che pensano.
+  ricomposizione, pescate, **fine mano coi punteggi**, **fine partita col vincitore**),
+  **descrittivo non prescrittivo**, audience privata (mano distribuita + carta pescata solo
+  al proprietario), riusa solo `EventAudience`/`EventViewer`. `handEnded(handScores,
+  cumulativeScores)` e `matchEnded(winnerID, finalScores)` comunicano il punteggio (D-071).
+  **Attesa udibile:** `botThinkingBegan`(con deliberazione attesa come *hint*)/`botThinkingEnded`
+  attorno a ogni turno bot, così UI/audio futuri riempiono il silenzio dei bot che pensano.
 - **`MachiavelliTurnProvider`** — facciata async uniforme bot/umano (D-013); lo scambio è
   un **piano di turno** (`MachiavelliTurnPlan`), non una singola azione, perché il turno è
   una sequenza di trasformazioni.

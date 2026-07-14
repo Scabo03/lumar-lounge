@@ -110,8 +110,12 @@ nei file collegati.
   archetipi (studente/adulto/professore); ricerca **interrompibile** (exact-cover limitato) che **non
   sfora mai** il budget (nodi=deterministico / tempo=produzione, ~10–15 s = carattere). `MachiavelliSessionDriver`
   in GameWorld con eventi propri e **attesa udibile** (`botThinkingBegan/Ended`), matchmaking progressivo
-  a **partite giocate**. **Solo motore+bot+driver: nessuna UI, nessun audio, nessun casinò ospitante
-  (terzo casinò non anticipato).** 382 test verdi; giochi esistenti invariati.
+  a **partite giocate**. **Struttura mano↔partita a PUNTI (D-071):** ogni mano è **segnata** (asso 10,
+  figure 5, numerate 1; bonus out, malus carte rimaste — puro, nel motore `MachiavelliScoring`), la
+  **partita** finisce alla **soglia** (250 ≈ ~3 mani, in GameWorld); bot **score-aware** con la dimensione
+  additiva `machiavelliMalusAversion` (il paziente scarica i pesi, non resta con l'asso). **Solo
+  motore+bot+driver: nessuna UI, nessun audio, nessun casinò ospitante (terzo casinò non anticipato).**
+  Giochi esistenti invariati.
 
 **🏢 Fase 1 (M1) completa; Fase 2 (M2) in corso.** Girano end-to-end **tre giochi** in **due
 casinò**: al **Riverwood** Texas Hold'em No Limit (Classico/Rapido) e **Five-Card Draw** (Sala
@@ -1925,3 +1929,52 @@ rischio/aggressione) è riusato; costruito come **animale nuovo**.
   Omaha invariati. **Residuo dichiarato (esplicito):** mancano **UI**, **audio** e il **casinò ospitante**
   — Machiavelli è motore+bot+driver, **non giocabile**. Nessun TestFlight (niente di giocabile). Vedi
   `ROADMAP.md`.
+
+### D-071 — Machiavelli: struttura mano↔partita a PUNTI (motore + driver, non giocabile)
+Oggi una partita di Machiavelli era **una mano sola** (finisce quando qualcuno va out). Introdotta la
+distinzione **mano ↔ partita** con **punteggio a fine mano** e **soglia di vittoria**, come il poker ha
+già con la sessione multi-mano. **Solo motore e driver: nessuna UI/casinò/audio.**
+- **Perché (game design, non solo durata).** Il punteggio dà **uno scopo a chi non sta vincendo la
+  mano**: ogni carta calata prima che l'avversario chiuda vale punti, ogni carta rimasta in mano pesa. Il
+  giocatore ha sempre qualcosa da fare anche in una mano che perde, e nasce la tensione tra **calare
+  subito** per limitare il danno e **trattenere** per costruire qualcosa di più grande. E la singola mano
+  non è più l'intera esperienza: una distribuzione sfortunata non decide la partita.
+- **Sistema di punteggio (puro, NEL MOTORE — `MachiavelliScoring`).** Scala di valore **imposta**: asso
+  **10**, figure (J/Q/K) **5**, numerate (2–10) **1**. Punteggio di una mano per giocatore =
+  `outBonus·[è andato out] + valore(calato) − valore(rimasto in mano)`. **Valori scelti:** `outBonus = 20`
+  (≈ due assi: andare out è un traguardo, ma non schiaccia il resto), pesi calato/rimasto **1/1** (una
+  carta che parte in mano oscilla di **2× il suo valore** tra il calarla e il trattenerla → tensione senza
+  affogare il bonus). La funzione è **pura e testabile** dato lo stato finale; il driver le passa
+  (calato-per-mano, rimasto, out).
+- **Struttura di partita (meccanica di SESSIONE — in GameWorld, come boost mano decisiva / ante progressivo
+  / `StakeEscalation`).** `MachiavelliSessionDriver` ora gioca una **partita** = sequenza di **mani**:
+  `playHand()` distribuisce/gioca/**segna** una mano ed accumula i totali; `playMatch()` ripete finché un
+  giocatore **supera la soglia**. Il primo di mano **ruota** tra le mani (equità). Eventi nuovi:
+  `handEnded(handScores, cumulativeScores)` e `matchEnded(winnerID, finalScores)`; `gameBegan/Ended`→
+  `handBegan`/`handEnded`, `playerWon`→`playerWentOut`. Descrittivi, non prescrittivi.
+- **Soglia (D-071), calibrata su dati misurati.** `defaultVictoryThreshold = 250` in GameWorld. Misura
+  (bot 13 carte): il **leader di una singola mano segna ~90–120 punti**, quindi 250 fa durare la partita
+  **~3 mani** — "breve e densa, non lunga e diluita". "Bassa" = **poche mani**, non un numero piccolo in
+  assoluto: la lunghezza dipende dal rapporto soglia/punti-per-mano. La singola mano resta ~65–75 turni
+  (leggermente **più corta** delle ~77 pre-punteggio, perché i bot scaricano di più); una partita è ~3
+  mani ≈ ~200 turni — più lunga in totale di prima (1 mano), **come voluto**: l'esperienza è distribuita e
+  densa, non decisa da una distribuzione.
+- **Bot consapevoli del punteggio — nuova dimensione `machiavelliMalusAversion` (additiva, default 0).**
+  `machiavelliPatience` diventa un **rischio calcolato**: trattenere è pericoloso perché le carte pesanti
+  rimaste diventano malus se l'avversario chiude. Ho aggiunto una **leva propria** (motivazione: il
+  rischio-malus è distinto dalla pazienza — "aspetta il meglio" ≠ "non farti trovare con l'asso in mano") —
+  quanto il bot è **avverso a trattenere carte pesanti**. Due effetti: (1) la **ricerca** ora preferisce
+  piani che **scaricano più VALORE** (non solo più carte): `planScore = carte + malusAversion·valore·0.1`,
+  così un bot averso cala l'**asso** invece di due carte basse; (2) la decisione di **trattenere** è
+  ridotta quando la mano è pesante **e** un avversario è **vicino a chiudere** (conteggio carte pubblico).
+  **Default 0 = comportamento pre-punteggio identico** (nessun RNG extra, `planScore` = solo conteggio →
+  retrocompatibilità additiva verificata). **Preset ricalibrati solo per la consapevolezza:** studente 0.30
+  (naïf), **adulto 0.85**, professore 0.90. Effetto sull'**adulto paziente**: prima tratteneva
+  indefinitamente; ora, sotto minaccia di chiusura con mano pesante, **trattiene molto meno** (test:
+  `averseHolds < obliviousHolds`) — esattamente il "bot paziente che non ignora il rischio" richiesto.
+- **Vincoli rispettati:** punteggio (logica di gioco) **nel motore**, soglia/struttura (sessione) **in
+  GameWorld**; `Personality` additiva (default riproduce il pre-punteggio); determinismo dato seed **su
+  tutta la partita** (test); nessun import incrociato; motori esistenti intatti; predicato di validità e
+  modello del turno **non toccati**. **Ancora non giocabile** (manca UI/audio/casinò). **389 test verdi**
+  (382 + 7 nuovi: punteggio, malus-awareness, accumulo scores, eventi fine mano/partita);
+  Texas/Draw/Omaha invariati. Nessun TestFlight.

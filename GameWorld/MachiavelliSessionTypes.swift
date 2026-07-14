@@ -5,10 +5,11 @@
 // errors. Parallel to the poker session types (the drivers never share rule-bearing
 // types, D-038/D-042) but reusing the game-agnostic `PlayerStatus`.
 //
-// A Machiavelli SESSION plays exactly one GAME to completion (deal → turns until a
-// player empties their hand). Who and how many opponents sit down is decided ABOVE the
-// driver by the progressive matchmaker (`MachiavelliMatchmaker`), keyed on games
-// played — never on time (D-064/D-070).
+// A Machiavelli SESSION plays a MATCH (partita): a SEQUENCE of HANDS (mani), scoring
+// each hand (D-071) and ending when a player crosses the victory threshold — exactly
+// as the poker session driver runs a sequence of hands (D-071). Who and how many
+// opponents sit down is decided ABOVE the driver by the progressive matchmaker
+// (`MachiavelliMatchmaker`), keyed on games played — never on time (D-064/D-070).
 //
 // GameWorld only.
 
@@ -44,22 +45,39 @@ public struct MachiavelliSeatAssignment {
     }
 }
 
-/// The outcome of one completed Machiavelli game.
-public struct MachiavelliGameOutcome: Sendable {
-    /// The player who emptied their hand first.
-    public let winnerID: Int
-    /// Number of full turns taken before the game ended.
+/// The outcome of one completed HAND (a single deal to a player going out, or a
+/// stalemate). Scoring lives in the engine (`MachiavelliScoring`, D-071); this carries
+/// the result.
+public struct MachiavelliHandOutcome: Sendable {
+    public let handNumber: Int
+    /// The player who went out this hand, or `nil` if the hand was a stalemate.
+    public let wentOutID: Int?
+    /// Number of full turns taken this hand.
     public let turnsPlayed: Int
-    /// Final hand counts by player id (the winner is 0).
+    /// Points earned THIS hand by player id (may be negative).
+    public let handScores: [Int: Int]
+    /// Cumulative match totals by player id, AFTER this hand.
+    public let cumulativeScores: [Int: Int]
+    /// Final hand counts by player id at hand end.
     public let handCounts: [Int: Int]
+}
+
+/// The outcome of a completed MATCH: a player crossed the victory threshold (D-071).
+public struct MachiavelliMatchOutcome: Sendable {
+    /// The player who crossed the threshold first (highest total on a tie-break by id).
+    public let winnerID: Int
+    /// How many hands the match took.
+    public let handsPlayed: Int
+    /// The final cumulative scores by player id.
+    public let finalScores: [Int: Int]
 }
 
 /// Why a session action failed. Same shape as the poker session errors.
 public enum MachiavelliSessionError: Error, Equatable, Sendable {
     case notEnoughPlayers
-    case gameInProgress
+    case handInProgress
     case sessionEnded
-    case gameAlreadyOver
+    case matchAlreadyOver
     case positionOutOfRange(Int)
     case positionOccupied(Int)
     case duplicatePlayerID(Int)

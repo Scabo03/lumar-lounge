@@ -371,11 +371,24 @@ eventi proprio con **attesa udibile** (`botThinkingBegan/Ended`), e **matchmakin
 **partite giocate** (mai a tempo — D-064/D-070). **382 test verdi**; giochi esistenti invariati.
 Niente TestFlight (nulla di giocabile).
 
-> **Residuo aperto per Machiavelli (esplicito):** è **motore + bot + driver, ma non giocabile**.
-> Mancano la **UI** accessibile (box di composizione per il cieco + drag per il vedente, **entrambi
-> sopra lo stesso predicato**), l'**audio** (voce che riempie l'attesa udibile dei bot che pensano;
-> nessun file, nessuna `SpeechMap` in questa sessione — solo gli eventi dichiarati) e il **casinò
-> ospitante** — un **terzo casinò** che non esiste ancora e **non è anticipato** qui.
+### ✅ Machiavelli — Struttura mano↔partita a PUNTI (motore + driver, NON giocabile) (D-071)
+Aggiunta al motore Machiavelli la struttura **mano ↔ partita** con **punteggio** e **soglia di
+vittoria**, come il poker ha con la sessione multi-mano. **Perché:** dà **scopo a chi non vince la
+mano** (ogni carta calata conta, ogni carta rimasta pesa) e toglie alla singola distribuzione il peso
+di decidere tutto. **Punteggio (puro, nel motore — `MachiavelliScoring`):** scala imposta asso 10 /
+figure 5 / numerate 1; `outBonus(20)·[out] + valore(calato) − valore(rimasto)`. **Struttura di partita
+(sessione, in GameWorld):** `MachiavelliSessionDriver` gioca `playMatch()` = sequenza di `playHand()`
+segnate fino alla **soglia** (`defaultVictoryThreshold = 250`, calibrata per **~3 mani** — breve e
+densa). Bot **score-aware** con nuova dimensione **additiva** `machiavelliMalusAversion` (default 0 =
+pre-punteggio): la ricerca scarica più **valore**, e il **paziente trattiene meno** sotto minaccia di
+chiusura (non resta con l'asso in mano). Determinismo su **tutta la partita**; retrocompatibilità
+additiva; giochi esistenti invariati. Niente TestFlight.
+
+> **Residuo aperto per Machiavelli (esplicito):** è **motore + bot + driver + punteggio, ma non
+> giocabile**. Mancano la **UI** accessibile (box di composizione per il cieco + drag per il vedente,
+> **entrambi sopra lo stesso predicato**), l'**audio** (voce che riempie l'attesa udibile dei bot che
+> pensano; nessun file, nessuna `SpeechMap` — solo gli eventi dichiarati) e il **casinò ospitante** —
+> un **terzo casinò** che non esiste ancora e **non è anticipato** qui.
 
 ---
 

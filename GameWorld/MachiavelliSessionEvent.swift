@@ -43,7 +43,7 @@ public enum MachiavelliTurnEnding: Equatable, Sendable {
 }
 
 /// Why a session ended (the caller decides *when*; this says *why*).
-public enum MachiavelliSessionEndReason: Equatable, Sendable { case stopped, gameCompleted }
+public enum MachiavelliSessionEndReason: Equatable, Sendable { case stopped, matchCompleted }
 
 /// One thing that happened during a Machiavelli game, addressed and numbered.
 public struct MachiavelliSessionEvent: Equatable, Sendable {
@@ -61,10 +61,11 @@ public struct MachiavelliSessionEvent: Equatable, Sendable {
 /// The taxonomy of significant Machiavelli moments. Descriptive only.
 public enum MachiavelliEventPayload: Equatable, Sendable {
 
-    // Session/game lifecycle
-    case sessionBegan(seats: [MachiavelliSeatSnapshot], handSize: Int, stockCount: Int)
+    // Session/match lifecycle
+    case sessionBegan(seats: [MachiavelliSeatSnapshot], handSize: Int, victoryThreshold: Int)
     case sessionEnded(reason: MachiavelliSessionEndReason)
-    case gameBegan(seats: [MachiavelliSeatSnapshot], firstToActSeatID: Int, stockCount: Int)
+    /// A new HAND (single deal) began within the match.
+    case handBegan(handNumber: Int, seats: [MachiavelliSeatSnapshot], firstToActSeatID: Int, stockCount: Int)
 
     // Dealing
     /// Public: seat X was dealt its hand (count only).
@@ -89,7 +90,14 @@ public enum MachiavelliEventPayload: Equatable, Sendable {
     case turnEnded(seatID: Int, ending: MachiavelliTurnEnding, handCount: Int)
 
     // Resolution
-    /// A player emptied their hand and won the game.
-    case playerWon(seatID: Int)
-    case gameEnded(winnerID: Int, turnsPlayed: Int)
+    /// A player emptied their hand (went out), ending the hand.
+    case playerWentOut(seatID: Int)
+    /// A hand ended (out or stalemate) with the points it awarded and the running
+    /// match totals (D-071). `wentOutSeatID` is `nil` for a stalemate.
+    case handEnded(handNumber: Int,
+                   wentOutSeatID: Int?,
+                   handScores: [Int: Int],
+                   cumulativeScores: [Int: Int])
+    /// A player crossed the victory threshold: the match is over (D-071).
+    case matchEnded(winnerID: Int, handsPlayed: Int, finalScores: [Int: Int])
 }

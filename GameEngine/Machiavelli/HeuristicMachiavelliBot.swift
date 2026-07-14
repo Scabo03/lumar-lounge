@@ -87,27 +87,54 @@ public struct HeuristicMachiavelliBot: MachiavelliBot {
             return MachiavelliTurnPlan(finalTable: searched.arrangement, terminal: .meld)
         }
 
-        // PATIENCE: a partial placement may be held back to draw for something better.
-        if shouldHold(placed: placed, handCount: handCount, stockCount: context.stockCount, rng: &rng) {
+        // PATIENCE (tempered by MALUS AVERSION): a partial placement may be held back to
+        // draw for something better — unless holding risks being caught with heavy cards.
+        if shouldHold(placed: placed, handCount: handCount, context: context, rng: &rng) {
             return .drawing(keeping: context.table)
         }
         return MachiavelliTurnPlan(finalTable: searched.arrangement, terminal: .meld)
     }
 
-    // MARK: - Patience axis
+    // MARK: - Patience axis, tempered by malus aversion (D-071)
 
-    /// Whether to HOLD a found placement and draw instead. Independent of search depth.
-    private func shouldHold(placed: Int, handCount: Int, stockCount: Int, rng: inout SeededGenerator) -> Bool {
-        guard stockCount > 0 else { return false }      // can't draw → must play
-        let fraction = Double(placed) / Double(handCount)   // how much of the hand it clears
-        // Patient bots forgo SMALL placements; a placement clearing much is rarely held.
-        let holdBias = personality.machiavelliPatience * (1.0 - fraction)
+    /// Whether to HOLD a found placement and draw instead. Patience makes a bot forgo a
+    /// small placement to wait for a better move; malus aversion PULLS THE OTHER WAY when
+    /// the hand carries heavy value and an opponent is close to going out — because those
+    /// stranded cards become a penalty if the opponent closes first. With
+    /// `machiavelliMalusAversion == 0` this reduces exactly to the pre-scoring behaviour
+    /// (additive back-compat): the extra factor is 1 and no additional RNG is drawn.
+    private func shouldHold(placed: Int, handCount: Int, context: MachiavelliBotContext, rng: inout SeededGenerator) -> Bool {
+        guard context.stockCount > 0 else { return false }      // can't draw → must play
+        let fraction = Double(placed) / Double(handCount)       // how much of the hand it clears
+        var holdBias = personality.machiavelliPatience * (1.0 - fraction)
+
+        // Risk of holding: heavy hand × an opponent nearing out. Aversion discounts the
+        // hold bias by this risk.
+        let heaviness = min(1.0, Double(MachiavelliScoring.handValue(context.hand)) / 40.0)
+        let opponentLow = context.seats.filter { !$0.isHero }.map { $0.handCount }.min()
+        let closingThreat: Double
+        switch opponentLow {
+        case .some(let n) where n <= 3: closingThreat = 1.0
+        case .some(let n) where n <= 6: closingThreat = 0.5
+        default:                        closingThreat = 0.15
+        }
+        holdBias *= (1.0 - personality.machiavelliMalusAversion * heaviness * closingThreat)
+
         return botUnit(&rng) < holdBias * 0.9
     }
 
     // MARK: - Search
 
-    private struct Plan { var arrangement: [[Card]]; var placed: Int }
+    /// A candidate turn: the arrangement, how many hand cards it places, and their point
+    /// VALUE (so a malus-averse bot can prefer shedding an ace over two low cards, D-071).
+    private struct Plan { var arrangement: [[Card]]; var placed: Int; var value: Int }
+
+    /// Ranks plans: placement count is the backbone (progress toward going out), while a
+    /// malus-averse bot adds weight to the VALUE shed. At `malusAversion == 0` this is
+    /// exactly the placement count, so the old count-maximising search is reproduced.
+    private func planScore(_ plan: Plan) -> Double {
+        Double(plan.placed) + personality.machiavelliMalusAversion * Double(plan.value) * 0.1
+    }
 
     private func search(hand: [Card], table: [Meld], clock: SearchClock, rng: inout SeededGenerator) -> Plan {
         let handCount = hand.count
@@ -124,7 +151,7 @@ public struct HeuristicMachiavelliBot: MachiavelliBot {
 
         while clock.hasRemaining && best.placed < handCount {
             let before = clock.nodesConsumed
-            cover(available: poolBag, mandatory: tableBag, melds: [], handUsed: 0,
+            cover(available: poolBag, mandatory: tableBag, melds: [], handUsed: 0, handValueUsed: 0,
                   handValues: handValues, handCount: handCount, clock: clock, rng: &rng, best: &best)
             if clock.nodesConsumed == before { break }   // budget produced no progress
         }
@@ -135,13 +162,14 @@ public struct HeuristicMachiavelliBot: MachiavelliBot {
     private func greedy(hand: [Card], table: [Meld]) -> Plan {
         var melds: [[Card]] = table.map { $0.cards }
         var remaining = hand.sorted(by: cardOrder)
-        var placed = 0
+        var placed = 0, value = 0
         var progress = true
         while progress {
             progress = false
             // 1. Extend an existing meld with a single hand card.
             for i in melds.indices {
                 if let used = extend(&melds[i], with: remaining) {
+                    value += MachiavelliScoring.cardValue(remaining[used])
                     remaining.remove(at: used); placed += 1; progress = true; break
                 }
             }
@@ -149,11 +177,12 @@ public struct HeuristicMachiavelliBot: MachiavelliBot {
             // 2. Form a brand-new combination purely from hand cards.
             if let (meld, indices) = findHandMeld(remaining) {
                 melds.append(meld)
+                value += indices.reduce(0) { $0 + MachiavelliScoring.cardValue(remaining[$1]) }
                 for idx in indices.sorted(by: >) { remaining.remove(at: idx) }
                 placed += indices.count; progress = true
             }
         }
-        return Plan(arrangement: melds, placed: placed)
+        return Plan(arrangement: melds, placed: placed, value: value)
     }
 
     /// Try to grow `meld` by one card from `remaining`; returns the used index if so.
@@ -195,18 +224,17 @@ public struct HeuristicMachiavelliBot: MachiavelliBot {
     /// (table + hand), placing as many hand cards as possible. Records improvements in
     /// `best`. Bounded by `clock`; deterministic ordering perturbed by `rng`.
     private func cover(available: CardBag, mandatory: CardBag, melds: [[Card]], handUsed: Int,
-                       handValues: Set<UInt64>, handCount: Int, clock: SearchClock,
+                       handValueUsed: Int, handValues: Set<UInt64>, handCount: Int, clock: SearchClock,
                        rng: inout SeededGenerator, best: inout Plan) {
         guard clock.consume() else { return }
 
         if mandatory.isEmpty {
             // Valid table (all table cards covered). Greedily add hand-only melds to
-            // place still more, then record if it beats the incumbent.
-            let (extraMelds, extraCount) = greedyHandMelds(from: available)
-            let placed = handUsed + extraCount
-            if placed > best.placed {
-                best = Plan(arrangement: melds + extraMelds, placed: placed)
-            }
+            // place still more, then record if it beats the incumbent by plan score.
+            let (extraMelds, extraCount, extraValue) = greedyHandMelds(from: available)
+            let plan = Plan(arrangement: melds + extraMelds, placed: handUsed + extraCount,
+                            value: handValueUsed + extraValue)
+            if planScore(plan) > planScore(best) { best = plan }
             return
         }
 
@@ -218,12 +246,21 @@ public struct HeuristicMachiavelliBot: MachiavelliBot {
         for meld in candidates.prefix(branchCap) {
             let meldBag = CardBag(meld)
             guard let available2 = available.subtracting(meldBag) else { continue }
-            let coveredMandatory = intersectionCount(meldBag, mandatory)
-            let mandatory2 = subtractCovered(mandatory, by: meldBag)
-            let handInMeld = meld.count - coveredMandatory
-            cover(available: available2, mandatory: mandatory2, melds: melds + [meld],
-                  handUsed: handUsed + handInMeld, handValues: handValues, handCount: handCount,
-                  clock: clock, rng: &rng, best: &best)
+            // Split the meld's cards into those covering a table (mandatory) card and
+            // those coming from the hand, tracking count AND value of the hand portion.
+            var localMandatory = mandatory
+            var handInMeld = 0, handValueInMeld = 0
+            for card in meld {
+                if localMandatory.count(card) > 0 {
+                    localMandatory.remove(card)                    // covers a table card
+                } else {
+                    handInMeld += 1
+                    handValueInMeld += MachiavelliScoring.cardValue(card)  // a hand card placed
+                }
+            }
+            cover(available: available2, mandatory: localMandatory, melds: melds + [meld],
+                  handUsed: handUsed + handInMeld, handValueUsed: handValueUsed + handValueInMeld,
+                  handValues: handValues, handCount: handCount, clock: clock, rng: &rng, best: &best)
             if best.placed == handCount { return }    // go-out found; stop
         }
     }
@@ -311,33 +348,27 @@ public struct HeuristicMachiavelliBot: MachiavelliBot {
     }
 
     /// Greedily form hand-only combinations from a leftover bag (all hand cards once
-    /// the mandatory table cards are covered), returning the melds and how many placed.
-    private func greedyHandMelds(from bag: CardBag) -> ([[Card]], Int) {
+    /// the mandatory table cards are covered), returning the melds, how many cards they
+    /// place, and the point value of those cards.
+    private func greedyHandMelds(from bag: CardBag) -> ([[Card]], Int, Int) {
         var remaining = bag.cards
         var melds: [[Card]] = []
-        var placed = 0
+        var placed = 0, value = 0
         var progress = true
         while progress {
             progress = false
             if let (meld, indices) = findHandMeld(remaining) {
                 melds.append(meld)
+                value += indices.reduce(0) { $0 + MachiavelliScoring.cardValue(remaining[$1]) }
                 for idx in indices.sorted(by: >) { remaining.remove(at: idx) }
                 placed += indices.count; progress = true
             }
         }
-        return (melds, placed)
+        return (melds, placed, value)
     }
 
     // MARK: - Small helpers
 
-    private func intersectionCount(_ a: CardBag, _ b: CardBag) -> Int {
-        a.counts.reduce(0) { $0 + Swift.min($1.value, b.count($1.key)) }
-    }
-    private func subtractCovered(_ mandatory: CardBag, by meld: CardBag) -> CardBag {
-        var m = mandatory
-        for (card, n) in meld.counts { m.remove(card, Swift.min(n, mandatory.count(card))) }
-        return m
-    }
     /// Distinct indices in `remaining` occupied by the given card values, or `nil` if
     /// they are not all present.
     private func indices(of values: [Card], in remaining: [Card]) -> [Int]? {

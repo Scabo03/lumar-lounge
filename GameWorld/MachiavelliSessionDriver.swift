@@ -1,39 +1,47 @@
 // MachiavelliSessionDriver.swift
 // =====================================================================
 // The Machiavelli session driver: the orchestrator that turns the pure engine into a
-// playable GAME — deals the two-deck shoe, runs turns in order, lets each seat rework
-// the shared table through the engine's turn model, and ends when a player empties
-// their hand. Sister to `SessionDriver`/`DrawSessionDriver`/`OmahaSessionDriver`, with
-// its own distinct event stream.
+// playable MATCH (partita) — a SEQUENCE of hands, each dealt fresh and SCORED at its
+// end (D-071), until a player crosses the victory threshold. This mirrors the poker
+// session driver's hand/session split: a HAND ends when a player goes out (or a
+// stalemate is resolved); the MATCH accumulates scores across hands and ends at the
+// threshold.
+//
+// Scoring is game logic and lives in the ENGINE (`MachiavelliScoring`); the driver only
+// TRACKS the inputs (what each player placed, what they held) and feeds them to the
+// pure scorer. The threshold and the match structure are a SESSION mechanic and live
+// HERE in GameWorld, exactly as the decisive-hand boost, the progressive ante and
+// `StakeEscalation` do (D-071).
 //
 // It is a pure CLIENT of GameEngine: it validates every turn plan through the SAME
-// `MachiavelliTurnContext` predicate a human would use (single source of truth,
-// D-070), so a bot cannot cheat the rules; a malformed plan is defensively coerced to
-// a draw (D-013). All consolidated principles hold: events are DESCRIPTIVE not
-// prescriptive; the producer knows nothing of human ritmo; private events (a player's
-// dealt hand, a drawn card) are addressed to that player only; bots receive a REDACTED
-// context (public table + stock size + opponents' counts, never their cards, D-009).
-//
-// SEED POLICY (D-047, not re-discovered): with a base seed (tests) the shoe is
-// deterministic; with `nil` (production) each game draws a FRESH RANDOM shoe from the
-// system RNG. THE AUDIBLE WAIT (D-070): every bot turn is bracketed by thinking events
-// carrying the bot's expected deliberation, so a future UI/audio can fill the silence.
-//
-// GameWorld only.
+// `MachiavelliTurnContext` predicate a human would use (single source of truth), so a
+// bot cannot cheat the rules; a malformed plan is defensively coerced to a draw (D-013).
+// Events are DESCRIPTIVE not prescriptive; the producer knows nothing of human ritmo;
+// private events (a player's dealt hand, a drawn card) are addressed to that player
+// only; bots receive a REDACTED context (D-009). Seed policy D-047. The audible-wait
+// thinking events bracket every bot turn (D-070). GameWorld only.
 
 import Foundation
 import GameEngine
 
-/// Drives one Machiavelli game to completion at a single table.
+/// Drives a Machiavelli MATCH (a scored sequence of hands) at a single table.
 public final class MachiavelliSessionDriver {
+
+    /// Default cumulative points to win a match (D-071). A SESSION mechanic, so it lives
+    /// here in GameWorld, not in the engine. Calibrated (D-071) so a bot match runs a
+    /// SHORT, DENSE handful of hands (~3): a single hand's leader scores ~90–120, so
+    /// ~250 keeps the single deal from being the whole story without dragging on.
+    public static let defaultVictoryThreshold = 250
 
     // MARK: Fixed configuration
 
     public let capacity: Int
     public let handSize: Int
+    /// Cumulative points at which the match is won (D-071). A SESSION mechanic.
+    public let victoryThreshold: Int
 
-    /// Base seed. Set (tests) → deterministic shoe; `nil` (production) → fresh random
-    /// shoe per game (D-047). The engine stays deterministic given whatever seed it gets.
+    /// Base seed. Set (tests) → deterministic shoe per hand; `nil` (production) → fresh
+    /// random shoe per hand (D-047). The engine stays deterministic given its seed.
     private let baseSeed: UInt64?
 
     // MARK: Mutable table state
@@ -43,15 +51,20 @@ public final class MachiavelliSessionDriver {
     private var hands: [Int: [Card]] = [:]
     private var table: [Meld] = []
     private var stock: [Card] = []
-    public private(set) var gameNumber = 0
-    public private(set) var isGameInProgress = false
-    public private(set) var isGameOver = false
+    /// Cards each player has laid onto the table DURING the current hand (for scoring).
+    private var placedThisHand: [Int: [Card]] = [:]
+
+    public private(set) var handNumber = 0
+    /// Cumulative match scores by player id.
+    public private(set) var cumulativeScores: [Int: Int] = [:]
+    public private(set) var isHandInProgress = false
+    public private(set) var isMatchOver = false
     public private(set) var hasEnded = false
 
-    /// Safety bound guaranteeing termination even if no one can ever go out. Also
-    /// lets tests cap a game to a handful of turns (resolved as a stalemate to the
-    /// fewest-cards holder) so session-machinery tests run fast.
-    private let maxTurns: Int
+    /// Per-hand turn safety bound (also lets tests cap a hand to a few turns → a
+    /// stalemate scored to the fewest-cards holder). Per-match hand safety bound.
+    private let maxTurnsPerHand: Int
+    private let maxHandsPerMatch: Int
 
     // MARK: Event stream
 
@@ -60,15 +73,20 @@ public final class MachiavelliSessionDriver {
 
     // MARK: - Init
 
-    /// - Parameter seed: base seed for a DETERMINISTIC shoe (tests inject a fixed value).
-    ///   Pass `nil` (production default) to draw a fresh random shoe (D-047).
+    /// - Parameters:
+    ///   - seed: base seed for a DETERMINISTIC shoe (tests). `nil` (production) draws a
+    ///     fresh random shoe per hand (D-047).
+    ///   - victoryThreshold: cumulative points to win the match (D-071).
     public init(capacity: Int,
                 seats: [MachiavelliSeatAssignment],
                 handSize: Int = MachiavelliConstants.handSize,
+                victoryThreshold: Int = MachiavelliSessionDriver.defaultVictoryThreshold,
                 seed: UInt64? = nil,
-                turnLimit: Int = 4000) {
+                turnLimit: Int = 4000,
+                handLimit: Int = 200) {
         precondition((2...4).contains(capacity), "A Machiavelli table seats 2–4.")
-        precondition(turnLimit > 0, "turnLimit must be positive.")
+        precondition(turnLimit > 0 && handLimit > 0, "limits must be positive.")
+        precondition(victoryThreshold > 0, "victoryThreshold must be positive.")
         var ring: [MachiavelliSessionPlayer?] = Array(repeating: nil, count: capacity)
         var providerMap: [Int: MachiavelliTurnProvider] = [:]
         for seat in seats {
@@ -81,10 +99,13 @@ public final class MachiavelliSessionDriver {
         }
         self.capacity = capacity
         self.handSize = handSize
+        self.victoryThreshold = victoryThreshold
         self.baseSeed = seed
-        self.maxTurns = turnLimit
+        self.maxTurnsPerHand = turnLimit
+        self.maxHandsPerMatch = handLimit
         self.positions = ring
         self.providers = providerMap
+        for id in providerMap.keys { cumulativeScores[id] = 0 }
     }
 
     // MARK: - Queries
@@ -93,6 +114,7 @@ public final class MachiavelliSessionDriver {
         positions.compactMap { $0 }.sorted { $0.position < $1.position }
     }
     public func handCount(of id: Int) -> Int? { hands[id]?.count }
+    public func score(of id: Int) -> Int? { cumulativeScores[id] }
     public var stockCount: Int { stock.count }
     /// Total cards currently on the shared table — for card-conservation checks.
     public var tableCardCount: Int { table.reduce(0) { $0 + $1.size } }
@@ -115,36 +137,59 @@ public final class MachiavelliSessionDriver {
         await hub.finishAll()
     }
 
-    // MARK: - Playing one game
+    // MARK: - Playing a whole match
 
-    /// Deals a fresh game and plays it to completion (someone empties their hand, or a
-    /// stalemate is resolved to the player holding the fewest cards).
+    /// Plays hands, accumulating scores, until a player crosses the victory threshold
+    /// (or the hand-count safety bound). Returns the match outcome.
     @discardableResult
-    public func playGame() async throws -> MachiavelliGameOutcome {
+    public func playMatch() async throws -> MachiavelliMatchOutcome {
         guard !hasEnded else { throw MachiavelliSessionError.sessionEnded }
-        guard !isGameInProgress else { throw MachiavelliSessionError.gameInProgress }
-        let participants = players
-        guard participants.count >= 2 else { throw MachiavelliSessionError.notEnoughPlayers }
+        guard !isMatchOver else { throw MachiavelliSessionError.matchAlreadyOver }
+        var handsPlayed = 0
+        while !isMatchOver && handsPlayed < maxHandsPerMatch {
+            _ = try await playHand()
+            handsPlayed += 1
+            if cumulativeScores.values.contains(where: { $0 >= victoryThreshold }) { isMatchOver = true }
+        }
+        isMatchOver = true
+        let winnerID = players
+            .max { (cumulativeScores[$0.id] ?? 0, -$0.id) < (cumulativeScores[$1.id] ?? 0, -$1.id) }!.id
+        await emit(.matchEnded(winnerID: winnerID, handsPlayed: handsPlayed, finalScores: cumulativeScores))
+        return MachiavelliMatchOutcome(winnerID: winnerID, handsPlayed: handsPlayed, finalScores: cumulativeScores)
+    }
 
-        isGameInProgress = true
-        isGameOver = false
-        defer { isGameInProgress = false }
+    // MARK: - Playing one hand
+
+    /// Deals a fresh hand and plays it to its end (a player goes out, or a stalemate is
+    /// resolved to the fewest-cards holder), scores it (D-071), and folds the points
+    /// into the running match totals. Returns the hand outcome.
+    @discardableResult
+    public func playHand() async throws -> MachiavelliHandOutcome {
+        guard !hasEnded else { throw MachiavelliSessionError.sessionEnded }
+        guard !isHandInProgress else { throw MachiavelliSessionError.handInProgress }
+        let order = players
+        guard order.count >= 2 else { throw MachiavelliSessionError.notEnoughPlayers }
+
+        isHandInProgress = true
+        defer { isHandInProgress = false }
 
         await announceSessionIfNeeded()
-        deal(participants)
+        deal(order)
 
-        let order = participants
-        await emit(.gameBegan(seats: snapshots(order), firstToActSeatID: order[0].id, stockCount: stock.count))
+        await emit(.handBegan(handNumber: handNumber, seats: snapshots(order),
+                              firstToActSeatID: order[handNumber % order.count].id, stockCount: stock.count))
         for player in order {
             await emit(.handDealt(seatID: player.id, count: hands[player.id]!.count))
             await emit(.privateHand(seatID: player.id, cards: hands[player.id]!), to: .player(player.id))
         }
 
-        var idx = 0
+        // Turn loop — first-to-act rotates by hand number for fairness.
+        var idx = handNumber % order.count
         var turns = 0
         var stalemateRun = 0
+        var wentOutID: Int?
 
-        while turns < maxTurns {
+        while turns < maxTurnsPerHand {
             let seatID = order[idx].id
             turns += 1
             await emit(.turnBegan(seatID: seatID))
@@ -158,34 +203,44 @@ public final class MachiavelliSessionDriver {
             if provider.isBot { await emit(.botThinkingEnded(seatID: seatID)) }
 
             let ending = await applyPlan(plan, seatID: seatID)
+            if case let .melded(placed, _) = ending { placedThisHand[seatID, default: []].append(contentsOf: placed) }
             await emit(.turnEnded(seatID: seatID, ending: ending, handCount: hands[seatID]!.count))
             setHandCount(seatID)
 
             if hands[seatID]!.isEmpty {
-                await emit(.playerWon(seatID: seatID))
-                let outcome = MachiavelliGameOutcome(winnerID: seatID, turnsPlayed: turns,
-                                                     handCounts: currentHandCounts())
-                await emit(.gameEnded(winnerID: seatID, turnsPlayed: turns))
-                isGameOver = true
-                gameNumber += 1
-                return outcome
+                wentOutID = seatID
+                await emit(.playerWentOut(seatID: seatID))
+                break
             }
-
-            // Stalemate detection: a full round of draw-only turns with an empty stock.
             if case .drew = ending, stock.isEmpty { stalemateRun += 1 } else { stalemateRun = 0 }
-            if stalemateRun >= order.count { break }
+            if stalemateRun >= order.count { break }        // stalemate: no one can progress
 
             idx = (idx + 1) % order.count
         }
 
-        // No one went out (stalemate / turn cap): the fewest-cards holder wins.
-        let winner = order.min { (hands[$0.id]!.count, $0.id) < (hands[$1.id]!.count, $1.id) }!.id
-        await emit(.playerWon(seatID: winner))
-        let outcome = MachiavelliGameOutcome(winnerID: winner, turnsPlayed: turns,
-                                             handCounts: currentHandCounts())
-        await emit(.gameEnded(winnerID: winner, turnsPlayed: turns))
-        isGameOver = true
-        gameNumber += 1
+        return await finishHand(order: order, wentOutID: wentOutID, turns: turns)
+    }
+
+    /// Scores the completed hand and folds it into the match totals.
+    private func finishHand(order: [MachiavelliSessionPlayer], wentOutID: Int?, turns: Int) async -> MachiavelliHandOutcome {
+        let results = order.map { player in
+            MachiavelliScoring.PlayerHandResult(
+                playerID: player.id,
+                placed: placedThisHand[player.id] ?? [],
+                remaining: hands[player.id] ?? [],
+                wentOut: player.id == wentOutID)
+        }
+        let handScores = MachiavelliScoring.score(results)
+        for (id, points) in handScores { cumulativeScores[id, default: 0] += points }
+
+        let handCounts = Dictionary(uniqueKeysWithValues: order.map { ($0.id, hands[$0.id]!.count) })
+        await emit(.handEnded(handNumber: handNumber, wentOutSeatID: wentOutID,
+                              handScores: handScores, cumulativeScores: cumulativeScores))
+
+        let outcome = MachiavelliHandOutcome(handNumber: handNumber, wentOutID: wentOutID, turnsPlayed: turns,
+                                             handScores: handScores, cumulativeScores: cumulativeScores,
+                                             handCounts: handCounts)
+        handNumber += 1
         return outcome
     }
 
@@ -234,8 +289,9 @@ public final class MachiavelliSessionDriver {
     // MARK: - Setup helpers
 
     private func deal(_ participants: [MachiavelliSessionPlayer]) {
-        var shoe = MachiavelliRules.shoe(seed: gameSeed(gameNumber))
+        var shoe = MachiavelliRules.shoe(seed: gameSeed(handNumber))
         hands = [:]
+        placedThisHand = [:]
         for player in participants {
             hands[player.id] = Array(shoe.prefix(handSize))
             shoe.removeFirst(handSize)
@@ -257,16 +313,12 @@ public final class MachiavelliSessionDriver {
         order.map { MachiavelliSeatSnapshot(seatID: $0.id, position: $0.position, handCount: hands[$0.id]?.count ?? 0) }
     }
 
-    private func currentHandCounts() -> [Int: Int] {
-        Dictionary(uniqueKeysWithValues: hands.map { ($0.key, $0.value.count) })
-    }
-
     private func setHandCount(_ id: Int) {
         guard let index = positions.firstIndex(where: { $0?.id == id }) else { return }
         positions[index]?.handCount = hands[id]?.count ?? 0
     }
 
-    /// The shoe seed for a game: deterministic from the base seed + game number (tests),
+    /// The shoe seed for a hand: deterministic from the base seed + hand number (tests),
     /// or a fresh random draw (production, D-047).
     private func gameSeed(_ number: Int) -> UInt64 {
         guard let baseSeed else { return UInt64.random(in: .min ... .max) }
@@ -279,6 +331,6 @@ public final class MachiavelliSessionDriver {
     private func announceSessionIfNeeded() async {
         guard !sessionAnnounced else { return }
         sessionAnnounced = true
-        await emit(.sessionBegan(seats: snapshots(players), handSize: handSize, stockCount: MachiavelliConstants.totalCards))
+        await emit(.sessionBegan(seats: snapshots(players), handSize: handSize, victoryThreshold: victoryThreshold))
     }
 }

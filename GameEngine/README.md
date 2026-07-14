@@ -47,7 +47,8 @@ qualcuno o *quanto* ha puntato vive più in alto (`GameWorld`, `UI`).
 | `Meld`/`MeldForm`/`MachiavelliConstants` | Combinazione validata (sempre legale, ordine canonico) + forma (group/run) + costanti del ruleset (due mazzi/104 carte, mano 13, min 3). |
 | `MachiavelliTurnContext`/`MachiavelliProposal` | **Il modello del turno** (D-070): il turno è una **sequenza** di trasformazioni chiusa da un terminale. Stato **ipotetico** — `evaluate(_:)` valuta una proposta di tavolo **senza applicarla**, `apply(_:)` la conferma; ogni proposta è validata contro lo **snapshot d'inizio turno**, così **la stessa carta può muoversi più volte** e solo lo stato finale deve essere valido. `canPass`/`mustDraw` = legalità del terminale. |
 | `MachiavelliBot`/`MachiavelliBotContext`/`MachiavelliTurnPlan`/`MachiavelliSearchBudget` | L'interfaccia del bot: vista **redatta** (tavolo pubblico + conteggio mani avversarie, mai le loro carte, D-009) → un **piano di turno**; budget di ricerca a **nodi (deterministico) e/o tempo (produzione)**. |
-| `HeuristicMachiavelliBot` | Bot su **due assi indipendenti** (D-070): `machiavelliSearchDepth` (quanto esplora le ricomposizioni; scala nodi+tempo) e `machiavelliPatience` (se trattiene una mossa trovata e pesca aspettando di meglio). Ricerca **interrompibile** (greedy + exact-cover limitato), mossa migliore entro il budget, **mai sforo**. |
+| `HeuristicMachiavelliBot` | Bot su **due assi indipendenti** (D-070): `machiavelliSearchDepth` (quanto esplora le ricomposizioni; scala nodi+tempo) e `machiavelliPatience` (se trattiene una mossa trovata e pesca aspettando di meglio). Ricerca **interrompibile** (greedy + exact-cover limitato), mossa migliore entro il budget, **mai sforo**. Con i **punti** (D-071) è **score-aware**: la ricerca preferisce scaricare più **valore** e trattiene meno sotto minaccia (`machiavelliMalusAversion`). |
+| `MachiavelliScoring` | **Il punteggio di una mano** (D-071), puro e nel motore: scala **imposta** (asso 10, figure 5, numerate 1), `score = outBonus·[out] + valore(calato) − valore(rimasto)`. La soglia e la struttura mano↔partita sono meccanica di **sessione** (GameWorld), non qui. |
 
 Gestisce i casi particolari del poker: l'Asso che vale 1 nella scala minima
 `A-2-3-4-5` (la *wheel*) o 14 nella scala massima, la distinzione tra scala
@@ -184,6 +185,15 @@ restart), tenuta da `MachiavelliSearchBudget` a **nodi** (deterministico, per i 
 mossa trovata entro il budget, **profondità adattiva**, **mai uno sforo** (lavoro
 per-nodo limitato). Il tempo del professore è **carattere**, non lag. **Solo
 motore+bot**: driver, eventi, UI, audio e casinò ospitante sono fuori da `GameEngine`.
+
+**Punteggio mano↔partita (D-071).** Una partita non è più una mano sola: `MachiavelliScoring`
+(puro, nel motore) segna ogni mano — asso 10, figure 5, numerate 1; `outBonus·[out] +
+valore(calato) − valore(rimasto)` — e il driver (`GameWorld`) accumula i totali fino alla
+**soglia di vittoria**. Il punteggio dà **scopo a chi perde la mano** (ogni carta calata conta,
+ogni carta rimasta pesa) e rende `machiavelliPatience` un **rischio calcolato**. Terza dimensione
+additiva `machiavelliMalusAversion` (default 0 = pre-punteggio): il bot **scarica il valore** e
+**trattiene meno** quando un avversario è vicino a chiudere — così il paziente non resta con
+l'asso in mano.
 
 ## Cosa NON contiene (per scelta architetturale)
 

@@ -109,6 +109,13 @@ public struct Personality: Equatable, Sendable {
     /// depth: a bot can search deeply yet be greedy, or search deeply yet be patient.
     /// 0 = lays down whatever it found immediately; 1 = often forgoes small placements.
     public let machiavelliPatience: Double
+    /// MALUS AVERSION (D-071) — how strongly the bot fears being caught HOLDING heavy
+    /// cards when an opponent goes out (each stranded card is a penalty, aces worst).
+    /// It turns `machiavelliPatience` from pure character into a CALCULATED risk: a
+    /// malus-averse bot sheds high-value cards and holds far less when an opponent is
+    /// close to closing. 0 (default) = ignores scoring entirely, i.e. the pre-scoring
+    /// behaviour (additive back-compat); higher = plays ever more score-aware.
+    public let machiavelliMalusAversion: Double
 
     public init(name: String,
                 tightness: Double,
@@ -126,7 +133,8 @@ public struct Personality: Equatable, Sendable {
                 omahaCoordination: Double = 0.5,
                 omahaNuttiness: Double = 0.5,
                 machiavelliSearchDepth: Double = 0.5,
-                machiavelliPatience: Double = 0.5) {
+                machiavelliPatience: Double = 0.5,
+                machiavelliMalusAversion: Double = 0.0) {
         self.name = name
         self.tightness = tightness.clamped01
         self.aggression = aggression.clamped01
@@ -144,6 +152,7 @@ public struct Personality: Equatable, Sendable {
         self.omahaNuttiness = omahaNuttiness.clamped01
         self.machiavelliSearchDepth = machiavelliSearchDepth.clamped01
         self.machiavelliPatience = machiavelliPatience.clamped01
+        self.machiavelliMalusAversion = machiavelliMalusAversion.clamped01
     }
 
     // MARK: - Pressure heuristic (pure, shared by both bots — D-048)
@@ -246,7 +255,8 @@ public extension Personality {
         tightness: 0.5, aggression: 0.5, bluffFrequency: 0, riskTolerance: 0.5,
         positionAwareness: 0.3, rationality: 0.5, tiltReactivity: 0.4,
         machiavelliSearchDepth: 0.20,   // glances at the table
-        machiavelliPatience: 0.15       // grabs the first placement it finds
+        machiavelliPatience: 0.15,      // grabs the first placement it finds
+        machiavelliMalusAversion: 0.30  // young: only loosely aware of the penalty
     )
 
     /// The adult — searches the table well but is patient, sometimes forgoing a
@@ -257,7 +267,8 @@ public extension Personality {
         tightness: 0.5, aggression: 0.5, bluffFrequency: 0, riskTolerance: 0.5,
         positionAwareness: 0.5, rationality: 0.7, tiltReactivity: 0.2,
         machiavelliSearchDepth: 0.70,   // reads the table thoroughly
-        machiavelliPatience: 0.80       // holds, waiting for something better
+        machiavelliPatience: 0.80,      // holds, waiting for something better…
+        machiavelliMalusAversion: 0.85  // …but sheds heavies and won't be caught holding
     )
 
     /// The professor — old, a master who dismantles and rebuilds the table (yours
@@ -268,7 +279,8 @@ public extension Personality {
         tightness: 0.5, aggression: 0.6, bluffFrequency: 0, riskTolerance: 0.5,
         positionAwareness: 0.6, rationality: 0.9, tiltReactivity: 0.1,
         machiavelliSearchDepth: 1.00,   // exhausts the recomposition space
-        machiavelliPatience: 0.50       // reworks the table and plays it
+        machiavelliPatience: 0.50,      // reworks the table and plays it
+        machiavelliMalusAversion: 0.90  // a master: keenly aware of the penalty
     )
 
     /// The three Machiavelli archetypes, in progression order.
