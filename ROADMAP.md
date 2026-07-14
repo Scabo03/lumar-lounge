@@ -427,6 +427,21 @@ parlato, in entrambe le modalità, col safeguard anti-freeze) → annunci ravvic
 Motore non toccato; predicato unica fonte; **413 test verdi**. **Caricato su TestFlight (build
 1784047983).**
 
+### ✅ Machiavelli: una mano sola + rimborso + salto nel nastro, dopo il test reale (D-075)
+Il test con VoiceOver ha **rovesciato** D-071 e confermato un'aggiunta rimandata. **(1) Una MANO SOLA:**
+la struttura mano↔partita a soglia (D-071) era calibrata **tra bot**; giocata a mano con VoiceOver, una
+mano sola **è già lunga** (tre mani ~un'ora), perché **un turno di Machiavelli è lavoro, non una
+decisione**. Rimossa la soglia/sequenza: **chi va out vince la partita**. **(2) Il punteggio →
+RIMBORSO:** il calcolo (nel motore) è intatto; cambia cosa ne fa il driver — chi vince tiene il pieno
+buy-in, chi perde recupera **0–20%** del buy-in per quanto bene ha giocato (`MachiavelliRefund`, in
+GameWorld). Dà scopo a chi perde **senza allungare la partita** e dà una **ragione economica** a
+`machiavelliMalusAversion`. È la prima volta che l'economia di un tavolo **esprime il carattere del
+casinò** (ClockTower: perdere non ti rovina, conta come hai giocato). Testato sul **movimento reale dei
+gettoni con `DEBUG_FREE_PLAY` OFF**. **(3) Gesto di SALTO** tra i divisori del nastro (D-074, ora
+richiesto dal campo): azione personalizzata che sposta il focus al divisore successivo/precedente,
+clampata, **scopribile** via hint. Motori non toccati (solo la struttura multi-mano, in GameWorld);
+**420 test verdi**. **Caricato su TestFlight (build 1784055333).**
+
 > **Residui aperti del ClockTower (dichiarati):** i **file audio** (ambient/musica su StableAudio →
 > `ClockTower_audio_catalog_ambient.md`, ora con i **due letti** archi/clockwork; voci su ElevenLabs →
 > `ClockTower_audio_catalog_voices.md`, ora col **personaggio deciso** — l'uomo anziano custode) sono

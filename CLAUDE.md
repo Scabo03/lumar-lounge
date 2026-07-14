@@ -2165,3 +2165,66 @@ struttura qui è quella che l'utente aveva in mente dall'inizio.
   nessuna logica di validità nella UI; **stabilità del sottoalbero** rigorosa; focus-landing sul box;
   la dichiarazione dello **stallo del tavolo rotto** (D-073) resta e funziona (il Passa bloccato resta
   agganciabile e spiega); descrivi-non-consigliare inviolato; Riverwood/Skypool intatti. **413 test verdi** (411 + 2). **TestFlight caricato: build 1784047983.**
+
+### D-075 — Machiavelli: dietrofront su mano↔partita (una mano sola), il punteggio diventa RIMBORSO, gesto di salto nel nastro
+Correzione dopo il **test reale con VoiceOver**: il campo ha **rovesciato** una decisione presa in
+astratto (D-071) e confermato un'aggiunta rimandata (D-074).
+- **DIETROFRONT: la partita è UNA MANO SOLA.** Con D-071 avevo introdotto la struttura mano↔partita a
+  soglia di punti perché "una mano sola sembrava troppo poco" — ma la **misura era fatta tra BOT**. Con
+  la partita giocata **davvero, a mano, con VoiceOver**, il rapporto si è **ribaltato**: una mano sola
+  **non è poco, è già lunga**, e tre mani sono **~un'ora** — troppo per una partita di carte su un
+  telefono. **La lezione (permanente, in CONVENTIONS §4):** un turno di poker è una **decisione**, un
+  turno di Machiavelli è **lavoro**. Contando i turni tra bot li contavo tutti uguali, ma un turno umano
+  di Machiavelli con VoiceOver — scorrere una catena di decine di carte, selezionare, comporre,
+  confermare — vale in **tempo reale** dieci turni di poker. **Il costo di un turno per un non vedente
+  non si misura in EVENTI ma in LAVORO DI NAVIGAZIONE**, e ogni stima di durata deve tenerne conto.
+  Rimossa la soglia e la sequenza di mani: **chi va out vince la partita**, la fine della mano è la fine
+  della partita. `MachiavelliSessionDriver` gestisce **una mano** (via GameWorld, non il motore).
+- **Il PUNTEGGIO sopravvive ma cambia funzione: RIMBORSO parziale del buy-in.** Il calcolo dei punti
+  (`MachiavelliScoring`, nel motore) **NON è toccato** — asso 10, figure 5, numerate 1, bonus out, punti
+  per il calato, malus per il rimasto; cambia solo **cosa ne fa il driver**. Non più una soglia da
+  superare in più mani, ma: **chi va out vince e tiene il pieno buy-in** (il vanto è il premio — al
+  ClockTower si gioca per il prestigio, non per il denaro, D-072); **chi perde recupera una percentuale
+  del proprio buy-in proporzionale a quanto bene ha giocato** (misurato dal punteggio finale). La
+  meccanica (`MachiavelliRefund`, in **GameWorld** — economia di sessione) fa un **lavoro doppio**: dà
+  **scopo a chi perde la mano** (ogni carta calata prima che l'avversario chiuda ripaga, ogni carta
+  pesante rimasta costa) **senza allungare la partita di un turno**, e tiene viva la leva
+  `machiavelliMalusAversion` con una **ragione economica** concreta (il bot che tiene l'asso quando
+  l'avversario è a due carte dall'out ha un interesse **vero** a scaricarlo). **Coerenza narrativa** (che
+  orienta la calibrazione): è la **prima volta** nel progetto in cui l'economia di un tavolo **esprime il
+  carattere del casinò** invece di scalare i numeri — un luogo dove perdere non ti rovina e dove **come
+  hai giocato conta più dell'esito** è esattamente il ClockTower; il rimborso è un **gesto di riguardo**
+  verso chi ha giocato bene, non un paracadute che annulla la sconfitta.
+- **La CURVA del rimborso (calibrata sui punteggi reali misurati — il leader di una mano segna ~100).**
+  Lineare: **0%** fino a un `scoreFloor = 20` (chi non ha calato quasi nulla e siede su una mano quasi
+  intatta — se anche lui recuperasse, la meccanica non punirebbe niente e sarebbe inutile), sale fino al
+  **20%** a un `scoreCeiling = 90` (chi ha giocato bene e perso di poco, appena sotto il ~100 del
+  vincitore), lineare in mezzo. Buy-in 1200 → un forte perdente recupera **240**, un perdente medio
+  (score 55) **120**, uno scarso **0**.
+- **DA TESTARE CON `DEBUG_FREE_PLAY` SPENTO (il test che conta).** Col flag ON la meccanica è **invisibile**
+  (buy-in ignorato, saldo pinnato): l'utente non la vedrà finché non cade. Costruita e testata con il
+  flag **OFF**, sul **movimento reale dei gettoni**: chi vince incassa il pieno buy-in (netto zero), chi
+  perde incassa il rimborso corretto, il saldo si aggiorna (`PlayerAccount`).
+- **Gesto di SALTO tra i divisori del nastro (D-074 → richiesto dal campo).** In D-074 l'utente aveva
+  chiesto di provare **la struttura pura** senza salto; il campo ha risposto: in una partita avanzata il
+  nastro è lungo e raggiungere l'ultima combinazione carta-per-carta è **una maratona di swipe**. Aggiunta
+  un'**azione personalizzata** su ogni divisore (tavolo = ancora 0, combinazioni = 1…n) che sposta il
+  focus VoiceOver al divisore **successivo/precedente** (via `@AccessibilityFocusState`), **clampata** ai
+  due estremi. La logica delle ancore è **pura e testabile** (`MachiavelliBoxState.nextDivider/
+  previousDivider`), la view la applica. **Scopribile** via l'**hint** di ogni divisore ("scorri in su o in
+  giù per saltare tra le combinazioni"): un gesto che il cieco non sa che esiste non serve. **Sottoalbero
+  stabile:** il salto è un **modificatore** (focus + azioni + hint), non aggiunge/rimuove sottoviste.
+- **Vincoli:** motori **non toccati** (rimossa solo la struttura multi-mano, che vive in **GameWorld**;
+  la funzione pura di punteggio è intatta); `machiavelliMalusAversion` resta additiva; predicato **unica
+  fonte** per box e drag; nessuna logica di validità nella UI; nessun `UIAccessibility.post` diretto;
+  distinzione acustica nastro↔pool intatta; **stallo del tavolo rotto (D-073)** funzionante; descrivi-non-
+  consigliare inviolato; Riverwood/Skypool intatti. **Rimosso** il test che pinnava l'accumulo tra mani
+  (dichiarato). **420 test verdi** (413 + 7 nuovi, −1 multi-hand). **TestFlight caricato: build 1784055333.**
+
+### ⚠️ Lezione per sessioni future — misurare la durata col LAVORO, non con gli eventi
+Per un gioco a forte **carico cognitivo per turno** (Machiavelli), **non stimare la durata contando i
+turni/eventi**: un turno umano navigato con VoiceOver costa in **tempo reale** molte volte un turno di
+poker (scorrere/selezionare/comporre/confermare su decine di elementi). Le misure **tra bot** ignorano
+questo costo e portano a decisioni sbagliate (è successo con la soglia mano↔partita di D-071, ribaltata
+in D-075). **Regola:** stima la durata in **lavoro di navigazione reale**, non in numero di eventi, e
+convalida sempre con un **test umano** prima di consolidare una meccanica che dipende dalla durata.

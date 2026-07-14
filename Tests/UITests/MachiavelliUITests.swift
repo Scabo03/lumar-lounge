@@ -254,6 +254,26 @@ final class MachiavelliUITests: XCTestCase {
         XCTAssertEqual(box.selectedCards, [c(.seven, .spades), c(.five, .spades)])
     }
 
+    // MARK: - Ribbon jump gesture: anchors and the two extremes (D-075)
+
+    func testRibbonJumpAnchorsAndExtremes() {
+        let hand = [MachiavelliChainCard(index: 0, card: c(.two, .clubs), isHand: true)]
+        let group0 = [MachiavelliChainCard(index: 1, card: c(.five, .spades), isHand: false)]
+        let group1 = [MachiavelliChainCard(index: 2, card: c(.six, .spades), isHand: false)]
+        let box = MachiavelliBoxState(handCards: hand, tableGroups: [group0, group1], selected: [])
+
+        // Anchors: 0 = "tavolo", 1 = first combination, 2 = second combination.
+        XCTAssertEqual(box.dividerCount, 3)
+        // Forward jumps stop at the last combination.
+        XCTAssertEqual(box.nextDivider(from: 0), 1)
+        XCTAssertEqual(box.nextDivider(from: 1), 2)
+        XCTAssertNil(box.nextDivider(from: 2), "no next past the last combination — clamped")
+        // Backward jumps stop at the "tavolo" divider.
+        XCTAssertEqual(box.previousDivider(from: 2), 1)
+        XCTAssertEqual(box.previousDivider(from: 1), 0)
+        XCTAssertNil(box.previousDivider(from: 0), "no previous before the tavolo divider — clamped")
+    }
+
     // MARK: - Announcement discipline: close events serialize, never truncate (D-074)
 
     @MainActor

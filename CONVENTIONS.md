@@ -491,6 +491,18 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     consiglio, e non si dà. Un pulsante bloccato preferibilmente **non si disabilita**
     (resta agganciabile e, toccato, spiega): un pulsante disabilitato che "non fa niente"
     è la **peggior forma di stallo** per il cieco, che non sa nemmeno cosa cercare.
+  - **Il costo di un turno per un non vedente si misura in LAVORO DI NAVIGAZIONE, non in
+    eventi (regola permanente, D-075).** In un gioco a forte carico cognitivo per turno
+    (es. Machiavelli: scorrere una catena di decine di carte, selezionare, comporre,
+    confermare), un turno umano navigato con VoiceOver costa in **tempo reale** molte
+    volte un turno di un gioco a decisione breve (poker). Contare i turni li tratta tutti
+    uguali; il **tempo** no. Perciò: **non stimare la durata di un gioco contando gli
+    eventi/turni**, e **non fidarsi delle misure tra BOT** (che ignorano il costo di
+    navigazione umano). Stimare in **lavoro di navigazione reale** e **convalidare con un
+    test umano** prima di consolidare una meccanica che dipende dalla durata. È il motivo
+    per cui la struttura mano↔partita del Machiavelli (D-071), calibrata tra bot, è stata
+    **ribaltata** dopo il primo test reale (D-075): una mano sola non era poco, era già
+    lunga. È "nessuno perde niente" applicato alla **stima della durata**.
   - **Per chi naviga a SWIPE, una struttura LINEARE è più leggibile di una griglia
     (regola permanente, D-074).** Il gesto di VoiceOver è **lineare** (swipe avanti/
     indietro lungo una sequenza); quando il contenuto è una **griglia** (righe che

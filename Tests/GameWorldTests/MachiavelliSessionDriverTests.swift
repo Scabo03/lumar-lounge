@@ -1,10 +1,11 @@
 // MachiavelliSessionDriverTests.swift
 // =====================================================================
-// The Machiavelli session driver (D-070/D-071): a MATCH is a scored sequence of hands
-// ending at a victory threshold; cards are conserved; scores accumulate correctly; the
-// whole match is deterministic given a seed; private hands/draws never leak to
-// spectators; the audible-wait thinking events bracket every bot turn; and the
-// progressive matchmaker introduces opponents by GAMES PLAYED (never time).
+// The Machiavelli session driver (D-075): a GAME is a SINGLE HAND — whoever goes out
+// wins, and the end of the hand is the end of the game (the multi-hand match structure
+// of D-071 was removed after the real VoiceOver test, D-075). Cards are conserved; the
+// game is deterministic given a seed; private hands/draws never leak to spectators; the
+// audible-wait thinking events bracket every bot turn; and the progressive matchmaker
+// introduces opponents by GAMES PLAYED (never time).
 
 import XCTest
 @testable import GameWorld
@@ -12,9 +13,9 @@ import XCTest
 
 final class MachiavelliSessionDriverTests: XCTestCase {
 
-    /// A driver with `count` bot players. Small hands + small budgets + a low threshold
-    /// so matches finish fast and deterministically (the engine tests cover full rules).
-    private func driver(seed: UInt64?, count: Int = 2, handSize: Int = 4, threshold: Int = 25) -> MachiavelliSessionDriver {
+    /// A driver with `count` bot players. Small hands + small budgets so the single hand
+    /// finishes fast and deterministically (the engine tests cover the full rules).
+    private func driver(seed: UInt64?, count: Int = 2, handSize: Int = 4) -> MachiavelliSessionDriver {
         let roster: [Personality] = [.machiavelliStudent, .machiavelliAdult, .machiavelliProfessor]
         let seats = (0..<count).map { pos in
             MachiavelliSeatAssignment(position: pos, playerID: pos,
@@ -24,35 +25,46 @@ final class MachiavelliSessionDriverTests: XCTestCase {
                                                                 budget: .nodes(700))))
         }
         return MachiavelliSessionDriver(capacity: count, seats: seats, handSize: handSize,
-                                        victoryThreshold: threshold, seed: seed, turnLimit: 16, handLimit: 20)
+                                        seed: seed, turnLimit: 16)
     }
 
-    func testAMatchCompletesWithAWinnerAcrossHands() async throws {
+    func testTheGameEndsWithTheFirstHand() async throws {
         let d = driver(seed: 42)
         let outcome = try await d.playMatch()
         XCTAssertTrue((0..<2).contains(outcome.winnerID))
-        XCTAssertGreaterThanOrEqual(outcome.handsPlayed, 1)
-        // The winner holds the top cumulative score.
-        let top = outcome.finalScores.values.max()!
-        XCTAssertEqual(outcome.finalScores[outcome.winnerID], top)
+        XCTAssertEqual(outcome.handsPlayed, 1, "the game is a single hand (D-075)")
+        XCTAssertTrue(d.isGameOver)
         await d.endSession()
     }
 
-    func testScoresAccumulateAcrossHands() async throws {
-        // The cumulative score reported by a hand equals the sum of that hand's score and
-        // the prior cumulative — i.e. hands add up correctly.
-        let d = driver(seed: 7, threshold: 100000)   // huge threshold → play many hands
-        var running: [Int: Int] = [0: 0, 1: 0]
-        for _ in 0..<5 {
-            let hand = try await d.playHand()
-            for (id, pts) in hand.handScores { running[id, default: 0] += pts }
-            XCTAssertEqual(hand.cumulativeScores, running, "cumulative = sum of per-hand scores")
+    func testASecondHandIsRejected() async throws {
+        // No accumulation across hands: once the one hand is played, the game is over.
+        let d = driver(seed: 7)
+        _ = try await d.playHand()
+        XCTAssertFalse(d.canDealNextHand)
+        var threw = false
+        do { _ = try await d.playHand() } catch { threw = true }
+        XCTAssertTrue(threw, "a second hand cannot be dealt — the game is one hand")
+        await d.endSession()
+    }
+
+    func testWhoeverGoesOutWinsTheGame() async throws {
+        // If a player goes out, they are the winner (not the highest score, D-075).
+        let d = driver(seed: 3, handSize: 6)
+        let stream = await d.events(as: .spectator)
+        async let outID: Int? = {
+            for await event in stream { if case let .playerWentOut(id) = event.payload { return id } }
+            return nil
+        }()
+        let outcome = try await d.playMatch()
+        await d.endSession()
+        if let wentOut = await outID {
+            XCTAssertEqual(outcome.winnerID, wentOut, "the player who goes out wins")
         }
-        await d.endSession()
     }
 
-    func testCardsAreConservedWithinAHand() async throws {
-        let d = driver(seed: 7, threshold: 100000)
+    func testCardsAreConservedWithinTheHand() async throws {
+        let d = driver(seed: 7)
         _ = try await d.playHand()
         let inHands = d.players.reduce(0) { $0 + (d.handCount(of: $1.id) ?? 0) }
         XCTAssertEqual(inHands + d.tableCardCount + d.stockCount, MachiavelliConstants.totalCards,
@@ -60,18 +72,17 @@ final class MachiavelliSessionDriverTests: XCTestCase {
         await d.endSession()
     }
 
-    func testDeterministicOverTheWholeMatch() async throws {
-        func run(_ seed: UInt64) async throws -> (Int, Int, [Int: Int]) {
+    func testDeterministicGivenSeed() async throws {
+        func run(_ seed: UInt64) async throws -> (Int, [Int: Int]) {
             let d = driver(seed: seed)
             let o = try await d.playMatch()
             await d.endSession()
-            return (o.winnerID, o.handsPlayed, o.finalScores)
+            return (o.winnerID, o.finalScores)
         }
         let a = try await run(2026)
         let b = try await run(2026)
         XCTAssertEqual(a.0, b.0)
-        XCTAssertEqual(a.1, b.1)
-        XCTAssertEqual(a.2, b.2, "same seed → identical match, hand for hand")
+        XCTAssertEqual(a.1, b.1, "same seed → identical game")
     }
 
     func testProductionSeedVariesBetweenSessions() async throws {
@@ -82,7 +93,7 @@ final class MachiavelliSessionDriverTests: XCTestCase {
                           provider: MachiavelliBotTurnProvider(HeuristicMachiavelliBot(personality: .machiavelliStudent, seed: 1, budget: .nodes(500)))),
                         MachiavelliSeatAssignment(position: 1, playerID: 1,
                           provider: MachiavelliBotTurnProvider(HeuristicMachiavelliBot(personality: .machiavelliStudent, seed: 2, budget: .nodes(500))))],
-                handSize: 5, seed: nil, turnLimit: 4, handLimit: 1)
+                handSize: 5, seed: nil, turnLimit: 4)
             let stream = await d.events(as: .player(0))
             async let cards: [Card] = {
                 for await event in stream {
@@ -117,25 +128,25 @@ final class MachiavelliSessionDriverTests: XCTestCase {
         XCTAssertFalse(didLeak, "a spectator never receives any player's private cards")
     }
 
-    func testHandEndedCarriesScoresAndMatchEndedCarriesWinner() async throws {
+    func testHandEndedCarriesScoresAndGameEndedCarriesWinner() async throws {
         let d = driver(seed: 5)
         let stream = await d.events(as: .spectator)
         async let observed: (Bool, Bool) = {
-            var sawHandScores = false, sawMatchWinner = false
+            var sawHandScores = false, sawWinner = false
             for await event in stream {
                 switch event.payload {
                 case let .handEnded(_, _, handScores, _): if !handScores.isEmpty { sawHandScores = true }
-                case .matchEnded: sawMatchWinner = true
+                case .matchEnded: sawWinner = true
                 default: break
                 }
             }
-            return (sawHandScores, sawMatchWinner)
+            return (sawHandScores, sawWinner)
         }()
         _ = try await d.playMatch()
         await d.endSession()
-        let (sawHandScores, sawMatchWinner) = await observed
-        XCTAssertTrue(sawHandScores, "hand end reports the points awarded")
-        XCTAssertTrue(sawMatchWinner, "match end reports the winner")
+        let (sawHandScores, sawWinner) = await observed
+        XCTAssertTrue(sawHandScores, "hand end reports the points awarded (for the refund, D-075)")
+        XCTAssertTrue(sawWinner, "game end reports the winner")
     }
 
     func testThinkingEventsBracketEveryBotTurn() async throws {

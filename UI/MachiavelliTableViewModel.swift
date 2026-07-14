@@ -50,6 +50,15 @@ public struct MachiavelliBoxState: Equatable, Sendable {
     public func isSelected(_ index: Int) -> Bool { selected.contains(index) }
     /// Every ribbon card, flat (hand then table), for index lookups.
     public var allCards: [MachiavelliChainCard] { handCards + tableGroups.flatMap { $0 } }
+
+    // MARK: Jump-between-dividers anchors (D-075)
+    /// The ribbon's divider anchors: the "tavolo" divider (index 0) plus one per laid
+    /// combination (1…n). The JUMP gesture moves focus between them.
+    public var dividerCount: Int { 1 + tableGroups.count }
+    /// The next anchor after `index`, or `nil` at the last (clamped at the far end).
+    public func nextDivider(from index: Int) -> Int? { index < dividerCount - 1 ? index + 1 : nil }
+    /// The previous anchor before `index`, or `nil` at the "tavolo" divider (clamped).
+    public func previousDivider(from index: Int) -> Int? { index > 0 ? index - 1 : nil }
     public var selectedCards: [Card] {
         selected.compactMap { idx in allCards.first { $0.index == idx }?.card }
     }
@@ -93,6 +102,9 @@ public final class MachiavelliTableViewModel: ObservableObject {
     private var turnContinuation: CheckedContinuation<Void, Never>?
     /// The context the human's current turn started from (for "restart turn").
     private var turnContext: MachiavelliBotContext?
+    /// The game winner and the hero's final score, captured at game end for the refund.
+    private var gameWinnerID: Int?
+    private var heroFinalScore = 0
 
     /// - Parameter seed: `nil` (production) → fresh random cards every deal (D-047); a
     ///   fixed value makes the whole match deterministic (tests/previews).
@@ -132,8 +144,7 @@ public final class MachiavelliTableViewModel: ObservableObject {
         self.names = names
 
         self.driver = MachiavelliSessionDriver(capacity: opponents.count + 1, seats: assignments,
-                                               handSize: rules.handSize, victoryThreshold: rules.victoryThreshold,
-                                               seed: seed)
+                                               handSize: rules.handSize, seed: seed)
         // The Machiavelli bed is the casino's PER-GAME override (clockwork, D-073): a
         // long cognitive turn is played on the audio channel by the blind player, so a
         // developing classical bed would compete with the listening.
@@ -146,7 +157,7 @@ public final class MachiavelliTableViewModel: ObservableObject {
         self.state = MachiavelliTableState(
             seats: ([0] + opponents.indices.map { $0 + 1 })
                 .map { MachiavelliSeatPresentation(id: $0, position: $0) },
-            heroSeatID: 0, phase: .idle, victoryThreshold: rules.victoryThreshold)
+            heroSeatID: 0, phase: .idle)
     }
 
     private static func character(for p: Personality) -> MachiavelliCharacter {
@@ -167,12 +178,17 @@ public final class MachiavelliTableViewModel: ObservableObject {
     // MARK: - Leaving
 
     public func requestLeave() {
-        if outcome != nil { finishAndLeave(); return }
+        if outcome != nil { onLeave(cashOut); return }
         leaveAfterHand = true
         pendingLeave = true
     }
-    private func finishAndLeave() { onLeave(buyIn) }   // Machiavelli is prestige, not money → full refund (D-072)
-    public func returnToCasino() { onLeave(buyIn) }
+    /// Chips to cash out at game end: full buy-in if the hero WON (prestige, D-072), else
+    /// the score-based partial REFUND (D-075). Whoever GOES OUT wins; the loser recovers a
+    /// share of the buy-in by how well they played.
+    private var cashOut: Int {
+        MachiavelliRefund.cashOut(won: gameWinnerID == heroSeatID, score: heroFinalScore, buyIn: buyIn)
+    }
+    public func returnToCasino() { onLeave(cashOut) }
 
     // MARK: - Lifecycle
 
@@ -257,8 +273,10 @@ public final class MachiavelliTableViewModel: ObservableObject {
             await gate.release()
             await pace(1.2, spoke: true)
 
-        case let .matchEnded(winnerID, _, _):
+        case let .matchEnded(winnerID, _, finalScores):
             state = MachiavelliTableReducer.reduce(state, payload)
+            gameWinnerID = winnerID                       // whoever went out won (D-075)
+            heroFinalScore = finalScores[heroSeatID] ?? 0
             let v = MachiavelliSpeechMap.voice(.matchEnd)
             conductor.say(lead: v.sound,
                           synthesis: MachiavelliSpeechMap.matchResult(heroWon: winnerID == heroSeatID,
@@ -469,11 +487,11 @@ public final class MachiavelliTableViewModel: ObservableObject {
     // MARK: - Outcome
 
     private func finishSession() {
-        if leaveAfterHand { onLeave(buyIn); return }
-        let heroScore = state.seat(heroSeatID)?.score ?? 0
-        let topScore = state.seats.map { $0.score }.max() ?? 0
-        let didWin = heroScore >= topScore && heroScore > 0
+        // Whoever GOES OUT wins the (single) game (D-075); the winner is set from the
+        // game-over event. The cash-out then applies the refund economy.
+        let didWin = gameWinnerID == heroSeatID
         progress.saveGamesPlayed(progress.loadGamesPlayed() + 1)   // one more encounter behind us (D-070)
+        if leaveAfterHand { onLeave(cashOut); return }
         outcome = didWin ? .won : .lost
     }
 

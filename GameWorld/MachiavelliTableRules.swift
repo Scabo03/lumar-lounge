@@ -19,20 +19,63 @@ import GameEngine
 public struct MachiavelliTableRules: Equatable, Sendable {
     public let buyIn: Int
     public let handSize: Int
-    public let victoryThreshold: Int
 
-    public init(buyIn: Int, handSize: Int = MachiavelliConstants.handSize,
-                victoryThreshold: Int = MachiavelliSessionDriver.defaultVictoryThreshold) {
+    public init(buyIn: Int, handSize: Int = MachiavelliConstants.handSize) {
         self.buyIn = buyIn
         self.handSize = handSize
-        self.victoryThreshold = victoryThreshold
     }
 
     /// The ClockTower's Machiavelli table: a LOW buy-in (1200, just above the Riverwood's
-    /// 1000 — the cheapest entry of any speciality) that is fully refunded on leaving,
-    /// because at the ClockTower you play for vanity, not money (D-072). Standard 13-card
-    /// hands, the calibrated ~3-hand match threshold (D-071).
+    /// 1000 — the cheapest entry of any speciality). A single hand decides the game
+    /// (D-075); a loser recovers a share of the buy-in by how well they played (the refund
+    /// economy, `MachiavelliRefund`) — at the ClockTower you play for vanity, not money,
+    /// and how you played matters more than the outcome (D-072/D-075). Standard 13 cards.
     public static let clockTower = MachiavelliTableRules(buyIn: 1200)
+}
+
+// MARK: - The refund economy (D-075)
+
+/// Turns a losing player's final SCORE into a partial buy-in REFUND — the second life of
+/// the Machiavelli scoring (D-071→D-075): no longer a threshold to cross over many hands,
+/// but a measure of how well a loser played, giving purpose to a losing hand WITHOUT
+/// adding a single turn. It is a SESSION/ECONOMY mechanic, so it lives in GameWorld.
+///
+/// Whoever GOES OUT wins and keeps their full buy-in (the win is the reward — at the
+/// ClockTower you play for prestige, not money, D-072). A LOSER recovers a fraction of
+/// their buy-in: up to ~20% for someone who played well and lost narrowly, sliding to 0
+/// for someone who laid almost nothing and sat on a near-intact hand — if even that were
+/// refunded, the mechanic would punish nothing and be pointless (D-075). The economy is
+/// the FIRST in the project where a table's money EXPRESSES the casino's character rather
+/// than just scaling numbers: the refund is a gesture of regard for good play, not a
+/// parachute that annuls the loss.
+public enum MachiavelliRefund {
+
+    /// No refund at or below this score — laid almost nothing / stuck on a heavy hand.
+    public static let scoreFloor = 20
+    /// Full (maximum) refund at or above this score — played well, lost narrowly. Chosen
+    /// just under a hand-winner's ~100 (measured, D-071), so a strong loser reaches the top.
+    public static let scoreCeiling = 90
+    /// The maximum share of the buy-in a loser can recover.
+    public static let maxFraction = 0.20
+
+    /// The refund fraction (0…`maxFraction`) for a loser's final score — linear between the
+    /// floor and the ceiling.
+    public static func refundFraction(score: Int) -> Double {
+        guard score > scoreFloor else { return 0 }
+        guard score < scoreCeiling else { return maxFraction }
+        return Double(score - scoreFloor) / Double(scoreCeiling - scoreFloor) * maxFraction
+    }
+
+    /// The chips a loser recovers from a buy-in given their final score (rounded).
+    public static func refund(score: Int, buyIn: Int) -> Int {
+        Int((refundFraction(score: score) * Double(buyIn)).rounded())
+    }
+
+    /// The chips a player cashes out at game end: the FULL buy-in if they won (D-072), else
+    /// the score-based refund (D-075).
+    public static func cashOut(won: Bool, score: Int, buyIn: Int) -> Int {
+        won ? buyIn : refund(score: score, buyIn: buyIn)
+    }
 }
 
 // MARK: - Progressive-encounter persistence (D-070)

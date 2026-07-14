@@ -38,6 +38,9 @@ struct MachiavelliBoxView: View {
 
     private let columns = [GridItem(.adaptive(minimum: 46), spacing: 6)]
     private let ribbonCardHeight: CGFloat = 74   // == CardView .medium height
+    /// The ribbon divider VoiceOver focus is on (0 = "tavolo", 1…n = combinations) —
+    /// drives the JUMP gesture between combinations (D-075).
+    @AccessibilityFocusState private var focusedDivider: Int?
 
     var body: some View {
         VStack(spacing: 14) {
@@ -127,21 +130,34 @@ struct MachiavelliBoxView: View {
     }
 
     /// The vertical "tavolo" divider — an accessibility element the blind player hears
-    /// between the hand cards and the laid combinations; a thin bar for the sighted.
+    /// between the hand cards and the laid combinations; a thin bar for the sighted. It is
+    /// anchor 0 of the JUMP gesture (D-075).
     private var tavoloDivider: some View {
         verticalDivider
             .accessibilityElement()
             .accessibilityIdentifier("machiavelli.box.divider")
             .accessibilityLabel(Text(uiLocalized("machiavelli.box.tabledivider.a11y")))
+            .modifier(dividerJump(at: 0))
     }
 
     /// A combination's titled divider — preceding its cards in the ribbon; announces the
     /// SAME title as the table-edge knob (D-074), e.g. "scala di picche dal cinque al dieci".
+    /// It is anchor `groupIndex + 1` of the JUMP gesture (D-075).
     private func combinationDivider(_ cards: [Card], index: Int) -> some View {
         verticalDivider
             .accessibilityElement()
             .accessibilityIdentifier("machiavelli.box.combodivider.\(index)")
             .accessibilityLabel(Text(verbatim: MachiavelliSpeechMap.knobTitle(cards)))
+            .modifier(dividerJump(at: index + 1))
+    }
+
+    /// The JUMP modifier for the divider at `anchor` — its next/previous targets come from
+    /// the box's pure anchor math (D-075), clamped at the ends.
+    private func dividerJump(at anchor: Int) -> DividerJump {
+        DividerJump(index: anchor,
+                    nextTarget: box.nextDivider(from: anchor),
+                    prevTarget: box.previousDivider(from: anchor),
+                    focus: $focusedDivider)
     }
 
     private var verticalDivider: some View {
@@ -203,5 +219,32 @@ struct MachiavelliBoxView: View {
             .accessibilityIdentifier("machiavelli.box.confirm")
             .accessibilityLabel(Text(uiLocalized("machiavelli.box.confirm.a11y")))
         }
+    }
+}
+
+/// The JUMP-between-combinations gesture (D-075): custom actions on each ribbon divider
+/// that move VoiceOver focus to the NEXT / PREVIOUS divider, so a blind player skips
+/// through a long ribbon combination-by-combination instead of card-by-card. Clamped at
+/// both ends. DISCOVERABLE via each divider's hint (custom actions live behind a
+/// swipe-up/down, which a hint announces). Applied as a modifier, it adds no subview —
+/// the ribbon's subtree is unchanged (D-052).
+private struct DividerJump: ViewModifier {
+    let index: Int
+    let nextTarget: Int?
+    let prevTarget: Int?
+    @AccessibilityFocusState.Binding var focus: Int?
+
+    func body(content: Content) -> some View {
+        content
+            .accessibilityFocused($focus, equals: index)
+            .accessibilityHint(Text(uiLocalized("machiavelli.box.jump.hint")))
+            .accessibilityActions {
+                if let next = nextTarget {
+                    Button(uiLocalized("machiavelli.box.jump.next")) { focus = next }
+                }
+                if let prev = prevTarget {
+                    Button(uiLocalized("machiavelli.box.jump.prev")) { focus = prev }
+                }
+            }
     }
 }

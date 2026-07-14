@@ -50,7 +50,6 @@ public struct MachiavelliTableState: Equatable, Sendable {
     public var stockCount: Int
     public var handNumber: Int?
     public var phase: MachiavelliTablePhase
-    public var victoryThreshold: Int
     /// The per-player points awarded by the hand that just ended (for a transient
     /// scoreboard), nil between such moments.
     public var lastHandScores: [Int: Int]?
@@ -58,7 +57,7 @@ public struct MachiavelliTableState: Equatable, Sendable {
     public init(seats: [MachiavelliSeatPresentation] = [], melds: [[Card]] = [],
                 heroSeatID: Int? = nil, heroHand: [Card]? = nil, activeSeatID: Int? = nil,
                 stockCount: Int = 0, handNumber: Int? = nil, phase: MachiavelliTablePhase = .idle,
-                victoryThreshold: Int = 0, lastHandScores: [Int: Int]? = nil) {
+                lastHandScores: [Int: Int]? = nil) {
         self.seats = seats
         self.melds = melds
         self.heroSeatID = heroSeatID
@@ -67,7 +66,6 @@ public struct MachiavelliTableState: Equatable, Sendable {
         self.stockCount = stockCount
         self.handNumber = handNumber
         self.phase = phase
-        self.victoryThreshold = victoryThreshold
         self.lastHandScores = lastHandScores
     }
 
@@ -88,10 +86,9 @@ public enum MachiavelliTableReducer {
         var next = state
         switch payload {
 
-        case let .sessionBegan(seats, _, threshold):
+        case let .sessionBegan(seats, _):
             next.seats = seats.sorted { $0.position < $1.position }
                 .map { MachiavelliSeatPresentation(id: $0.seatID, position: $0.position, handCount: $0.handCount) }
-            next.victoryThreshold = threshold
             next.phase = .idle
 
         case let .handBegan(handNumber, seats, firstToAct, stockCount):

@@ -503,3 +503,8 @@
 "machiavelli.pass.blocked.nothing" = "Non hai ancora calato nessuna carta.";
 "machiavelli.pass.blocked.invalid" = "Il tavolo non è valido: %@.";
 "machiavelli.pass.blocked" = "Il tavolo non è valido.";
+
+/* Machiavelli — gesto di salto tra i divisori del nastro (D-075) */
+"machiavelli.box.jump.hint" = "Scorri in su o in giù per saltare tra le combinazioni.";
+"machiavelli.box.jump.next" = "Vai alla combinazione successiva";
+"machiavelli.box.jump.prev" = "Vai alla combinazione precedente";

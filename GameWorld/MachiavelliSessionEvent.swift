@@ -61,8 +61,8 @@ public struct MachiavelliSessionEvent: Equatable, Sendable {
 /// The taxonomy of significant Machiavelli moments. Descriptive only.
 public enum MachiavelliEventPayload: Equatable, Sendable {
 
-    // Session/match lifecycle
-    case sessionBegan(seats: [MachiavelliSeatSnapshot], handSize: Int, victoryThreshold: Int)
+    // Session/game lifecycle
+    case sessionBegan(seats: [MachiavelliSeatSnapshot], handSize: Int)
     case sessionEnded(reason: MachiavelliSessionEndReason)
     /// A new HAND (single deal) began within the match.
     case handBegan(handNumber: Int, seats: [MachiavelliSeatSnapshot], firstToActSeatID: Int, stockCount: Int)

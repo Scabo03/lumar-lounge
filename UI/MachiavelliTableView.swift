@@ -93,7 +93,6 @@ struct MachiavelliOpponentBand: View {
         HStack(spacing: 10) {
             ForEach(state.opponents, id: \.id) { seat in dot(seat) }
             Spacer()
-            scoreTarget
         }
     }
 
@@ -114,13 +113,6 @@ struct MachiavelliOpponentBand: View {
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("opponent.\(seat.id)")
         .accessibilityLabel(Text(verbatim: dotSummary(seat)))
-    }
-
-    private var scoreTarget: some View {
-        Text(verbatim: uiLocalized("machiavelli.scoretarget", state.victoryThreshold))
-            .font(.caption2.monospacedDigit()).foregroundStyle(TablePalette.secondaryText)
-            .accessibilityIdentifier("machiavelli.scoretarget")
-            .accessibilityLabel(Text(verbatim: uiLocalized("machiavelli.scoretarget.a11y", state.victoryThreshold)))
     }
 
     private func dotSummary(_ seat: MachiavelliSeatPresentation) -> String {

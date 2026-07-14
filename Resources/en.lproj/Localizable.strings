@@ -484,3 +484,8 @@
 "machiavelli.pass.blocked.nothing" = "You haven't laid any card yet.";
 "machiavelli.pass.blocked.invalid" = "The table is not valid: %@.";
 "machiavelli.pass.blocked" = "The table is not valid.";
+
+/* Machiavelli — jump-between-dividers gesture (D-075) */
+"machiavelli.box.jump.hint" = "Swipe up or down to jump between combinations.";
+"machiavelli.box.jump.next" = "Go to the next combination";
+"machiavelli.box.jump.prev" = "Go to the previous combination";
