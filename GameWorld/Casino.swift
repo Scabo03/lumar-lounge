@@ -27,6 +27,7 @@ public enum CasinoGame: Equatable, Sendable {
     case draw(DrawTableRules)
     case omaha(OmahaTableRules)
     case machiavelli(MachiavelliTableRules)
+    case stud(StudTableRules)
 
     /// The buy-in required to sit — the sole economic barrier to a table (D-065). For
     /// Machiavelli it is a refundable entry threshold (prestige, not money — D-072).
@@ -36,6 +37,7 @@ public enum CasinoGame: Equatable, Sendable {
         case let .draw(rules): return rules.buyIn
         case let .omaha(rules): return rules.buyIn
         case let .machiavelli(rules): return rules.buyIn
+        case let .stud(rules): return rules.buyIn
         }
     }
 }
@@ -160,6 +162,11 @@ public enum Casinos {
             CasinoTable(id: "clocktower.table.machiavelli",
                         titleKey: "table.machiavelli.title", subtitleKey: "table.machiavelli.room",
                         game: .machiavelli(.clockTower)),
+            // The tower's POKER speciality: Seven-Card Stud Pot Limit, the hardest game,
+            // where the House rewards a win (D-077/D-078).
+            CasinoTable(id: "clocktower.table.stud",
+                        titleKey: "table.stud.title", subtitleKey: "table.stud.room",
+                        game: .stud(.clockTower)),
         ])
 
     /// Every casino, in home-screen order.

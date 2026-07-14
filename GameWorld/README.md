@@ -236,3 +236,18 @@ giocabile** (mancano UI/audio/casinò): qui c'è solo l'orchestrazione.
   primissime partite quasi solo lo **studente**, poi studente/adulto, poi insieme, più
   avanti il **professore**, fino a partite col **solo professore**. Deterministico dato
   seed. Il giocatore **incontra delle persone**, non un livello di difficoltà.
+
+## Seven-Card Stud Pot Limit + Premio della Casa (D-077/D-078)
+- **`StudSessionDriver`** — sorella dei driver poker: gira una sessione di Stud (ante +
+  bring-in, cinque street con **narrazione delle carte scoperte** man mano che arrivano,
+  side pot, seed casuale in produzione — D-047). Cliente puro del motore; chip conservati.
+- **`StudSessionEvent`/`StudEventHub`** — flusso proprio (ante, coperte private, **scoperte
+  pubbliche** per-seat, bring-in, street, showdown, pot, **premio della Casa**),
+  descrittivo non prescrittivo, audience privata (coperte solo al proprietario).
+- **`StudTableRules` + `WorldPersonalities.clockTower*`** — parametri del tavolo (ante 25,
+  bring-in 25, bet 50, buy-in 3000) e i **preset poker** dei regolari della torre (Studente/
+  Bibliotecario/Professore, con `studBoardReading`). Il tavolo siede **Studente + Professore**.
+- **`HousePrize` (economia, D-078)** — la Casa **aggiunge** 200 al piatto a ogni mano vinta
+  dal giocatore: non un rake, un **incentivo** che ricompensa il gioco più difficile. Vive
+  nel driver (`housePrize`/`prizeRecipientID`), **non nel motore**. Testato col **movimento
+  reale dei gettoni, `DEBUG_FREE_PLAY` OFF** (il premio arriva al saldo persistente).

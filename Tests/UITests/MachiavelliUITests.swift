@@ -20,10 +20,12 @@ final class MachiavelliUITests: XCTestCase {
     func testClockTowerIsInTheRegistryAsADataChange() {
         XCTAssertTrue(Casinos.all.contains { $0.id == "clocktower" })
         let clock = Casinos.clockTower
-        XCTAssertEqual(clock.tables.count, 1)
-        let table = clock.tables[0]
-        XCTAssertEqual(table.id, "clocktower.table.machiavelli")
-        if case .machiavelli = table.game {} else { XCTFail("the ClockTower's table is Machiavelli") }
+        // Two tables now: the Machiavelli plus the Seven-Card Stud poker speciality (D-077).
+        XCTAssertEqual(clock.tables.count, 2)
+        XCTAssertEqual(clock.tables[0].id, "clocktower.table.machiavelli")
+        if case .machiavelli = clock.tables[0].game {} else { XCTFail("the ClockTower's first table is Machiavelli") }
+        XCTAssertEqual(clock.tables[1].id, "clocktower.table.stud")
+        if case .stud = clock.tables[1].game {} else { XCTFail("the ClockTower's second table is Stud") }
     }
 
     func testAddingTheClockTowerNeededNoAudioPathChange() {

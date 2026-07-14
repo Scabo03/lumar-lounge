@@ -52,6 +52,9 @@ public final class SpeechConductor {
         SoundCatalog.voSkyShowdown,           // Skypool Omaha showdown (D-066)
         SoundCatalog.voSkyPotAwarded,         // Skypool Omaha pot (D-066)
         SoundCatalog.voSkySplitPot,           // Skypool Omaha split pot (D-066)
+        SoundCatalog.voClockPokerShowdown,    // ClockTower Stud showdown (D-077)
+        SoundCatalog.voClockPokerPot,         // ClockTower Stud pot (D-077)
+        SoundCatalog.voClockPokerHousePrize,  // ClockTower Stud house prize (D-078)
     ]
     private static let oncePerHand: Set<String> = Set(oncePerHandVoices.map { $0.rawValue })
 

@@ -442,6 +442,26 @@ richiesto dal campo): azione personalizzata che sposta il focus al divisore succ
 clampata, **scopribile** via hint. Motori non toccati (solo la struttura multi-mano, in GameWorld);
 **420 test verdi**. **Caricato su TestFlight (build 1784055333).**
 
+### ✅ Seven-Card Stud Pot Limit al ClockTower — motore + giocabile fino a TestFlight (D-076/D-077/D-078)
+**Quinto motore** di `GameEngine`, in `Stud/`, **indipendente** (nessun import incrociato; solo i
+fondazionali + `PotMath`/`Pot`). **Regole canoniche fissate** (D-077): mazzo 52, best-five-of-seven non
+vincolato; **ante + bring-in** (carta scoperta più bassa, parità di seme fiori-più-basso); cinque street
+(2 coperte + 1 scoperta in terza, 1 scoperta in quarta/quinta/sesta, 1 coperta in settima); apre il
+**bring-in** in terza, poi il **punto scoperto più alto**; **Pot Limit** col tetto dal vivo
+(`PotMath.potLimitMax…`), bring-in completabile a `bet`, nessun cap ai raise; **esaurimento del mazzo** →
+una **carta comune** condivisa in settima. `HeuristicStudBot` + `StudStrength` giocano da Stud (equity
+dead-card-aware + **lettura dei tabelloni**, nuova dimensione additiva `studBoardReading`, D-076;
+retrocompat verificata). `StudSessionDriver` in `GameWorld` (flusso eventi proprio, seed casuale in
+produzione, chip conservati). **ClockTower Stud GIOCABILE** (D-078): buy-in 3000, due avversari
+(**Studente + Professore**, preset poker in GameWorld); **PREMIO DELLA CASA** — la Casa aggiunge 200 al
+piatto a ogni mano vinta dal giocatore (meccanica economica in GameWorld, testata col movimento reale dei
+gettoni, `DEBUG_FREE_PLAY` OFF); **interrogazione delle carte scoperte** per il non vedente (annuncio di
+ogni scoperta mentre arriva + badge avversario interrogabile a comando, **descrive non consiglia**). UI
+speculare a Omaha (box raise Pot Limit, palette bronzo ClockTower); croupier = lo **stesso custode
+anziano** in italiano erudito (10 slot `vo_it_clock_poker_*` → fallback sintesi; letto ambientale classico).
+Motori esistenti invariati. **460 test verdi** (420 → +40) + XCUITest Stud. **Caricato su TestFlight (build
+1784060127).**
+
 > **Residui aperti del ClockTower (dichiarati):** i **file audio** (ambient/musica su StableAudio →
 > `ClockTower_audio_catalog_ambient.md`, ora con i **due letti** archi/clockwork; voci su ElevenLabs →
 > `ClockTower_audio_catalog_voices.md`, ora col **personaggio deciso** — l'uomo anziano custode) sono

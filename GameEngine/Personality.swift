@@ -117,6 +117,21 @@ public struct Personality: Equatable, Sendable {
     /// behaviour (additive back-compat); higher = plays ever more score-aware.
     public let machiavelliMalusAversion: Double
 
+    // MARK: Seven-Card Stud dimension (D-076)
+    //
+    // Stud's defining edge, absent in every other game here, is READING OPPONENTS' UP
+    // CARDS: they are public, so a good player folds when a foe's board is scary, chases
+    // when the cards they need are still live, and abandons a draw whose outs are dead in
+    // opponents' up cards. Only the Stud bot reads this dial, so its default is free; 0.5
+    // is neutral and keeps every other game's behaviour untouched (additive, CONVENTIONS
+    // §1). It is a LEVER, not a tuned value — calibration comes after real play (D-076).
+
+    /// UP-CARD READING — how much the bot factors opponents' visible up cards into its
+    /// decision: dead outs shrink its draws, and a threatening opposing board (a pair
+    /// showing, three to a flush/straight) makes it demand more to continue. 0 = ignores
+    /// the boards entirely (plays its own cards blind); 1 = a sharp board reader.
+    public let studBoardReading: Double
+
     public init(name: String,
                 tightness: Double,
                 aggression: Double,
@@ -134,7 +149,8 @@ public struct Personality: Equatable, Sendable {
                 omahaNuttiness: Double = 0.5,
                 machiavelliSearchDepth: Double = 0.5,
                 machiavelliPatience: Double = 0.5,
-                machiavelliMalusAversion: Double = 0.0) {
+                machiavelliMalusAversion: Double = 0.0,
+                studBoardReading: Double = 0.5) {
         self.name = name
         self.tightness = tightness.clamped01
         self.aggression = aggression.clamped01
@@ -153,6 +169,7 @@ public struct Personality: Equatable, Sendable {
         self.machiavelliSearchDepth = machiavelliSearchDepth.clamped01
         self.machiavelliPatience = machiavelliPatience.clamped01
         self.machiavelliMalusAversion = machiavelliMalusAversion.clamped01
+        self.studBoardReading = studBoardReading.clamped01
     }
 
     // MARK: - Pressure heuristic (pure, shared by both bots — D-048)

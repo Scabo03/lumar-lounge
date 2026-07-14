@@ -278,3 +278,16 @@ Il **primo gioco non-poker giocabile** e la **UI più diversa** del progetto: no
 - **`MachiavelliSpeechMap`** — titoli delle combinazioni, lettura dello stato della selezione
   (**descrive, non consiglia** — CONVENTIONS §4), linee del narratore del ClockTower (voce
   **non-croupier**, personaggio da definire).
+
+## Seven-Card Stud giocabile al ClockTower (D-077/D-078)
+- **`StudTableView` & c.** — tavolo di Stud speculare a Omaha (stato/riduzione puri
+  `StudTableState`/`StudTableReducer`, VM, box raise **Pot Limit** riusato, palette bronzo
+  ClockTower). La zona umana **distingue** le proprie coperte (private, mostrate a faccia in
+  su al giocatore) dalle scoperte (pubbliche).
+- **Interrogazione delle carte scoperte (la sfida vera dello Stud, D-078)** — ogni scoperta
+  è **annunciata mentre arriva** (parità col vedente), e ogni **badge avversario** è
+  interrogabile **a comando**: allo swipe legge il suo tabellone corrente ("il Professore,
+  scoperte: re di cuori, dieci di picche"). **Descrive, non consiglia** (guardiano di test).
+- **`StudSpeechMap`/`StudAudioDirector`/`StudAudioScore`** — layer parlato (croupier = lo
+  stesso custode anziano, italiano erudito, 10 slot `vo_it_clock_poker_*` → fallback sintesi;
+  cue distintivo del **premio della Casa**) e non parlato (fisici + ambient classico ClockTower).

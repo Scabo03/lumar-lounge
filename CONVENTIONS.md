@@ -531,6 +531,23 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     **posizione sullo schermo**: è **parità, non aiuto**. Vale con la stabilità del
     sottoalbero (D-046/D-052): il marcatore sta nella zona-pool, **non** nella label della
     catena, che resta costante così la selezione non ristruttura né sposta il focus.
+  - **Interrogazione A COMANDO di uno stato pubblico troppo grande da ricordare (pattern
+    permanente, D-078).** Quando lo stato pubblico rilevante è **troppo esteso** per tenerlo
+    a mente (le carte scoperte di **ogni** avversario nello Stud: due avversari × fino a
+    quattro carte + le proprie, molto più del board condiviso del Texas), il vedente lo tiene
+    **con lo sguardo**, tutto insieme, a colpo d'occhio. Per dare al non vedente la stessa
+    presa, **due meccanismi complementari**: (a) **si ANNUNCIA ogni cambiamento mentre
+    avviene** (ogni carta scoperta è annunciata quando è distribuita — parità col vedente che
+    la **vede apparire**); (b) lo **stato corrente è INTERROGABILE A COMANDO** su un elemento
+    accessibile dedicato (nello Stud, il badge di ogni avversario legge, allo swipe, il suo
+    **tabellone corrente**: "il Professore, scoperte: re di cuori, dieci di picche"), che è la
+    **memoria** che il vedente ha con lo sguardo — restituita su richiesta, così non serve
+    ricordare. La label si **deriva dallo stato corrente**, mai da uno snapshot congelato
+    (spirito D-058). E vale il confine inviolabile: **si DESCRIVE lo stato pubblico, non si
+    CONSIGLIA la mossa** — "ha scoperti re, dieci e sette di cuori" è descrizione (ciò che il
+    vedente vede); "potrebbe avere un colore" è suggerimento e non si fa mai. Senza questa
+    interrogazione il non vedente giocherebbe uno Stud **mutilato**: è la condizione di
+    esistenza del gioco, non una rifinitura.
 
 ## 5. Testabilità
 

@@ -489,3 +489,52 @@
 "machiavelli.box.jump.hint" = "Swipe up or down to jump between combinations.";
 "machiavelli.box.jump.next" = "Go to the next combination";
 "machiavelli.box.jump.prev" = "Go to the previous combination";
+
+/* Seven-Card Stud Pot Limit — ClockTower (D-077/D-078) */
+"seat.name.clock.student" = "the Student";
+"seat.name.clock.professor" = "the Professor";
+
+"table.stud.title" = "Seven-Card Stud";
+"table.stud.room" = "The Card Room";
+
+"stud.table.a11y" = "Seven-Card Stud table, Pot Limit.";
+"stud.potlimit.tag" = "POT LIMIT";
+"stud.stakes" = "Ante %1$d · Bring-in %2$d · Bet %3$d";
+"stud.stakes.a11y" = "Ante %1$d chips, bring-in %2$d, bet %3$d.";
+"stud.community" = "Community:";
+"stud.community.a11y" = "Community card, shared: %@.";
+"stud.prize.banner" = "HOUSE PRIZE +%d";
+"stud.prize.a11y" = "The House adds a prize of %d chips.";
+
+"stud.street.3" = "Third street";
+"stud.street.4" = "Fourth street";
+"stud.street.5" = "Fifth street";
+"stud.street.6" = "Sixth street";
+"stud.street.7" = "Last card";
+"stud.street.none" = "—";
+
+"stud.badge.bringin" = "BRING-IN";
+"stud.seat.upcards.a11y" = "showing: %@";
+"stud.seat.bringin.a11y" = "posted the bring-in";
+"stud.hero.cards.a11y" = "Your hole cards: %1$@. Showing, seen by all: %2$@.";
+"stud.hero.noup" = "none";
+"stud.hero.nocards.a11y" = "You have no cards this hand.";
+
+"stud.announce.handstart" = "New hand.";
+"stud.announce.hero.down" = "Your hole cards: %@.";
+"stud.announce.hero.down.one" = "Your last hole card: %@.";
+"stud.announce.upcard" = "%1$@ gets %2$@ face up.";
+"stud.announce.upcard.hero" = "You get %@ face up.";
+"stud.announce.bringin" = "%1$@ posts the bring-in of %2$d.";
+"stud.announce.street.4" = "Fourth street.";
+"stud.announce.street.5" = "Fifth street.";
+"stud.announce.street.6" = "Sixth street.";
+"stud.announce.street.7" = "Last card, face down.";
+"stud.announce.action.fold" = "%@ folds.";
+"stud.announce.action.check" = "%@ checks.";
+"stud.announce.action.call" = "%@ calls.";
+"stud.announce.action.bet" = "%1$@ bets %2$d.";
+"stud.announce.action.raise" = "%1$@ raises to %2$d.";
+"stud.announce.action.allin" = "%@ is all in.";
+"stud.announce.houseprize" = "The House adds %d chips to your pot.";
+"stud.announce.yourturn" = "Your turn.";

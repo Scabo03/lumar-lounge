@@ -167,6 +167,23 @@ public enum SoundCatalog {
     public static let voClockHandEnd = SoundID("vo_it_clock_hand_end")        // not delivered
     public static let voClockMatchEnd = SoundID("vo_it_clock_match_end")      // not delivered
 
+    // MARK: The ClockTower custode as POKER croupier — Seven-Card Stud (D-077/D-078, NOT delivered)
+    // The SAME old man who arbitrates the Machiavelli is the croupier at the ClockTower's
+    // Stud table, in an erudite, measured, ITALIAN register (no anglicisms in the spoken
+    // line — "rilancio", not "raise"). Each is INFORMATIVE, so it falls back to VoiceOver
+    // synthesis (D-030) declared in `StudSpeechMap` until the mp3 is produced (ElevenLabs).
+    public static let voClockPokerHandStart = SoundID("vo_it_clock_poker_hand_start")   // not delivered
+    public static let voClockPokerYourTurn = SoundID("vo_it_clock_poker_your_turn")     // not delivered
+    public static let voClockPokerStreet4 = SoundID("vo_it_clock_poker_fourth")         // not delivered
+    public static let voClockPokerStreet5 = SoundID("vo_it_clock_poker_fifth")          // not delivered
+    public static let voClockPokerStreet6 = SoundID("vo_it_clock_poker_sixth")          // not delivered
+    public static let voClockPokerStreet7 = SoundID("vo_it_clock_poker_seventh")        // not delivered
+    public static let voClockPokerShowdown = SoundID("vo_it_clock_poker_showdown")      // not delivered
+    public static let voClockPokerPot = SoundID("vo_it_clock_poker_pot")                // not delivered
+    public static let voClockPokerAllIn = SoundID("vo_it_clock_poker_all_in")           // not delivered
+    /// The distinctive House-Prize cue: the House rewards the winner of the hardest game.
+    public static let voClockPokerHousePrize = SoundID("vo_it_clock_poker_house_prize") // not delivered
+
     // MARK: Bot voices — ClockTower archetypes (D-072, NOT delivered yet)
     // AMBIENT colour of the three learned archetypes (student, adult, professor). Each
     // is `.botVoice`, so a missing file falls back to SILENCE, never synthesis (D-066):
@@ -228,6 +245,11 @@ public enum SoundCatalog {
         (voSkyPotLimit, .croupier), (voSkyStakesUp, .croupier),
         (voClockHandStart, .croupier), (voClockYourTurn, .croupier), (voClockMeld, .croupier),
         (voClockDrew, .croupier), (voClockPassed, .croupier), (voClockHandEnd, .croupier), (voClockMatchEnd, .croupier),
+        (voClockPokerHandStart, .croupier), (voClockPokerYourTurn, .croupier),
+        (voClockPokerStreet4, .croupier), (voClockPokerStreet5, .croupier),
+        (voClockPokerStreet6, .croupier), (voClockPokerStreet7, .croupier),
+        (voClockPokerShowdown, .croupier), (voClockPokerPot, .croupier),
+        (voClockPokerAllIn, .croupier), (voClockPokerHousePrize, .croupier),
         (vobClockStudentEager, .botVoice), (vobClockStudentPleased, .botVoice),
         (vobClockAdultPonders, .botVoice), (vobClockAdultPleased, .botVoice),
         (vobClockProfessorMasterstroke, .botVoice), (vobClockProfessorPleased, .botVoice),

@@ -59,27 +59,37 @@ scala di picche dal cinque al dieci."; "lo Studente pesca dal tallone."; "Fine m
 il Professore 15 punti."; "Hai vinto la partita." I **nomi** dei tre avversari sono **lo Studente**,
 **il Bibliotecario**, **il Professore** (persone della torre, non numeri).
 
-## 2. Il custode ai TAVOLI DI POKER del ClockTower — INFORMATIVA (FUTURA, non ancora cablata)
-I tavoli di poker del ClockTower **non esistono ancora** (nessun motore — vedi ROADMAP: il
-**Seven-Card Stud** è la specialità futura). Quando arriveranno, servirà **lo stesso uomo anziano**
-a fare da **croupier**, con le battute del poker **in italiano erudito** (niente anglicismi nel
-parlato). **Non produrle finché non ti servono**; le elenco solo perché tu abbia il quadro e possa
-registrarle **nella stessa sessione di doppiaggio**, con la stessa voce. I nomi-file esatti verranno
-fissati al cablaggio dei tavoli (come per lo Skypool, `vo_it_sky_*`); qui bastano i **testi**:
+## 2. Il custode al SEVEN-CARD STUD del ClockTower — INFORMATIVA (cablata e ATTIVA ora, D-077/D-078)
+Il primo tavolo di poker del ClockTower **esiste**: il **Seven-Card Stud Pot Limit** (D-077). Lo fa
+lo **stesso uomo anziano custode**, ora nel ruolo di **croupier**, con le battute **in italiano
+erudito** (niente anglicismi nel parlato — "rilancio", non *raise*; **i pulsanti** restano
+Raise/Fold/Call, D-073). Ogni voce è **informativa** → **fallback a sintesi VoiceOver** (dichiarata in
+`StudSpeechMap`) finché l'mp3 non è prodotto. **Nomi-file esatti, cablati** (deposita i `.mp3` in
+`Resources/Audio/` con questi nomi):
 
-| Momento | Testo (italiano erudito) |
-|---|---|
-| Inizio mano | "Nuova mano, signori." |
-| Small blind / Big blind | "Buio piccolo." / "Buio grande." |
-| Il tuo turno | "A te la parola." |
-| Flop / Turn / River | "Il flop." → *(preferibile in italiano)* "Le tre comuni." / "La quarta." / "La quinta." |
-| Rilancio (avversario) | *(nel parlato)* "rilancio" — **mai** "raise" |
-| Showdown | "Si mostrano le carte." |
-| Assegnazione del piatto | "Il piatto va al vincitore." |
+| # | Nome file (esatto) | Testo (italiano erudito) | Contesto |
+|---|---|---|---|
+| 1 | `vo_it_clock_poker_hand_start.mp3` | "Nuova mano, signori." | Inizio di ogni mano. |
+| 2 | `vo_it_clock_poker_your_turn.mp3` | "A te la parola." | Comincia il turno del giocatore umano. |
+| 3 | `vo_it_clock_poker_fourth.mp3` | "Quarta strada." | Apertura della quarta strada. |
+| 4 | `vo_it_clock_poker_fifth.mp3` | "Quinta strada." | Apertura della quinta strada. |
+| 5 | `vo_it_clock_poker_sixth.mp3` | "Sesta strada." | Apertura della sesta strada. |
+| 6 | `vo_it_clock_poker_seventh.mp3` | "Ultima carta, coperta." | Apertura della settima (l'ultima, coperta). |
+| 7 | `vo_it_clock_poker_showdown.mp3` | "Si mostrano le carte." | Showdown. |
+| 8 | `vo_it_clock_poker_pot.mp3` | "Il piatto va al vincitore." | Assegnazione del piatto. |
+| 9 | `vo_it_clock_poker_all_in.mp3` | "Il resto sul tavolo." | Un giocatore va all'incontro (all-in). |
+| 10 | `vo_it_clock_poker_house_prize.mp3` | "La Casa premia il vincitore." | **Premio della Casa** (D-078): distintivo di questo tavolo — la Casa aggiunge un premio al piatto vinto dal giocatore. |
 
-*(Nota: la resa esatta dei termini poker in italiano — "buio", "comuni", "piatto", "rilancio" — la
-rifiniamo al cablaggio; il principio è: **il custode parla italiano**, i **pulsanti** restano
-Raise/Fold/Call.)*
+**Sintesi di contenuto (già in italiano nel codice, fallback finché mancano gli mp3):** le carte
+scoperte di ciascuno (**"il Professore riceve il re di cuori scoperta."**), le proprie coperte, le
+azioni degli avversari (**"lo Studente rilancia a 200."** / "passa" / "chiama" / "punta tutto"),
+l'obbligata (bring-in: **"lo Studente apre con l'obbligata di 25."**), lo showdown (mano + kicker), il
+premio (**"La Casa aggiunge 200 fiche al tuo piatto."**). I **nomi** dei due avversari sono **lo
+Studente** e **il Professore** (gli stessi regolari della torre).
+
+*(Nota: **niente carte comuni** nello Stud — ogni giocatore ha le proprie scoperte, annunciate a una a
+una man mano che arrivano, e interrogabili a comando dai badge degli avversari. Il custode parla
+**italiano**; i **pulsanti** restano Raise/Fold/Call.)*
 
 ## 3. Colore dei bot al Machiavelli — AMBIENTALE (i tre archetipi del ClockTower)
 Commenti di **colore** (versi/mugugni/brevi esclamazioni misurate), coerenti col posto. mp3
@@ -98,9 +108,12 @@ mancante → **silenzio** (mai sintesi).
 
 ## Riepilogo
 - **Custode Machiavelli (informativo, ATTIVO):** 7 slot `vo_it_clock_*` → fallback a sintesi.
-- **Custode poker (informativo, FUTURO):** testi sopra, non ancora cablati (nessun tavolo).
-- **Colore bot Machiavelli (ambientale):** 6 slot `vob_clock_*` → fallback silenzio.
-- **Voce unica:** lo stesso uomo anziano per entrambi i ruoli. Registralo **una volta** per tutto.
+- **Custode poker / Seven-Card Stud (informativo, ATTIVO, D-077):** 10 slot `vo_it_clock_poker_*` →
+  fallback a sintesi (incluso il cue distintivo del **premio della Casa**).
+- **Colore bot Machiavelli (ambientale):** 6 slot `vob_clock_*` → fallback silenzio. (I due bot dello
+  Stud — Studente e Professore — riusano il colore Machiavelli `vob_clock_student_*`/`vob_clock_professor_*`.)
+- **Voce unica:** lo stesso uomo anziano per **tutti** i ruoli (arbitro Machiavelli + croupier Stud).
+  Registralo **una volta** per tutto.
 
 Deposita i `.mp3` in `Resources/Audio/` coi nomi esatti. Finché mancano, il Machiavelli è
 **giocabile** coi fallback (sintesi italiana del custode; silenzio per il colore).

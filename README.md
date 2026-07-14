@@ -222,6 +222,18 @@ L'attesa dei bot che pensano è **udibile** sulla musica (classica ed erudita �
 musica ha una forma). **Primo gioco non-poker giocabile.** **405 unit test verdi**; Riverwood/Skypool
 invariati.
 
+**Seven-Card Stud Pot Limit al ClockTower — quinto motore, giocabile (D-076/D-077/D-078).** Il
+**quinto motore** (in `GameEngine/Stud/`, indipendente) porta il poker più complesso: **niente board
+comune**, cinque giri di puntata, **ante + bring-in**, cinque carte tra coperte e scoperte per ciascuno,
+**Pot Limit**. Regole canoniche fissate; bot che giocano **leggendo le carte scoperte** (nuova
+dimensione additiva `studBoardReading`). Al **ClockTower** diventa giocabile: buy-in **3000**, due
+avversari (lo **Studente** e il **Professore**), e la meccanica nuova del **Premio della Casa** — la
+Casa aggiunge un premio al piatto a ogni mano vinta dal giocatore (qui si **guadagna col proprio
+intelletto**, a differenza del Machiavelli). La **sfida di accessibilità** dello Stud — ricordare le
+carte scoperte di ogni avversario — è risolta con l'**annuncio di ogni scoperta mentre arriva** + un
+**badge avversario interrogabile a comando** che ne legge il tabellone (**descrive, non consiglia**).
+**460 unit test verdi** (+40); Riverwood/Skypool/Machiavelli invariati.
+
 > **🏁 La prima fase è completa.** Il gioco base è funzionante end-to-end — motore
 > completo, bot credibili, sessione multi-mano, flusso di eventi, UI giocabile e
 > accessibile, e **audio pieno**: i 47 file mp3 consegnati (atmosfera, carte,

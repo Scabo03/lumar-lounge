@@ -76,6 +76,9 @@ public struct AppRootView: View {
         case let .machiavelli(rules):
             MachiavelliTableScreen(rules: rules, audio: audio, mode: voMode, casinoAudio: palette,
                                    returnLabel: returnLabel, onLeave: onLeave)
+        case let .stud(rules):
+            StudTableScreen(rules: rules, audio: audio, mode: voMode, returnLabel: returnLabel,
+                            casinoAudio: palette, onLeave: onLeave)
         }
     }
 

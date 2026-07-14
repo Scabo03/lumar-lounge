@@ -117,30 +117,38 @@ nei file collegati.
   motore+bot+driver: nessuna UI, nessun audio, nessun casinò ospitante (terzo casinò non anticipato).**
   Giochi esistenti invariati.
 
-**🏢 Fase 1 (M1) completa; Fase 2 (M2) in corso.** Girano end-to-end **quattro giochi** in **tre
+**🏢 Fase 1 (M1) completa; Fase 2 (M2) in corso.** Girano end-to-end **cinque giochi** in **tre
 casinò**: al **Riverwood** Texas Hold'em No Limit (Classico/Rapido) e **Five-Card Draw** (Sala
 Whiskey); allo **Skypool** Texas (Classico/Rapido) e **Omaha Pot Limit** (Marble); al **ClockTower**
-il **Machiavelli** (Sala degli Orologi). `GameEngine` contiene **quattro motori**, tutti e quattro
-ora con driver, UI e audio. Navigazione Home → Casinò → Tavolo con gettoni persistenti e barriera
-economica (le poste del ClockTower sono **rimborsabili** — prestigio, non denaro).
+il **Machiavelli** (Sala degli Orologi) e il **Seven-Card Stud Pot Limit** (Sala delle Carte, D-077/
+D-078). `GameEngine` contiene **cinque motori**, tutti e cinque ora con driver, UI e audio. Navigazione
+Home → Casinò → Tavolo con gettoni persistenti e barriera economica (le poste del Machiavelli al
+ClockTower sono **rimborsabili** — prestigio; il suo tavolo di **Stud** invece paga: buy-in 3000 + il
+**Premio della Casa** che ricompensa ogni mano vinta dal giocatore, D-078).
 
 **Slot audio** (stato reale, dettaglio in `Skypool_audio_catalog.md`):
 - **Skypool (D-068): file reali PRODOTTI e CABLATI** — croupier 12/14, ambient 4/4, colore-bot
   6/7. Lo Skypool **parla con la sua voce vera** e i bot urbani si sentono. Restano scoperti (col
   fallback): `vo_it_sky_hand_start` (chime→silenzio), `vo_it_sky_pot_limit` (riservato),
   `vob_sky_aggressor_bluff_giveaway_01` (file `aggressor_nervous` ambiguo, non cablato).
+- **ClockTower (D-072/D-077): NESSUN file prodotto, tutto a fallback.** Custode Machiavelli (7 slot
+  `vo_it_clock_*` → sintesi), **custode poker/Stud (10 slot `vo_it_clock_poker_*` → sintesi**, incluso
+  il cue del **premio della Casa**), colore bot (`vob_clock_*` → silenzio), ambient/musica
+  (`amb_clocktower_*` → fallback lounge). Catalogo: `ClockTower_audio_catalog_voices.md` (§2 Stud
+  cablata) + `ClockTower_audio_catalog_ambient.md`.
 - **Storici ancora aperti:** mondo M2 (`amb_home_neutral`, `amb_riverwood_calm_*`,
   `vo_it_high_stakes`, `ui_navigation`), croupier Draw (`vo_it_ante`, `vo_it_draw_phase`,
   `vo_it_pass_and_out`, `vo_it_carried_pot`, `vo_it_openers_disqualified`, `vo_it_high_stakes_draw`),
   e i 2 storici (`amb_crowd_distant`, `fx_hand_neutral`).
 
-**Prossimo passo** (vedi [`ROADMAP.md`](ROADMAP.md)): **calibrazione comparativa** Riverwood↔Skypool
-(dopo che l'utente ha giocato entrambi); **produzione dei file audio Skypool** (croupier + ambient +
-`vob_sky_*`) e cablaggio delle `vob_sky_*` quando arrivano (oggi silenti); cassa/DLC per ricarica
-gettoni; **NPC narrativi**; piscina/discoteca come luoghi. Il **terzo casinò non è anticipato**.
-(Il croupier per-casinò — debito D-066 — è **chiuso** in D-067.) Per il **Machiavelli** (D-070, motore
-pronto) restano **UI** accessibile (box del cieco + drag del vedente sullo stesso predicato), **audio**
-(voce che riempie l'attesa udibile dei bot), e il **casinò ospitante** — tutti fuori da questa sessione.
+**Prossimo passo** (vedi [`ROADMAP.md`](ROADMAP.md)): **produzione dei file audio del ClockTower**
+(custode anziano — Machiavelli + **10 slot Stud** `vo_it_clock_poker_*`, D-077 — su ElevenLabs; ambient/
+musica archi+clockwork su StableAudio) e dello **Skypool** (`vob_sky_*`); **calibrazione** dei bot dopo
+il test reale (le personalità ClockTower poker D-078 e il **premio della Casa** sono leve non calibrate;
+verificare che il premio 200 sia percepibile ma non rompa l'economia); calibrazione comparativa
+Riverwood↔Skypool; cassa/DLC per ricarica gettoni; **NPC narrativi**; piscina/discoteca come luoghi.
+**Nessun altro gioco né casinò anticipato** (il Seven-Card Stud era la specialità di poker prevista del
+ClockTower, ora fatta).
 
 **Stato completo, sempre aggiornato:** sezione *Stato di sviluppo* in
 [`README.md`](README.md).
@@ -2228,3 +2236,119 @@ poker (scorrere/selezionare/comporre/confermare su decine di elementi). Le misur
 questo costo e portano a decisioni sbagliate (è successo con la soglia mano↔partita di D-071, ribaltata
 in D-075). **Regola:** stima la durata in **lavoro di navigazione reale**, non in numero di eventi, e
 convalida sempre con un **test umano** prima di consolidare una meccanica che dipende dalla durata.
+### D-076 — `studBoardReading`: dimensione additiva per la lettura delle carte scoperte (Stud)
+Lo Stud ha un'abilità **assente in ogni altro gioco**: leggere le **carte scoperte** degli avversari
+(pubbliche) — foldare quando il tabellone avversario è minaccioso, inseguire quando le carte che servono
+sono ancora vive, abbandonare un progetto le cui *out* sono morte nelle scoperte altrui. Nuova
+**dimensione additiva** di `Personality` (in `GameEngine`, dove vive `Personality`): `studBoardReading`
+(0…1). Solo il bot dello Stud la legge, quindi il default (0.5) è **libero** e non tocca gli altri giochi
+(retrocompatibilità additiva **verificata**: cambiare `studBoardReading` non muove una decisione Texas —
+`StudBotTests.testStudBoardReadingDoesNotAffectTexas`). È una **leva, non un valore calibrato** (taratura
+dopo il test reale). Meccanica: l'equity Monte Carlo dello Stud rimuove **già** dal mazzo tutte le carte
+visibili (le *dead cards* riducono onestamente l'equity per costruzione, D-011); `studBoardReading`
+modula in più la **risposta** a un tabellone minaccioso — `StudStrength.boardThreat` (coppia/tris
+scoperti, tre-o-più a colore/scala) penalizza la forza percepita in proporzione a quanto il bot legge. È
+la seconda leva di fold (con `pressureResistance`/`trashFoldTendency`, D-048), su un asse ortogonale (la
+lettura del tabellone, non la pressione della puntata).
+
+### D-077 — Seven-Card Stud Pot Limit: quinto motore + driver, regole canoniche fissate
+**Quinto motore** del progetto, in `GameEngine/Stud/`, **parallelo e indipendente** da Texas/Draw/Omaha/
+Machiavelli (nessun import incrociato; condivide **solo** i fondazionali `Card`/`Rank`/`Suit`/`Deck`/
+`HandEvaluator` e l'aritmetica chip game-agnostica `PotMath`/`Pot`). Lo Stud è **strutturalmente diverso**
+da tutti: **nessun board comune** (ogni giocatore ha le sue carte, scoperte e coperte), **cinque giri di
+puntata**, **ante + bring-in** invece delle blind, "il tabellone scoperto più forte apre" — quindi motore
+proprio (D-077).
+- **Regole canoniche FISSATE (dichiarate perché una sessione futura non le riscopra), con libertà di
+  giudizio come per Omaha:** un mazzo da 52. **Best five of seven** non vincolato (`HandEvaluator.evaluate`,
+  a differenza del 2+3 di Omaha). **Ante** da ogni seat prima della distribuzione. **Distribuzione/street:**
+  terza strada = **2 coperte + 1 scoperta** (giro 1); quarta/quinta/sesta = **1 scoperta** l'una (giri 2–4);
+  settima ("river") = **1 coperta** (giro 5) → 3 coperte + 4 scoperte = 7 carte. **Chi apre:** terza strada
+  la **carta scoperta più BASSA** posta il **bring-in** (obbligata parziale forzata; parità di rango rotta
+  dal seme, **fiori il più basso**: ordine bring-in fiori<quadri<cuori<picche); quarta–settima apre il
+  **punto di poker SHOWING più alto** nelle scoperte. **Betting POT LIMIT** (imposto): ogni bet/raise
+  cappato alla dimensione del piatto (`PotMath.potLimitMax…`, riuso concettuale da Omaha, **nessun import
+  incrociato**); una sola misura minima di puntata `bet` (lo split small/big-bet del limit è **caduto**: in
+  Pot Limit il tetto del piatto governa la crescita); il bring-in è **minore** di `bet`, un giocatore lo
+  **completa** rilanciando a `bet`; **nessun cap** al numero di raise (il Pot Limit si autolimita, come
+  Omaha). **Esaurimento del mazzo:** con molti giocatori il mazzo può finire in settima (7×8=56>52) →
+  canonicamente **una sola carta COMUNE scoperta** condivisa da tutti come settima (`communityCard`); coi 3
+  giocatori del ClockTower non scatta mai, ma il motore la gestisce e la testa.
+- **`StudHand`** value type con transizioni `mutating`, sincrono, deterministico via seed. La macchina di
+  betting **riusa la forma provata di Omaha** (currentBet/lastRaiseSize/actionReopened/tetti pot-limit,
+  side pot), estesa con: ante, bring-in come posta parziale con **completamento** (`betComplete`),
+  first-to-act per **carta più bassa** (terza) / **showing più alto** (dopo), distribuzione up/down per
+  street, `StudShowing` (ordine seme del bring-in + chiave comparabile del punto scoperto). **Nessun button**
+  (lo Stud non ne ha): ordine di distribuzione fisso su mazzo mescolato.
+- **Bot onesto (`HeuristicStudBot` + `StudStrength`):** vede le **scoperte di tutti** (pubbliche) + le
+  proprie 7-in-corso, **mai** le coperte altrui (`StudBotContext`/`StudPublicSeat` con `upCards`, redazione
+  **verificata** — `StudBotTests`). Forza: euristica di terza strada (tris "rolled up", coppie, tre a
+  colore/scala, carte alte) + equity Monte Carlo che completa ogni mano a 7 rimuovendo dal mazzo le carte
+  viste (dead-card aware). Modulato da `studBoardReading` (D-076) e dalle leve di fold esistenti.
+- **`StudSessionDriver`** (GameWorld): sorella dei driver poker con flusso `StudSessionEvent`/`StudEventHub`
+  proprio (riusa solo `EventAudience`/`EventViewer`), eventi **descrittivi non prescrittivi**, audience
+  privata esplicita (coperte solo al proprietario; **scoperte pubbliche**), bot via contesto redatto, seed
+  **casuale in produzione / iniettabile nei test** (D-047, non riscoperto), narrazione della distribuzione
+  street-per-street (ogni scoperta annunciata a chi ascolta). Supporto `StakeEscalation` (default `.none`).
+  Cliente puro del motore; chip conservati (invariante testato).
+- **Vincoli:** sottocartella dedicata, nessun import incrociato, `Personality` additiva, determinismo dato
+  seed, **motori esistenti intatti** (Texas/Draw/Omaha/Machiavelli invariati, test verdi), **nessuna
+  ricalibrazione** delle personalità esistenti.
+
+### D-078 — ClockTower Stud GIOCABILE: interrogazione delle carte scoperte + Premio della Casa
+Lo Stud diventa **giocabile end-to-end** al **ClockTower** (il casinò esisteva già — solo un tavolo nuovo,
+la generalizzazione D-065/D-067 ha retto: un caso `CasinoGame.stud`, una voce nel registry, palette e slot
+audio ereditati per **dati**). Buy-in **3000** (il più alto del ClockTower: qui il registro è il **denaro**,
+non il prestigio), due avversari.
+- **Personalità del posto per il poker (in GameWorld, `WorldPersonalities.clockTower*`):** i tre regolari
+  della torre costruiti come **giocatori di poker** con le leve del poker (prima esistevano solo con le
+  dimensioni del Machiavelli). **lo Studente** (brillante ma inesperto: gioca troppo, aggressivo, legge male
+  i tabelloni — `studBoardReading` 0.35), **il Bibliotecario** (adulto metodico, di mezzo — definito per un
+  terzo seggio futuro), **il Professore** (vecchio maestro: paziente, selettivo, imperturbabile, il miglior
+  lettore — `studBoardReading` 0.95). Il tavolo siede **Studente + Professore**: un **MIX deliberato** — lo
+  studente è un punto morbido battibile (così il **premio della Casa è davvero guadagnabile**), il professore
+  è il muro. Sono **leve non calibrate**; nessuna ricalibrazione degli altri casinò.
+- **IL PREMIO DELLA CASA (meccanica economica nuova, D-078, in GameWorld — `HousePrize`).** Ogni volta che il
+  **giocatore vince una mano**, la Casa **aggiunge** un premio **piatto** (200) al piatto vinto. **Non è un
+  rake né una tassa:** è un **incentivo** che riconosce chi vince il gioco più difficile e dà al tavolo un
+  carattere **competitivo e legato al denaro** (a differenza del Machiavelli, cerebrale, dove il vincitore non
+  guadagna nulla): il ClockTower resta un casinò, **qui si può guadagnare col proprio intelletto**. Vive nel
+  **driver** (`housePrize` + `prizeRecipientID`), **non nel motore** (`StudHand` lo ignora): a fine mano, se
+  il destinatario è tra i vincitori del piatto, il driver **aggiunge** il premio alle sue fiches e emette
+  `housePrizeAwarded`. **Calibrazione (200 su buy-in 3000, ante 25/bring-in 25/bet 50):** ~alcuni giri d'ante,
+  una piccola frazione di un piatto conteso — **percepibile** ma non una macchina da soldi. **Testato col
+  movimento reale dei gettoni, `DEBUG_FREE_PLAY` OFF** (buy-in dal `PlayerAccount` → sessione con vincite →
+  cash-out: il premio **arriva davvero** al saldo persistente; il premio è l'**unica** iniezione di chip nella
+  sessione — invariante testato). Con free-play ON è invisibile (come da D-050), perciò i test lo esercitano
+  **spento**.
+- **L'INTERROGAZIONE DELLE CARTE SCOPERTE (la sfida vera del gioco, D-078).** Nel Texas le 5 comuni le vedono
+  tutti; nello Stud ogni avversario ha scoperte **diverse**, e leggerle è il cuore strategico — il vedente le
+  ha tutte davanti agli occhi, il cieco non può tenerle a mente (2 avversari × fino a 4 carte + le proprie).
+  Soluzione a **due meccanismi** (ora principio permanente in CONVENTIONS §4): (a) **ogni scoperta è
+  annunciata mentre viene distribuita** (parità col vedente che la vede apparire — "il Professore riceve il re
+  di cuori scoperta"); (b) **lo stato corrente è interrogabile a comando** — ogni **badge avversario** è un
+  elemento accessibile la cui label legge, allo swipe, il suo **tabellone corrente** ("il Professore,
+  scoperte: re di cuori, dieci di picche"), la memoria che il vedente ha con lo sguardo. **Descrive, non
+  consiglia** ("ha scoperti X, Y" — mai "potrebbe avere un colore"): guardiano di test che scandisce le
+  stringhe Stud e **vieta** il linguaggio consultivo (`StudSpeechMapTests`). La label si deriva dallo **stato
+  corrente**, mai da uno snapshot (spirito D-058). Senza questa interrogazione il non vedente giocherebbe uno
+  Stud **mutilato** — viola il principio fondativo.
+- **UI (`StudTableView` & c.):** stato/riduzione puri dedicati (`StudTableState`/`StudTableReducer`, con le
+  scoperte **per-seat** che alimentano l'interrogazione), VM (`StudTableViewModel`) speculare a Omaha, box
+  raise **Pot Limit** riusato (max = tetto del piatto, pulsante "Piatto" quando lo stack supera il piatto —
+  niente shove, D-066); zona umana che **distingue** le proprie coperte (private, mostrate a faccia in su al
+  giocatore) dalle scoperte (pubbliche). Palette bronzo/pergamena del ClockTower. Riuso di tutta
+  l'infrastruttura trasversale (chrome, coda annunci, conductor, modalità VoiceOver + ritmo adattivo,
+  focus-landing D-057, `HandGate`, `EndOverlay`).
+- **Audio:** croupier = **lo stesso uomo anziano custode** del Machiavelli, ora al poker, **italiano erudito**
+  (niente anglicismi nel parlato — "rilancio"; i **pulsanti** restano Raise/Fold/Call, D-073). **10 slot nuovi**
+  `vo_it_clock_poker_*` (informativi → **fallback a sintesi**, D-030), incluso il **cue distintivo del premio
+  della Casa**; nessun file prodotto (giocabile coi fallback). Letto ambientale = quello **classico** di
+  default del ClockTower (archi), non il clockwork del Machiavelli (D-073): al poker le attese sono brevi e una
+  musica strutturata le riempie. Colore bot: riuso degli slot Machiavelli `vob_clock_*` (ambientali → silenzio,
+  D-066). Nessun anti-pattern D-051 (contenuto → sintesi; registro → fallback, mai entrambi lo stesso testo).
+  Catalogo `ClockTower_audio_catalog_voices.md` aggiornato (§2 cablata).
+- **Vincoli rispettati:** direzione dipendenze; motore Stud e altri **non toccati** dall'UI; `BotContext`
+  redatto; eventi descrittivi; nessun `UIAccessibility.post` diretto (tutto via `AnnouncementQueue`); ogni
+  `CheckedContinuation` col timeout (riuso `SpokenChannelPacing`); cache dallo stato corrente; Riverwood/
+  Skypool/Machiavelli invariati. **460 test verdi** (420 → +40) + XCUITest del tavolo Stud. **Caricato su
+  TestFlight (build 1784060127).** **Girano ora QUATTRO giochi di poker + il Machiavelli in TRE casinò.**

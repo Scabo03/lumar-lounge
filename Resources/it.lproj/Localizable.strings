@@ -508,3 +508,52 @@
 "machiavelli.box.jump.hint" = "Scorri in su o in giù per saltare tra le combinazioni.";
 "machiavelli.box.jump.next" = "Vai alla combinazione successiva";
 "machiavelli.box.jump.prev" = "Vai alla combinazione precedente";
+
+/* Seven-Card Stud Pot Limit — ClockTower (D-077/D-078) */
+"seat.name.clock.student" = "lo Studente";
+"seat.name.clock.professor" = "il Professore";
+
+"table.stud.title" = "Seven-Card Stud";
+"table.stud.room" = "Sala delle Carte";
+
+"stud.table.a11y" = "Tavolo di Seven-Card Stud, Pot Limit.";
+"stud.potlimit.tag" = "POT LIMIT";
+"stud.stakes" = "Ante %1$d · Obbligata %2$d · Puntata %3$d";
+"stud.stakes.a11y" = "Ante %1$d fiche, obbligata %2$d, puntata %3$d.";
+"stud.community" = "Comune:";
+"stud.community.a11y" = "Carta comune, per tutti: %@.";
+"stud.prize.banner" = "PREMIO DELLA CASA +%d";
+"stud.prize.a11y" = "La Casa aggiunge un premio di %d fiche.";
+
+"stud.street.3" = "Terza strada";
+"stud.street.4" = "Quarta strada";
+"stud.street.5" = "Quinta strada";
+"stud.street.6" = "Sesta strada";
+"stud.street.7" = "Ultima carta";
+"stud.street.none" = "—";
+
+"stud.badge.bringin" = "APRE";
+"stud.seat.upcards.a11y" = "scoperte: %@";
+"stud.seat.bringin.a11y" = "ha aperto l'obbligata";
+"stud.hero.cards.a11y" = "Le tue coperte: %1$@. Scoperte, viste da tutti: %2$@.";
+"stud.hero.noup" = "nessuna";
+"stud.hero.nocards.a11y" = "Non hai carte in questa mano.";
+
+"stud.announce.handstart" = "Nuova mano.";
+"stud.announce.hero.down" = "Le tue coperte: %@.";
+"stud.announce.hero.down.one" = "La tua ultima coperta: %@.";
+"stud.announce.upcard" = "%1$@ riceve %2$@ scoperta.";
+"stud.announce.upcard.hero" = "Ricevi %@ scoperta.";
+"stud.announce.bringin" = "%1$@ apre con l'obbligata di %2$d.";
+"stud.announce.street.4" = "Quarta strada.";
+"stud.announce.street.5" = "Quinta strada.";
+"stud.announce.street.6" = "Sesta strada.";
+"stud.announce.street.7" = "Ultima carta, coperta.";
+"stud.announce.action.fold" = "%@ passa.";
+"stud.announce.action.check" = "%@ bussa.";
+"stud.announce.action.call" = "%@ chiama.";
+"stud.announce.action.bet" = "%1$@ apre a %2$d.";
+"stud.announce.action.raise" = "%1$@ rilancia a %2$d.";
+"stud.announce.action.allin" = "%@ punta tutto.";
+"stud.announce.houseprize" = "La Casa aggiunge %d fiche al tuo piatto.";
+"stud.announce.yourturn" = "A te la parola.";
