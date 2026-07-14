@@ -467,6 +467,30 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     selezione è una combinazione legale, il pulsante si sblocca) l'annuncio va dato senza
     esitazione ("scala di cuori dal cinque al nove, valida") — è la stessa informazione
     che il vedente riceve dal pulsante. Il confine è: **descrivere sì, consigliare no.**
+  - **Il letto AMBIENTALE può dipendere dal CARICO COGNITIVO del gioco, non solo
+    dall'identità del luogo (regola permanente, D-073).** La palette sonora resta un
+    attributo del **casinò** (D-067), ma il **letto** può essere declinato **per gioco**
+    quando i giochi di uno stesso posto hanno carico cognitivo opposto. Motivazione
+    **funzionale, non estetica, e di accessibilità**: il giocatore non vedente gioca
+    **sul canale audio**, e un gioco di **lavoro cognitivo lungo e continuo** (comporre,
+    scorrere decine di carte, tenere a mente combinazioni — es. Machiavelli) usa
+    l'**ascolto** come strumento di gioco; una **musica strutturata** (sviluppo tematico,
+    variazione) sotto quel lavoro non è atmosfera ma **concorrenza diretta** sul canale
+    che sta usando. Un gioco di **attese brevi** (es. poker) invece la accoglie. Il letto
+    "cognitivo" giusto è **ambientale e ritmico** (dà presenza senza chiedere attenzione).
+    Implementazione: un **override per-gioco** della palette (`CasinoAudio.ambient(forGame:)`),
+    default = letto del casinò; i casinò che non lo dichiarano restano invariati.
+  - **Uno STALLO deve sempre dichiarare la propria ragione al non vedente (regola
+    permanente, D-073).** Quando un'azione (un terminale, un pulsante) è **bloccata** da
+    uno stato che il vedente **vede** ma il cieco no, il sistema deve rendere quella
+    ragione **udibile** — sul punto in cui il giocatore scopre di essere fermo (la hint
+    del pulsante quando ci arriva a swipe, e/o un annuncio quando lo tocca). Vale il
+    confine **descrivi-non-consigliare**: dichiarare *cosa* non sta in piedi ("il tavolo
+    ha una combinazione incompleta: scala di picche") è descrizione (la stessa cosa che
+    il vedente vede); dire *come* ripararlo (quale carta manca, dove prenderla) è
+    consiglio, e non si dà. Un pulsante bloccato preferibilmente **non si disabilita**
+    (resta agganciabile e, toccato, spiega): un pulsante disabilitato che "non fa niente"
+    è la **peggior forma di stallo** per il cieco, che non sa nemmeno cosa cercare.
   - **Marcatore di ZONA per stati grandi navigati a swipe (pattern accessibilità, D-072).**
     Quando un'interfaccia ha due zone tra cui il non vedente si muove a lungo (es. la metà
     "catena" e la metà "pool" del box di composizione), **una zona marca esplicitamente lo

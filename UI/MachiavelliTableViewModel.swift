@@ -124,8 +124,12 @@ public final class MachiavelliTableViewModel: ObservableObject {
         self.driver = MachiavelliSessionDriver(capacity: opponents.count + 1, seats: assignments,
                                                handSize: rules.handSize, victoryThreshold: rules.victoryThreshold,
                                                seed: seed)
+        // The Machiavelli bed is the casino's PER-GAME override (clockwork, D-073): a
+        // long cognitive turn is played on the audio channel by the blind player, so a
+        // developing classical bed would compete with the listening.
         self.audioDirector = MachiavelliAudioDirector(audio: audio, heroSeatID: 0, characters: characters,
-                                                      beds: casinoAudio.ambient, seed: rootSeed, fastMode: fastMode)
+                                                      beds: casinoAudio.ambient(forGame: "machiavelli"),
+                                                      seed: rootSeed, fastMode: fastMode)
         self.conductor = SpeechConductor(audio: audio, queue: announcements)
 
         // A placeholder roster until `sessionBegan` rebuilds it (hero + the opponents).
@@ -337,11 +341,34 @@ public final class MachiavelliTableViewModel: ObservableObject {
         }
     }
 
-    /// End the turn by passing (legal only when ≥1 card placed and the table is valid).
+    /// Why Pass is blocked right now, or `nil` if it is available — a DESCRIPTION of the
+    /// table's state, never advice (D-073). When the table carries a broken combination,
+    /// it NAMES that combination (the same thing the sighted player sees); it never says
+    /// which card would repair it. This is what keeps a blind player from being stuck
+    /// without knowing why or where.
+    var passBlockedReason: String? {
+        guard let ws = workspace else { return nil }
+        if ws.canPass { return nil }
+        if ws.placedCount == 0 { return uiLocalized("machiavelli.pass.blocked.nothing") }
+        // Placed cards but the table is invalid → name the first broken combination.
+        if let broken = ws.meldCards.first(where: { MachiavelliRules.classify($0) == nil }) {
+            return uiLocalized("machiavelli.pass.blocked.invalid", MachiavelliSpeechMap.brokenTitle(broken))
+        }
+        return uiLocalized("machiavelli.pass.blocked")
+    }
+
+    /// End the turn by passing. Legal only with ≥1 card placed and a valid table; when
+    /// blocked, it ANNOUNCES the reason (naming a broken combination) so a blind player
+    /// is never stuck without information (D-073).
     public func passTurn() {
-        guard workspace?.canPass == true else { return }
-        playUI(SoundCatalog.uiConfirm)
-        submit(.meld)
+        guard let ws = workspace else { return }
+        if ws.canPass {
+            playUI(SoundCatalog.uiConfirm)
+            submit(.meld)
+        } else if let reason = passBlockedReason {
+            playUI(SoundCatalog.uiCancel)
+            announcements.announceLiveValue(reason)
+        }
     }
 
     /// End the turn by drawing (legal only when nothing was placed on net).

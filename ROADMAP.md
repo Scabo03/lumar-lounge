@@ -400,12 +400,25 @@ personaggio **da decidere** (registro erudito scritto, slot dichiarati coi fallb
 progressivo a **partite giocate**. Motore Machiavelli **non toccato** (una sola aggiunta al driver
 GameWorld). **405 test verdi**; Riverwood/Skypool invariati. **Caricato su TestFlight (build 1784038459).**
 
+### ✅ Rifiniture ClockTower: letto per-gioco, voce decisa, tavolo rotto dichiarato (D-073)
+Tre decisioni + un buco di accessibilità chiuso. **(1) Letto ambientale per-GIOCO:** al ClockTower il
+letto dipende dal **carico cognitivo** — **archi/classica** per il poker (attese brevi), **clockwork**
+ambientale per il Machiavelli (turno cognitivo lungo, giocato sul canale audio dal cieco → una musica
+strutturata competerebbe con l'ascolto). Override per-gioco della palette (`CasinoAudio.ambient(forGame:)`);
+due tracce clockwork col crossfade; il ClockTower è ora il posto **più vasto** dei tre. **(2) Voce
+decisa:** **uomo anziano custode**, una figura per tutto il casinò, testi in **italiano erudito** (niente
+anglicismi nel parlato — "rilancio", non "raise"; risolve alla radice il caso *Raise*), **ma i pulsanti
+restano Raise/Fold/Call** (non uniformati). **(3) Tavolo rotto DICHIARATO:** i knob dichiarano una
+combinazione incompleta e il Passa bloccato ne annuncia la ragione — **descrivere non consigliare**, così
+nessun cieco resta bloccato senza sapere perché e dove. **411 test verdi**; Riverwood/Skypool invariati.
+**Caricato su TestFlight (build 1784043541).**
+
 > **Residui aperti del ClockTower (dichiarati):** i **file audio** (ambient/musica su StableAudio →
-> `ClockTower_audio_catalog_ambient.md`; voci su ElevenLabs → `ClockTower_audio_catalog_voices.md`) sono
-> **da produrre** (attivi i fallback); il **personaggio della voce** del ClockTower è **da definire**
-> (l'utente lo sceglie prima di produrre le voci); il **Seven-Card Stud** è la **specialità di poker
-> futura** del posto (**non** anticipata, nessun placeholder). Rifinitura calibrazione bot dopo il
-> test reale dell'utente.
+> `ClockTower_audio_catalog_ambient.md`, ora con i **due letti** archi/clockwork; voci su ElevenLabs →
+> `ClockTower_audio_catalog_voices.md`, ora col **personaggio deciso** — l'uomo anziano custode) sono
+> **da produrre** (attivi i fallback); il **Seven-Card Stud** è la **specialità di poker futura** del
+> posto (**non** anticipata, nessun placeholder; il suo letto archi è però già previsto nel catalogo).
+> Rifinitura calibrazione bot dopo il test reale dell'utente.
 
 ---
 

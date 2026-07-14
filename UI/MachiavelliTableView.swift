@@ -188,6 +188,11 @@ struct MachiavelliMeldBlock: View {
     let cards: [Card]
     let groupIndex: Int?
 
+    /// Whether the combination above this knob is broken — asked of the ENGINE predicate
+    /// (D-073); true only transiently during the human's turn. Drives the knob's colour
+    /// and its declaration, both PROPERTY changes (no subtree restructure — D-052).
+    private var isBroken: Bool { MachiavelliRules.classify(cards) == nil }
+
     var body: some View {
         VStack(spacing: 4) {
             HStack(spacing: 4) {
@@ -198,16 +203,19 @@ struct MachiavelliMeldBlock: View {
             knob
         }
         .padding(6)
-        .background(RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.2)))
+        .background(RoundedRectangle(cornerRadius: 8)
+            .fill((isBroken ? TablePalette.redSuit : Color.black).opacity(0.2)))
         .modifier(GroupDropModifier(model: model, groupIndex: groupIndex))
     }
 
     /// The table-edge knob: decoration for the sighted, an overview element for the blind
-    /// (title + custom actions to walk the cards vertically — D-072).
+    /// (title + custom actions to walk the cards vertically — D-072). When the combination
+    /// is BROKEN it recolours and DECLARES itself incomplete (D-073) — both toggled by the
+    /// element's own properties (fill colour, label), never by adding/removing subviews.
     private var knob: some View {
         RoundedRectangle(cornerRadius: 3)
-            .fill(TablePalette.accent.opacity(0.35))
-            .frame(height: 5)
+            .fill(isBroken ? TablePalette.redSuit : TablePalette.accent.opacity(0.35))
+            .frame(height: isBroken ? 7 : 5)
             .accessibilityElement()
             .accessibilityIdentifier(groupIndex.map { "machiavelli.knob.\($0)" } ?? "machiavelli.knob")
             .accessibilityLabel(Text(verbatim: MachiavelliSpeechMap.knobTitle(cards)))
@@ -294,12 +302,14 @@ struct MachiavelliActionBar: View {
                     .accessibilityIdentifier("machiavelli.action.piazza")
                     .accessibilityHint(Text(uiLocalized("machiavelli.action.piazza.hint")))
 
+                // NOT disabled (D-073): a blind player who reaches a blocked Pass must
+                // learn WHY — so the button stays tappable and `passTurn()` declares the
+                // reason (a named broken combination), and the hint carries it too.
                 Button { model.passTurn() } label: {
                     label("machiavelli.action.pass", primary: false, enabled: model.workspace?.canPass == true)
                 }
-                .disabled(model.workspace?.canPass != true)
                 .accessibilityIdentifier("machiavelli.action.pass")
-                .accessibilityHint(Text(uiLocalized("machiavelli.action.pass.hint")))
+                .accessibilityHint(Text(model.passBlockedReason ?? uiLocalized("machiavelli.action.pass.hint")))
 
                 Button { model.drawTurn() } label: {
                     label("machiavelli.action.draw", primary: false, enabled: model.workspace?.mustDraw == true)

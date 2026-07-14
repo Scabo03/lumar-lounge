@@ -164,6 +164,73 @@ final class MachiavelliUITests: XCTestCase {
         XCTAssertTrue(declared.contains(MachiavelliSpeechMap.describeSelection([c(.two, .clubs), c(.three, .diamonds), c(.nine, .hearts)])))
     }
 
+    // MARK: - Per-game ambient bed at the ClockTower (D-073)
+
+    func testClockTowerAmbientDependsOnTheGame() {
+        let palette = CasinoAudio.clockTower
+        // Machiavelli gets the CLOCKWORK bed (long cognitive turn on the audio channel).
+        XCTAssertEqual(palette.ambient(forGame: "machiavelli").calm1, SoundCatalog.ambClocktowerMachiavelli1)
+        // The casino default (future poker tables) is the CLASSICAL strings bed.
+        XCTAssertEqual(palette.ambient(forGame: "texas").calm1, SoundCatalog.ambClocktowerCalm1)
+        XCTAssertEqual(palette.ambient.calm1, SoundCatalog.ambClocktowerCalm1)
+    }
+
+    func testRiverwoodAndSkypoolHaveNoPerGameBed() {
+        // They declare no override, so any game resolves to their single casino bed.
+        XCTAssertEqual(CasinoAudio.riverwood.ambient(forGame: "machiavelli").calm1, CasinoAudio.riverwood.ambient.calm1)
+        XCTAssertEqual(CasinoAudio.skypool.ambient(forGame: "texas").calm1, CasinoAudio.skypool.ambient.calm1)
+    }
+
+    // MARK: - Broken-combination declaration: DECLARE the state, never ADVISE (D-073)
+
+    func testKnobDeclaresBrokenOnlyWhenInvalid() {
+        // A valid combination reads as its title; a broken one declares itself incomplete.
+        XCTAssertEqual(MachiavelliSpeechMap.knobTitle([c(.five, .spades), c(.six, .spades), c(.seven, .spades)]),
+                       "machiavelli.meld.run")
+        XCTAssertEqual(MachiavelliSpeechMap.knobTitle([c(.seven, .spades), c(.seven, .hearts)]),
+                       "machiavelli.broken.samerank")   // two 7s — an incomplete tris
+        XCTAssertEqual(MachiavelliSpeechMap.knobTitle([c(.three, .spades), c(.five, .spades)]),
+                       "machiavelli.broken.samesuit")   // spades, not consecutive — a broken run
+        XCTAssertEqual(MachiavelliSpeechMap.knobTitle([c(.three, .spades), c(.king, .hearts)]),
+                       "machiavelli.broken.generic")
+    }
+
+    func testBrokenDeclarationNeverAdvises() {
+        // The guardian: the broken declaration only ever uses the three declared keys —
+        // none of which names a missing card or where to take it (description, not advice).
+        let declared: Set<String> = ["machiavelli.broken.samerank", "machiavelli.broken.samesuit",
+                                     "machiavelli.broken.generic"]
+        let cases: [[Card]] = [
+            [c(.seven, .spades), c(.seven, .hearts)],
+            [c(.three, .spades), c(.five, .spades), c(.nine, .spades)],
+            [c(.two, .clubs), c(.king, .hearts), c(.nine, .diamonds)],
+            [c(.ace, .spades), c(.ace, .hearts), c(.ace, .spades)],   // dup suit — invalid group
+        ]
+        for cards in cases { XCTAssertTrue(declared.contains(MachiavelliSpeechMap.brokenTitle(cards))) }
+    }
+
+    func testInvalidTableWithPlacementAlwaysExposesABrokenCombination() {
+        // The "no stuck without information" guarantee, at the logic level: whenever the
+        // player has placed a card but cannot pass, the table carries a nameable broken
+        // combination — so `passBlockedReason` always has something to declare.
+        var ws = MachiavelliWorkspace(hand: [c(.eight, .spades), c(.eight, .hearts), c(.eight, .diamonds)],
+                                      table: [[c(.five, .spades), c(.six, .spades), c(.seven, .spades)]])
+        ws.placeCombination([0, 1, 2])                 // lay the three 8s (placed 3, valid)
+        XCTAssertTrue(ws.canPass)
+        ws.moveToGroup(3, groupIndex: nil)             // pull 5♠ out — the run is now broken
+        XCTAssertFalse(ws.canPass)
+        XCTAssertGreaterThan(ws.placedCount, 0)
+        let broken = ws.meldCards.filter { MachiavelliRules.classify($0) == nil }
+        XCTAssertFalse(broken.isEmpty, "a blocked pass always has a broken combination to name")
+    }
+
+    func testValidTableHasNoBrokenCombination() {
+        var ws = MachiavelliWorkspace(hand: [c(.eight, .spades), c(.eight, .hearts), c(.eight, .diamonds)], table: [])
+        ws.placeCombination([0, 1, 2])
+        XCTAssertTrue(ws.canPass)
+        XCTAssertTrue(ws.meldCards.allSatisfy { MachiavelliRules.classify($0) != nil })
+    }
+
     // MARK: - Every Machiavelli localization key used actually exists (real text ships)
 
     func testMachiavelliKeysExistInItalian() throws {
@@ -184,6 +251,8 @@ final class MachiavelliUITests: XCTestCase {
             "machiavelli.box.confirm", "machiavelli.action.piazza", "machiavelli.action.pass",
             "machiavelli.action.draw", "machiavelli.knob.card", "machiavelli.card.a11y.selected",
             "machiavelli.name.you", "machiavelli.name.student", "machiavelli.name.professor",
+            "machiavelli.broken.samerank", "machiavelli.broken.samesuit", "machiavelli.broken.generic",
+            "machiavelli.pass.blocked.nothing", "machiavelli.pass.blocked.invalid", "machiavelli.pass.blocked",
         ]
         for key in required { XCTAssertNotNil(strings[key], "missing it.lproj key: \(key)") }
     }

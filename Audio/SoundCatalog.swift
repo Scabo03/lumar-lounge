@@ -47,6 +47,18 @@ public enum SoundCatalog {
     public static let ambClocktowerCalm2 = SoundID("amb_clocktower_calm_02")     // not delivered
     public static let ambClocktowerThinking = SoundID("amb_clocktower_thinking_01") // not delivered
     public static let ambClocktowerClock = SoundID("amb_clocktower_clock_01")    // not delivered
+    /// The ClockTower's MACHIAVELLI bed (D-073): the game's turn is LONG cognitive work
+    /// done — for the blind player — ON THE AUDIO CHANNEL, so a bed with thematic
+    /// development would COMPETE with the listening. Machiavelli therefore gets a
+    /// CLOCKWORK bed instead: gears/mechanism, rhythmic and ambient, present without
+    /// asking for attention, ARCHITECTURAL and VAST (an observatory/engine hall — the
+    /// ClockTower is the largest-feeling of the three casinos). TWO tracks alternated by
+    /// crossfade so a long match never loops audibly, each internally variable; a
+    /// clockwork "thinking" variant fills the audible wait (gears intensifying). NOT
+    /// delivered → falls back to a lounge bed.
+    public static let ambClocktowerMachiavelli1 = SoundID("amb_clocktower_machiavelli_01")         // not delivered
+    public static let ambClocktowerMachiavelli2 = SoundID("amb_clocktower_machiavelli_02")         // not delivered
+    public static let ambClocktowerMachiavelliThinking = SoundID("amb_clocktower_machiavelli_thinking_01") // not delivered
 
     // MARK: UI (10)
     public static let uiButtonTap = SoundID("ui_button_tap")
@@ -194,6 +206,8 @@ public enum SoundCatalog {
         (ambSkypoolCalm1, .ambient), (ambSkypoolCalm2, .ambient), (ambSkypoolTense, .ambient), (ambSkypoolWater, .ambient),
         (ambClocktowerCalm1, .ambient), (ambClocktowerCalm2, .ambient),
         (ambClocktowerThinking, .ambient), (ambClocktowerClock, .ambient),
+        (ambClocktowerMachiavelli1, .ambient), (ambClocktowerMachiavelli2, .ambient),
+        (ambClocktowerMachiavelliThinking, .ambient),
         (uiButtonTap, .ui), (uiButtonTapSoft, .ui), (uiBoxOpen, .ui), (uiBoxClose, .ui),
         (uiRaisePlus, .ui), (uiRaiseMinus, .ui), (uiAllInTrigger, .ui), (uiConfirm, .ui), (uiCancel, .ui),
         (uiNavigation, .ui),

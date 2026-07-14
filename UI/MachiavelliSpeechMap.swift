@@ -68,11 +68,30 @@ enum MachiavelliSpeechMap {
         return uiLocalized("machiavelli.sel.loose", cards.count)
     }
 
-    // MARK: - Table overview (a knob's title)
+    // MARK: - Table overview (a knob's title) + broken-combination declaration (D-073)
 
-    /// The overview title spoken by a table-edge knob: the combination above it.
+    /// The overview title spoken by a table-edge knob: the combination above it, or —
+    /// when that combination is BROKEN — a declaration that it is incomplete (D-073).
     static func knobTitle(_ cards: [Card]) -> String {
-        meldTitle(cards) ?? uiLocalized("machiavelli.meld.invalid", cards.count)
+        meldTitle(cards) ?? brokenTitle(cards)
+    }
+
+    /// DECLARES a broken combination — describing WHAT it is and that it does not stand,
+    /// never HOW to repair it (D-073). This is the same information the sighted player
+    /// gets from seeing the table decomposed; it is description, not advice: it names the
+    /// broken combination ("scala di picche incompleta", "combinazione incompleta di
+    /// sette") and never says which card is missing or where to take it.
+    static func brokenTitle(_ cards: [Card]) -> String {
+        let ranks = Set(cards.map { $0.rank })
+        let suits = Set(cards.map { $0.suit })
+        if ranks.count == 1 {
+            return uiLocalized("machiavelli.broken.samerank", cards.count, plural(cards[0].rank))
+        }
+        if suits.count == 1 {
+            let suit = uiLocalized("card.suit.\(CardText.suitKey(cards[0].suit))")
+            return uiLocalized("machiavelli.broken.samesuit", suit)
+        }
+        return uiLocalized("machiavelli.broken.generic", cards.count)
     }
 
     // MARK: - The ClockTower speaker (event lines)

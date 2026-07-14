@@ -441,20 +441,20 @@
 "machiavelli.sel.loose" = "%1$d carte selezionate";
 
 /* La voce del ClockTower — registro erudito (fallback finché non prodotta) */
-"machiavelli.voice.handstart" = "Nuova mano.";
-"machiavelli.voice.yourturn" = "Tocca a te.";
-"machiavelli.voice.meld" = "Combinazione.";
+"machiavelli.voice.handstart" = "Una nuova mano.";
+"machiavelli.voice.yourturn" = "A te la mossa.";
+"machiavelli.voice.meld" = "Una combinazione.";
 "machiavelli.voice.drew" = "Pesca.";
 "machiavelli.voice.passed" = "Passa.";
-"machiavelli.voice.handend" = "Fine mano.";
-"machiavelli.voice.matchend" = "Partita conclusa.";
+"machiavelli.voice.handend" = "La mano si conclude.";
+"machiavelli.voice.matchend" = "La partita è conclusa.";
 
 /* Linee sintetizzate (contenuto specifico) */
-"machiavelli.say.newhand" = "Hai %d carte in mano.";
+"machiavelli.say.newhand" = "Hai in mano %d carte.";
 "machiavelli.say.opp.melded" = "%1$@ cala %2$@.";
 "machiavelli.say.opp.recomposed" = "%1$@ rimaneggia il tavolo e cala %2$@.";
 "machiavelli.say.opp.placed" = "%1$@ cala %2$d carte.";
-"machiavelli.say.opp.drew" = "%@ pesca una carta.";
+"machiavelli.say.opp.drew" = "%@ pesca dal tallone.";
 "machiavelli.say.score.entry" = "%1$@ %2$d punti";
 "machiavelli.say.handend" = "Fine mano. %@.";
 "machiavelli.say.match.won" = "Hai vinto la partita.";
@@ -495,3 +495,11 @@
 "machiavelli.action.draw" = "Pesca";
 "machiavelli.action.draw.hint" = "Chiudi il turno pescando una carta.";
 "machiavelli.waiting" = "In attesa…";
+
+/* Machiavelli — dichiarazione di combinazione rotta e Passa bloccato (D-073) */
+"machiavelli.broken.samerank" = "combinazione incompleta, %1$d carte di rango %2$@";
+"machiavelli.broken.samesuit" = "scala di %@ incompleta";
+"machiavelli.broken.generic" = "combinazione non valida, %d carte";
+"machiavelli.pass.blocked.nothing" = "Non hai ancora calato nessuna carta.";
+"machiavelli.pass.blocked.invalid" = "Il tavolo non è valido: %@.";
+"machiavelli.pass.blocked" = "Il tavolo non è valido.";

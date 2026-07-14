@@ -2056,3 +2056,56 @@ nessuna** delle altre: non è un tavolo da poker, è uno **spazio di ricombinazi
   timeout (riuso `SpokenChannelPacing`); cache dallo stato corrente; `.voiceOverFocusLanding()` su
   schermata, hero, e box. **Riverwood e Skypool intatti.** **405 test verdi** (389 + 16 nuovi); app iOS
   compila. **TestFlight caricato: build 1784038459** (upload riuscito).
+
+### D-073 — Rifiniture ClockTower: letto ambientale per-gioco, voce decisa (italiano), tavolo rotto dichiarato
+Sessione breve di completamento del ClockTower: tre decisioni prese in chat + un buco di
+accessibilità nel diff di D-072.
+- **Il letto ambientale può dipendere dal GIOCO, non solo dal casinò (novità architetturale).** La
+  palette resta attributo del **casinò** (D-067), ma al ClockTower serve una **declinazione per
+  gioco**, per ragione **funzionale non estetica**: il poker è fatto di **attese e decisioni brevi**,
+  e una musica classica **con struttura/sviluppo tematico** le riempie senza competere; il Machiavelli
+  è l'opposto — il turno è **lavoro cognitivo lungo e continuo**, e il non vedente lo gioca **sul canale
+  audio** (ogni carta è un annuncio, la catena è ascolto puro), quindi una musica che si sviluppa
+  diventa un **secondo pensiero in concorrenza diretta** sull'orecchio che serve a giocare. Perciò due
+  letti: **poker = archi/classica** (default del casinò, per i tavoli futuri), **Machiavelli =
+  CLOCKWORK** (ingranaggi, ritmico/ambientale, presenza senza richiamo). Implementato come
+  **override per-gioco della palette**: `CasinoAudio.ambient(forGame:)` (default = letto del casinò;
+  Riverwood/Skypool non dichiarano override → **invariati**). Il clockwork rende il ClockTower il posto
+  **più VASTO** dei tre (Riverwood caldo, Skypool freddo, ClockTower vasto): ampiezza architettonica,
+  riverbero, distanze — un'ampiezza che il cieco **sente** e il vedente ha come sfondo. **Due** tracce
+  clockwork (una partita è lunga: un loop breve sarebbe tortura), alternate col crossfade; nel catalogo
+  ambient indicazioni di produzione **imposte**: variabilità interna (ingranaggi a periodi diversi →
+  ricorrenza senza ripetizione) e **giunzione neutra** (inizio/fine senza evento marcato, altrimenti il
+  loop si tradisce a ogni ripartenza). Nuovi slot `amb_clocktower_machiavelli_*`.
+- **La voce del ClockTower è decisa: uomo ANZIANO, custode della sala, UNA figura per tutto il casinò**
+  — croupier ai (futuri) tavoli di poker **e** arbitro/maestro al Machiavelli (non due personaggi: lo
+  stesso uomo, due insiemi di battute su eventi diversi). Completa la terna riconoscibile in due secondi:
+  Riverwood **maschile di frontiera**, Skypool **femminile cinica**, ClockTower **maschile anziano
+  erudito**. **Lingua: privilegia l'ITALIANO, evita gli anglicismi** — un professore in una torre
+  accademica dice **rilancio** non *raise*, **tallone** non *stock*. Questo **risolve alla radice** il
+  problema di pronuncia dei termini inglesi (il caso *Raise*, tre sessioni): esiste solo perché una voce
+  italiana legge parole inglesi. Testi del custode **riscritti** in registro erudito ("Una nuova mano.",
+  "A te la mossa.", "%@ pesca dal tallone."). **Confine rispettato:** riguarda **solo il parlato**; i
+  **pulsanti d'azione** restano **Raise/Fold/Call** in inglese con la resa fonetica di D-060 (la stessa
+  doppia lingua già nel progetto: la voce dice "rilancia", il pulsante dice "Raise" — **non uniformato**).
+- **Buco di accessibilità chiuso: il tavolo rotto ora si DICHIARA (D-073).** Conferma è vincolata alla
+  **selezione** (non al tavolo), quindi si può calare una combinazione che ruba una carta e ne rompe
+  un'altra, lasciando il tavolo **invalido** — è ciò che il Machiavelli **è**, e il vincolo vive
+  giustamente sul **terminale** (Passa si sblocca solo a tavolo valido). Ma questo creava uno **stallo
+  cieco**: il vedente vede il tavolo scomposto e capisce; il cieco preme Passa, non succede niente, e
+  **resta senza informazione**. Risolto **senza sconfinare nel suggerimento**: (1) un **knob** la cui
+  combinazione è rotta la **dichiara** ("scala di picche incompleta", "combinazione incompleta di
+  sette") — `MachiavelliSpeechMap.brokenTitle`, pura **descrizione** (la stessa cosa che il vedente
+  vede), **mai** cosa manca né dove prenderla; (2) il pulsante **Passa non è più disabilitato**: quando
+  è bloccato, toccarlo **annuncia la ragione** (nominando la combinazione rotta) e la sua **hint**
+  la porta — così chi ci arriva a swipe la scopre. `passBlockedReason` (VM) descrive lo stato: "non hai
+  calato nulla" oppure "il tavolo non è valido: [combinazione rotta]". **Nessun giocatore può restare
+  bloccato senza sapere perché e dove.** Guardiano test: la dichiarazione usa **solo** le 3 chiavi
+  `machiavelli.broken.*`, nessuna nomina una carta mancante; e ogni tavolo invalido-con-piazzamento
+  espone **sempre** una combinazione rotta da nominare. **Stabilità del sottoalbero** preservata: il
+  knob commuta **colore e label** (proprietà), non aggiunge/rimuove sottoviste (D-052).
+- **Vincoli:** motore Machiavelli e altri motori **non toccati**; predicato di validità **unica fonte**
+  (il knob e `passBlockedReason` interrogano `MachiavelliRules`, non re-implementano); nessuna logica di
+  validità nella UI; nessun `UIAccessibility.post` diretto; Riverwood/Skypool invariati; nessun tavolo di
+  poker costruito al ClockTower (solo letto previsto nel catalogo); pulsanti d'azione non uniformati.
+  **411 test verdi** (405 + 6). **TestFlight caricato: build 1784043541.**

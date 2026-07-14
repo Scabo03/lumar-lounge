@@ -476,3 +476,11 @@
 "machiavelli.action.draw" = "Draw";
 "machiavelli.action.draw.hint" = "End your turn by drawing a card.";
 "machiavelli.waiting" = "Waiting…";
+
+/* Machiavelli — broken-combination declaration and blocked Pass (D-073) */
+"machiavelli.broken.samerank" = "incomplete combination, %1$d cards of rank %2$@";
+"machiavelli.broken.samesuit" = "incomplete %@ run";
+"machiavelli.broken.generic" = "invalid combination, %d cards";
+"machiavelli.pass.blocked.nothing" = "You haven't laid any card yet.";
+"machiavelli.pass.blocked.invalid" = "The table is not valid: %@.";
+"machiavelli.pass.blocked" = "The table is not valid.";

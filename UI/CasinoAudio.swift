@@ -56,17 +56,31 @@ public struct AmbientBeds: Equatable, Sendable {
         layer: SoundCatalog.ambSkypoolWater, layerFallback: SoundCatalog.ambCrowdDistant,
         layerVolume: 0.02)
 
-    /// The ClockTower beds (D-072) — erudite CLASSICAL music (strings), calm_01/02 two
-    /// crossfaded movements, `tense` the searching passage played while a bot thinks
-    /// (the audible wait), a continuous low grandfather-clock TICK as the layer. None
-    /// produced yet → each falls back to a lounge bed; the clock layer is a quiet
-    /// undertone (0.12).
+    /// The ClockTower's POKER beds (D-072/D-073) — erudite CLASSICAL music (strings),
+    /// with structure and thematic development. Right for poker, whose turns are brief
+    /// attentional gaps a developing piece can fill. This is the casino DEFAULT bed (for
+    /// the ClockTower's future poker tables). None produced yet → falls back to a lounge
+    /// bed; the clock layer is a quiet undertone (0.12).
     public static let clocktower = AmbientBeds(
         calm1: SoundCatalog.ambClocktowerCalm1, calm1Fallback: SoundCatalog.ambLoungeCalm1,
         calm2: SoundCatalog.ambClocktowerCalm2, calm2Fallback: SoundCatalog.ambLoungeCalm2,
         tense: SoundCatalog.ambClocktowerThinking, tenseFallback: SoundCatalog.ambLoungeTense,
         layer: SoundCatalog.ambClocktowerClock, layerFallback: SoundCatalog.ambCrowdDistant,
         layerVolume: 0.12)
+
+    /// The ClockTower's MACHIAVELLI bed (D-073) — CLOCKWORK, not classical: rhythmic,
+    /// ambient, vast, present without asking for attention. Machiavelli's long cognitive
+    /// turn is played ON THE AUDIO CHANNEL by the blind player, so a developing piece
+    /// would COMPETE with the listening; a clockwork bed gives presence without a second
+    /// thought. TWO tracks crossfaded so a long match never loops audibly, plus a
+    /// clockwork "thinking" variant for the audible wait. Same clock layer, kept lower
+    /// (0.08) since the bed is already mechanism. Falls back to a lounge bed.
+    public static let clocktowerMachiavelli = AmbientBeds(
+        calm1: SoundCatalog.ambClocktowerMachiavelli1, calm1Fallback: SoundCatalog.ambLoungeCalm1,
+        calm2: SoundCatalog.ambClocktowerMachiavelli2, calm2Fallback: SoundCatalog.ambLoungeCalm2,
+        tense: SoundCatalog.ambClocktowerMachiavelliThinking, tenseFallback: SoundCatalog.ambLoungeTense,
+        layer: SoundCatalog.ambClocktowerClock, layerFallback: SoundCatalog.ambCrowdDistant,
+        layerVolume: 0.08)
 }
 
 /// A casino's bots' colour voices (`vob_`). AMBIENT: a missing file falls back to
@@ -112,17 +126,29 @@ public struct CasinoAudio {
     /// speech map's own declared fallback (if any) is used instead — which keeps the
     /// Riverwood identical.
     private let fallbackKeys: [String: String]
+    /// The casino's DEFAULT ambient bed (the palette is an attribute of the casino).
     public let ambient: AmbientBeds
+    /// PER-GAME ambient override (D-073): the bed can depend on the GAME's cognitive
+    /// load, not only on the place's identity — because a blind player plays some games
+    /// (Machiavelli) ON the audio channel, and a developing bed would compete with the
+    /// listening. Keyed by game key (`CasinoGame.audioKey`); absent → the default bed.
+    private let ambientByGame: [String: AmbientBeds]
     public let botVoices: BotVoices
 
     public init(id: String, croupierRemap: [String: SoundID] = [:], fallbackKeys: [String: String] = [:],
-                ambient: AmbientBeds, botVoices: BotVoices) {
+                ambient: AmbientBeds, ambientByGame: [String: AmbientBeds] = [:], botVoices: BotVoices) {
         self.id = id
         self.croupierRemap = croupierRemap
         self.fallbackKeys = fallbackKeys
         self.ambient = ambient
+        self.ambientByGame = ambientByGame
         self.botVoices = botVoices
     }
+
+    /// The ambient bed for a specific game at this casino — the per-game override if the
+    /// casino declares one, else the casino default (D-073). Riverwood/Skypool declare
+    /// none, so they are unaffected.
+    public func ambient(forGame gameKey: String) -> AmbientBeds { ambientByGame[gameKey] ?? ambient }
 
     /// Resolves a default croupier SoundID to THIS casino's actual (sound, register
     /// fallback KEY). The fallback key is nil when the casino declares no override — the
@@ -190,7 +216,9 @@ public struct CasinoAudio {
     /// is a harmless placeholder here.
     public static let clockTower = CasinoAudio(
         id: "clocktower", croupierRemap: [:], fallbackKeys: [:],
-        ambient: .clocktower, botVoices: .riverwood)
+        ambient: .clocktower,                                   // strings (future poker tables)
+        ambientByGame: ["machiavelli": .clocktowerMachiavelli], // clockwork (Machiavelli, D-073)
+        botVoices: .riverwood)
 
     /// Every casino's palette, keyed by casino id. Adding a casino = adding an entry
     /// HERE (declaring its palette). The speech maps / conductor / directors are never
