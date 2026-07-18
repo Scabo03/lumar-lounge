@@ -258,12 +258,18 @@ struct DrawOpponentBadgesView: View {
 
     private func summary(_ seat: DrawSeatPresentation, isActive: Bool) -> String {
         var parts = [uiLocalized("seat.a11y.base", names[seat.id] ?? "", seat.chips)]
-        if isActive { parts.append(uiLocalized("seat.a11y.acting")) }
-        if seat.isButton { parts.append(uiLocalized("seat.a11y.button")) }
+        // THE GAME-SPECIFIC READ FIRST (D-083, mild form of the Stud defect): at a
+        // draw table what a player wants from an opponent badge is how many cards it
+        // exchanged and whether it opened — so those come immediately after the name,
+        // ahead of position and status. Not split into its own element as in Stud:
+        // this is read about once per hand (and is announced live when it happens),
+        // not many times per hand, so a separate swipe stop would be clutter.
         if seat.isOpener { parts.append(uiLocalized("draw.a11y.opener")) }
         if let d = seat.discardCount {
             parts.append(d == 0 ? uiLocalized("draw.a11y.standpat") : uiLocalized("draw.a11y.drew", d))
         }
+        if isActive { parts.append(uiLocalized("seat.a11y.acting")) }
+        if seat.isButton { parts.append(uiLocalized("seat.a11y.button")) }
         if seat.isDisqualified { parts.append(uiLocalized("draw.a11y.disqualified")) }
         else if seat.isBusted { parts.append(uiLocalized("seat.a11y.busted")) }
         else if seat.isAllIn { parts.append(uiLocalized("seat.a11y.allIn")) }

@@ -43,7 +43,7 @@ public struct OmahaTableRules: Equatable, Sendable {
     /// so a Pot-Limit session tightens and ends (D-064). 25/50 blinds match the deeper
     /// 10000 buy-in (a 200 big-blind stack, standard for PLO).
     public static let skypoolMarble = OmahaTableRules(
-        smallBlind: 25, bigBlind: 50, buyIn: 10000,
+        smallBlind: 40, bigBlind: 80, buyIn: 10000,
         personalities: WorldPersonalities.skypool,
         escalation: StakeEscalation(interval: 12, factor: 1.5))
 }

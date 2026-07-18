@@ -558,3 +558,9 @@
 "stud.announce.action.allin" = "%@ punta tutto.";
 "stud.announce.houseprize" = "Hai battuto il tavolo. La Casa ti premia con %d fiche.";
 "stud.announce.yourturn" = "A te la parola.";
+
+/* D-083 — Stud opponent board: the cards FIRST, no preamble. Describes, never advises. */
+"stud.board.a11y" = "%1$@, %2$@";
+"stud.board.none.a11y" = "%@, nessuna scoperta";
+"stud.board.folded.a11y" = "%@, ha fouldato";
+"stud.board.busted.a11y" = "%@, eliminato";

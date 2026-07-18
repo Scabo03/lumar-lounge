@@ -13,10 +13,91 @@ import Foundation
 
 enum DrawStrategy {
 
-    /// A static strength for a completed five-card hand, in 0…1: mostly the hand
-    /// category, nudged by the top tie-breaker so that, e.g., a pair of kings
-    /// ranks above a pair of twos. There is no "draw potential" here — that lives
-    /// in the discard decision, not in how strongly a made hand should bet.
+    /// Default Monte Carlo rollouts for a draw equity estimate. A five-card
+    /// showdown is far cheaper to evaluate than a Texas runout, so this can sit
+    /// where Texas sits (200) without the bots feeling slow (D-082).
+    static let defaultEquitySamples = 160
+
+    /// EQUITY in 0…1: the probability this holding wins the showdown, on the SAME
+    /// SCALE the Texas/Omaha/Stud bots use (D-082). This is what the betting bars
+    /// (`continueBar`/`callBar`, built from pot odds) are meant to be compared
+    /// against — see the note on `strength` below for why the old category score
+    /// could not be.
+    ///
+    /// When `drawToCome` is true (the first betting round) the estimate plays the
+    /// exchange forward: the hero draws its textbook cards and so do the opponents,
+    /// and the winner is decided on the FIVE CARDS EACH WILL ACTUALLY HOLD. That is
+    /// the whole point of the first round — nobody is betting a finished hand, and a
+    /// four-flush is worth far more than the "high card" it currently is.
+    ///
+    /// Honest by construction: opponents are unknown, hence drawn uniformly (D-011).
+    /// Deterministic given `rng`.
+    static func equity(cards: [Card], opponents: Int, drawToCome: Bool,
+                       samples: Int = defaultEquitySamples,
+                       using rng: inout SeededGenerator) -> Double {
+        guard cards.count == 5, opponents >= 1, samples > 0 else { return strength(cards) }
+        let known = Set(cards)
+        var pool = Deck().cards.filter { !known.contains($0) }
+        // Worst case per sample: hero's 4 replacements + 5 cards each opponent + 4
+        // replacements each.
+        let needed = (drawToCome ? 4 : 0) + opponents * (drawToCome ? 9 : 5)
+        guard pool.count >= needed else { return strength(cards) }
+
+        var wins = 0.0
+        for _ in 0..<samples {
+            // Partial Fisher–Yates: sample `needed` distinct cards from the pool.
+            let count = pool.count
+            for i in 0..<needed {
+                let j = i + Int(rng.next() % UInt64(count - i))
+                pool.swapAt(i, j)
+            }
+            var index = 0
+            func take(_ n: Int) -> [Card] {
+                defer { index += n }
+                return Array(pool[index..<(index + n)])
+            }
+
+            /// Plays the textbook exchange forward for a five-card holding.
+            func afterDraw(_ hand: [Card]) -> [Card] {
+                guard drawToCome else { return hand }
+                let discards = Set(optimalDiscards(from: hand))
+                guard !discards.isEmpty else { return hand }
+                return hand.filter { !discards.contains($0) } + take(discards.count)
+            }
+
+            let heroRank = HandEvaluator.evaluate(afterDraw(cards))
+
+            var bestOpp: HandRank?
+            var bestOppCount = 0
+            for _ in 0..<opponents {
+                let oppRank = HandEvaluator.evaluate(afterDraw(take(5)))
+                if bestOpp == nil || oppRank > bestOpp! {
+                    bestOpp = oppRank
+                    bestOppCount = 1
+                } else if oppRank == bestOpp! {
+                    bestOppCount += 1
+                }
+            }
+
+            if bestOpp == nil || heroRank > bestOpp! {
+                wins += 1
+            } else if heroRank == bestOpp! {
+                wins += 1.0 / Double(bestOppCount + 1)   // split among the tied
+            }
+        }
+        return wins / Double(samples)
+    }
+
+    /// A static CATEGORY score for a completed five-card hand, in 0…1: mostly the
+    /// hand category, nudged by the top tie-breaker so that, e.g., a pair of kings
+    /// ranks above a pair of twos.
+    ///
+    /// ⚠️ This is an ORDINAL RANKING, not an equity (D-082): a pair maxes out at
+    /// 0.20 and two pair at 0.30, whereas a pair of aces WINS about 65% of the time.
+    /// It must never be compared against a pot-odds bar — that mismatch is exactly
+    /// what made every Draw bot fold everything below trips before the exchange. Use
+    /// `equity(cards:opponents:drawToCome:…)` for any betting decision; this stays
+    /// only for ordering holdings against each other.
     static func strength(_ cards: [Card]) -> Double {
         guard cards.count == 5 else { return 0 }
         let rank = HandEvaluator.evaluate(cards)

@@ -195,12 +195,28 @@ struct StudOpponentBadgesView: View {
     private func badge(for seat: StudSeatPresentation) -> some View {
         let isActive = state.activeSeatID == seat.id
         return VStack(spacing: 4) {
-            Text(verbatim: names[seat.id] ?? "")
-                .font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.6)
-                .foregroundStyle(seat.isBusted ? TablePalette.foldedDim : TablePalette.primaryText)
-            Text(verbatim: uiLocalized("seat.chips", seat.chips))
-                .font(.caption.monospacedDigit()).foregroundStyle(TablePalette.secondaryText)
+            // IDENTITY — name, chips, status. Needed occasionally, so it is a SEPARATE
+            // element and deliberately sorted AFTER the board (D-083).
+            VStack(spacing: 4) {
+                Text(verbatim: names[seat.id] ?? "")
+                    .font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.6)
+                    .foregroundStyle(seat.isBusted ? TablePalette.foldedDim : TablePalette.primaryText)
+                Text(verbatim: uiLocalized("seat.chips", seat.chips))
+                    .font(.caption.monospacedDigit()).foregroundStyle(TablePalette.secondaryText)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(verbatim: identity(seat, isActive: isActive)))
+            .accessibilityIdentifier("opponent.\(seat.id)")
+            .accessibilitySortPriority(1)
+
+            // THE BOARD — the read the player performs many times per hand. Its own
+            // element, reached in ONE swipe, and sorted FIRST inside the badge (D-083).
             cardsRow(seat)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text(verbatim: board(seat)))
+                .accessibilityIdentifier("opponent.\(seat.id).board")
+                .accessibilitySortPriority(2)
+
             statusLine(seat)
         }
         .frame(maxWidth: .infinity)
@@ -212,11 +228,9 @@ struct StudOpponentBadgesView: View {
                     .strokeBorder(isActive ? ClockPalette.accent : Color.white.opacity(0.12),
                                   lineWidth: isActive ? 2.5 : 1)))
         .opacity(seat.isFolded && !seat.isBusted ? 0.5 : 1)
-        // The whole badge is ONE accessibility element: the on-demand interrogation of
-        // this opponent's board (name, chips, status, up cards). Describes, never advises.
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(verbatim: summary(seat, isActive: isActive)))
-        .accessibilityIdentifier("opponent.\(seat.id)")
+        // The badge is a CONTAINER of two leaves (board, identity), never one merged
+        // element — see D-083 and the D-019 gotcha (identifiers live on the leaves).
+        .accessibilityElement(children: .contain)
     }
 
     /// The opponent's visible cards: their up cards face-up + a couple of down-card backs.
@@ -254,20 +268,27 @@ struct StudOpponentBadgesView: View {
             .background(Capsule().fill(background)).foregroundStyle(foreground)
     }
 
-    private func summary(_ seat: StudSeatPresentation, isActive: Bool) -> String {
-        var parts = [uiLocalized("seat.a11y.base", names[seat.id] ?? "", seat.chips)]
-        if isActive { parts.append(uiLocalized("seat.a11y.acting")) }
-        if seat.isBusted { parts.append(uiLocalized("seat.a11y.busted")) }
-        else if seat.isFolded { parts.append(uiLocalized("seat.a11y.folded")) }
-        else {
-            if seat.isAllIn { parts.append(uiLocalized("seat.a11y.allIn")) }
-            if seat.isBringIn { parts.append(uiLocalized("stud.seat.bringin.a11y")) }
-            // THE interrogation: this opponent's exposed board, read on demand.
-            if !seat.upCards.isEmpty {
-                parts.append(uiLocalized("stud.seat.upcards.a11y", CardText.spoken(seat.upCards)))
-            }
-        }
-        return parts.joined(separator: ", ")
+    /// THE INTERROGATION (D-083): this opponent's exposed board and NOTHING ELSE
+    /// before it — no chips, no status, no "up cards:" preamble. Reading the boards
+    /// is the strategic core of Stud and is done many times per hand, so the very
+    /// first thing this element says is the cards. Only the owner's name precedes
+    /// them, because with two opponents the read is useless without knowing whose it
+    /// is — that is identity, not preamble.
+    ///
+    /// DESCRIBES, NEVER ADVISES (CONVENTIONS §4): the cards as they lie, never what
+    /// they might mean.
+    private func board(_ seat: StudSeatPresentation) -> String {
+        StudBoardReadout.board(name: names[seat.id] ?? "", upCards: seat.upCards,
+                               isFolded: seat.isFolded, isBusted: seat.isBusted)
+    }
+
+    /// Identity: name, chips and status — needed occasionally, so it lives behind
+    /// the board rather than in front of it (D-083).
+    private func identity(_ seat: StudSeatPresentation, isActive: Bool) -> String {
+        StudBoardReadout.identity(name: names[seat.id] ?? "", chips: seat.chips,
+                                  isActive: isActive, isFolded: seat.isFolded,
+                                  isBusted: seat.isBusted, isAllIn: seat.isAllIn,
+                                  isBringIn: seat.isBringIn)
     }
 }
 

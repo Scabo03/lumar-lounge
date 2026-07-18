@@ -146,6 +146,15 @@ e la sua **musica** (archi al poker, clockwork dosato al Machiavelli — D-080).
   `vo_it_pass_and_out`, `vo_it_carried_pot`, `vo_it_openers_disqualified`, `vo_it_high_stakes_draw`),
   e i 2 storici (`amb_crowd_distant`, `fx_hand_neutral`).
 
+**Sessione di calibrazione post-test reale (D-082/D-083/D-084):** corretta al fondo la **causa** del
+fold precoce nel Draw (un **disallineamento di scala** — punteggio ordinale di categoria confrontato
+con una barra di equity — non la taratura delle leve), che spiegava **anche** le squalifiche
+dell'aggressivo; **separato** il badge avversario dello Stud in tabellone + identità (il cieco non
+riascolta più nome e fiches a ogni lettura delle scoperte); **poste ricalibrate su curva misurata**
+(non monotòna: la fascia intermedia peggiora) con lo **Stud del ClockTower accelerato via
+`StakeEscalation` invece che alzando le poste**, per non snaturarne l'identità né gonfiare il tetto
+pot-limit. 487 test verdi.
+
 **Prossimo passo** (vedi [`ROADMAP.md`](ROADMAP.md)): **produzione dei file audio del ClockTower**
 (custode anziano — Machiavelli + **10 slot Stud** `vo_it_clock_poker_*`, D-077 — su ElevenLabs; ambient/
 musica archi+clockwork su StableAudio) e dello **Skypool** (`vob_sky_*`); **calibrazione** dei bot dopo
@@ -2453,3 +2462,126 @@ flag `rearrangedExisting` dell'evento `tableChanged`, distinto per **chi** l'ha 
 Solo `UI`/`Audio`/localizzazione: due slot `SoundCatalog`, due `Cue` in `MachiavelliSpeechMap`, selezione
 per-seat nel VM, stringhe it/en. I due file **cablati** (erano gli unici "ambigui" di D-080). **472 test
 verdi.** **Caricato su TestFlight (build 1784067206).**
+
+### D-082 — La causa reale del fold precoce nel Draw: un DISALLINEAMENTO DI SCALA, non la taratura delle leve
+Dai test dell'utente sul telefono: nel Five-Card Draw il rock foldava **prima ancora della fase
+di cambio**, e l'aggressivo apriva senza jacks-or-better venendo squalificato di continuo. Il
+prompt poneva due ipotesi alternative (taratura delle leve *oppure* valutazione che ignora il
+costo reale di restare). **Misurato, non assunto** — 4000 mani simulate per personalità al tavolo
+Whiskey: rock **96%** di fold pre-cambio (**98%** delle coppie, **93%** delle doppie coppie),
+1148 squalifiche su 4800 mani, e **nessuna sessione che converge** (400 mani su 400, 12 seed su 12).
+- **La causa reale è la seconda ipotesi, ma più precisa di come era formulata.** Non è che il costo
+  di restare non fosse contato (le **pot odds sono nella formula**): è che i due lati del confronto
+  **stanno su scale incompatibili**. `DrawStrategy.strength` restituiva un punteggio **ORDINALE DI
+  CATEGORIA** (misurato: coppia max **0.20**, doppia coppia **0.30**, tris **0.40** — letteralmente
+  `categoria/9 × 0.9`), mentre `continueBar`/`callBar` sono costruite su scala **equity/pot-odds**
+  (≈**0.39** per il rock a quelle poste). Mele contro pere: una coppia d'assi vince ~65% delle volte
+  ma "vale" 0.20, quindi folda. **Il rock foldava tutto sotto il tris.**
+- **Verificato il contrasto con gli altri tre motori:** Texas, Omaha e Stud alimentano la **stessa
+  identica formula di barra** con una **equity Monte Carlo reale** (0…1). **Solo il Draw** usava una
+  scala di categoria. Non era una scelta di design condivisa: era un difetto **isolato** in un solo
+  file. Aggravante: `strength` escludeva **per progetto** il potenziale di pesca ("There is no draw
+  potential here"), quindi **prima del cambio** ogni progetto valeva ~0.1 — mentre il primo giro è
+  esattamente il momento in cui nessuno sta puntando una mano finita.
+- **La STESSA causa spiega le squalifiche dell'aggressivo** (il prompt le trattava come problema
+  separato). Misurato: apriva **36%** delle volte **senza** requisito e solo **3%** delle volte in cui
+  **ce l'aveva** — l'esatta inversione. Perché il ramo di apertura legittima richiedeva
+  `perceived >= valueBar` (0.43 → su quella scala "una scala o meglio", quindi mai con una coppia di
+  donne), mentre il ramo bluff-open era **puro dado, senza alcun gate di forza**.
+- **Correzione (nel LAYER BOT di `GameEngine/Draw/`, dichiarata e approvata prima di procedere; le
+  REGOLE — `FiveCardDrawHand` — non sono state toccate):**
+  - **`DrawStrategy.equity(cards:opponents:drawToCome:samples:using:)`** — Monte Carlo seedato sulla
+    **stessa scala** degli altri tre giochi. Con `drawToCome` (primo giro) **gioca lo scambio in
+    avanti**: l'eroe pesca le sue carte da manuale e **anche gli avversari**, e il confronto avviene
+    sulle **cinque carte che ciascuno terrà davvero** — così un four-flush vale ciò che vale invece
+    di essere "carta alta". Onesto per costruzione (avversari uniformi, D-011), deterministico.
+    `strength` **resta** ma solo per **ordinare** mani tra loro, con un commento che ne vieta l'uso
+    contro una barra di pot odds.
+  - **Gate di apertura.** Ramo con requisito: tenere i jacks-or-better **è** la licenza di puntare,
+    quindi una mano decente apre a frequenza normale (`perceived >= continueBar`), non solo a
+    `valueBar`. Ramo senza requisito: la frequenza è pesata da `foldOutChance = 0.45^avversari`,
+    perché un'apertura su aria vince **solo** se tutti foldano e allo showdown è **sconfitta
+    d'ufficio** — resta un'arma **heads-up**, diventa la mossa perdente che era in multi-way.
+  - **Il carattere NON è stato smussato:** `openingDiscipline` dell'aggressivo resta **0.20** (test
+    che lo pinna). La correzione è **strutturale**, non una lobotomia.
+- **Costo MISURATO (precedente D-063), con sorpresa:** l'equity del Draw a 160 campioni costa
+  **10.5 ms/decisione** contro i **121.8 ms** del Texas a 200 — è **12× più economica**, perché una
+  valutazione a cinque carte è molto più leggera di una a sette. Nessun compromesso necessario.
+- **Ricalibrazione nei preset di GameWorld** (`WorldPersonalities.riverwoodWhiskey`, nuovo roster
+  dedicato: il Whiskey usava il roster condiviso **tarato per il Texas**). `trashFoldTendency` era
+  diventato **ridondante e dannoso** (l'equity già declina le mani senza speranza; lasciato alto
+  sparava un **secondo** fold cieco prima del cambio che poteva salvarle): rock 0.90→**0.20**,
+  novice 0.30→**0.08**, aggressivo 0.15→**0.05**. Rock `tightness` 0.90→**0.68**. **Leve-firma
+  intatte:** il rock non bluffa (0.03) e non apre senza requisito (0.95); il novice resta
+  bullizzabile (`pressureResistance` 0.35); l'aggressivo resta l'aggressivo.
+- **Risultato misurato:** rock, fold di doppia coppia pre-cambio **93% → 0%**, di jacks-or-better
+  **<25%**; aggressivo, aperture su aria **36% → 3%** e legittime **3% → 82%**; squalifiche
+  **−84%**. Sessioni: **452 → 230** mani (−49%) con le poste nuove (sotto).
+- **Il rock è di nuovo ELIMINABILE senza diventare un altro animale:** le sue fiches ora circolano
+  (misurato ~45 fiches lorde per mano contro un'ante di 25) e busta in 2 sessioni su 12 bot-vs-bot,
+  dove prima **non bustava mai**. Un avversario che non può perdere non è difficile, è un muro.
+
+### D-083 — Un elemento accessibile espone per primo ciò che serve più spesso (badge avversario dello Stud)
+Nello Stud il badge di un avversario era **UN SOLO** elemento accessibile che leggeva "nome, fiches,
+stato, **scoperte: …**". Ma leggere i tabelloni scoperti è il **cuore strategico** dello Stud e si fa
+**molte volte per mano**, mentre nome e fiches servono di rado: il giocatore cieco pagava il preambolo
+**a ogni singola interrogazione** — una tassa che il vedente non paga, perché con lo sguardo coglie
+solo ciò che gli interessa.
+- **Separato in DUE elementi fratelli**, col tabellone **ordinato per primo** dentro il badge
+  (`.accessibilitySortPriority`): `opponent.N.board` → "il Professore, re di cuori, dieci di picche";
+  `opponent.N` → "il Professore, 3000 fiches, sta agendo". Il **nome resta in testa alla riga del
+  tabellone**: con due avversari il dato è inutile senza sapere di chi è — quella è **identità, non
+  preambolo**. Ciò che è stato tolto è fiches, stato e l'etichetta "scoperte:".
+- **Stabilità del sottoalbero preservata:** il badge diventa un `children: .contain` con due foglie
+  fisse; nessun costrutto aggiunge o rimuove sottoviste in base allo stato — **cambia solo la label**
+  (pattern D-046). Le due label vivono in un tipo **puro** (`StudBoardReadout`, D-017) così sono
+  testabili senza SwiftUI.
+- **Descrive, non consiglia** (invariante): il tabellone dice le carte come stanno, mai cosa
+  potrebbero significare. Test-guardiano che vieta il linguaggio consultivo nelle righe prodotte.
+- **Il difetto esisteva altrove? Verificato: no, non in questa forma.** Texas e Omaha **non hanno
+  carte pubbliche per-avversario** (il board è comune), quindi nel loro badge non c'è alcuna
+  informazione ad alta frequenza sepolta dietro un preambolo — nulla da separare. Il **Draw** è una
+  forma **lieve** dello stesso difetto (il conteggio degli scarti è il suo dato di gioco): lì il dato
+  è stato **spostato in testa** subito dopo il nome, ma **non** separato in un elemento proprio —
+  si legge ~una volta per mano ed è già annunciato dal vivo, quindi una fermata di swipe in più
+  sarebbe rumore. Il criterio è **quante volte per mano viene letto**, non quanto è importante.
+
+### D-084 — Ritmo: l'effetto delle poste sulla durata è NON MONOTÒNO, e al ClockTower la leva giusta è l'escalation
+Le sessioni erano troppo lente. La leva attesa era il raddoppio dei minimi. **Misurato prima e dopo,
+contando le DECISIONI totali** (proxy onesto del tempo reale e degli annunci che un cieco deve
+ascoltare — lezione D-075: misurare il **lavoro**, non gli eventi) — e il risultato ha **rovesciato**
+l'assunto:
+
+| Texas Riverwood | 10/20 | 20/40 | 40/80 |
+|---|---|---|---|
+| decisioni/sessione | 438 | 400 (−9%) | 230 (−47%) |
+
+| Texas Skypool | 10/20 | 50/100 | 100/200 |
+|---|---|---|---|
+| decisioni/sessione | 254 | **444 (+75%)** | 161 (−37%) |
+
+- **La relazione ha una BUCA.** Bui di taglia intermedia comprano più **fold pre-flop**, quindi piatti
+  più piccoli, quindi fiches che passano da uno stack all'altro **più lentamente**: servono **più**
+  mani, non meno. Solo oltre la buca alzare le poste accorcia davvero. Corollario che conferma
+  l'intuizione dell'utente: **ridurre il fold accorcia le sessioni** più di quanto faccia alzare le poste.
+- **Poste applicate:** Riverwood Texas 10/20 → **20/40** (25 BB; guadagno modesto ma allinea la
+  profondità); Skypool Texas 10/20 → **100/200** (25–30 BB; **il 50/100 intermedio è stato misurato e
+  scartato perché peggiorava del 75%**) — lo Skypool aveva buy-in 5–6× il Riverwood con bui
+  **identici**, cioè stack profondi **250–300 BB**: era un errore di scala, non dei bot. Draw Whiskey
+  ante 10→**25**, bet 20/40→**50/100** (**452 → 230** mani, −49%). Omaha Marble 25/50 → **40/80**.
+- **ClockTower — NON toccato, per identità (la cautela richiesta).** È **Pot Limit**: il tetto di
+  puntata **è** il piatto, quindi alzare ante/bet non renderebbe il gioco solo più rapido ma più
+  **violento** (piatti più grossi ⇒ puntate massime più grosse), e le poste basse sono parte di cosa
+  quel posto **è**. Usata invece `StakeEscalation` (D-064, meccanica già esistente e riusabile):
+  **la mano uno resta esattamente com'è oggi** e la sessione stringe solo andando avanti. **Misurato:
+  44 → 21 mani (−52%) con il piatto massimo osservato INVARIATO (8805 → 8904)** — cioè velocità
+  comprata senza gonfiare di una fiche il tetto pot-limit. È la prova che al ClockTower era la leva
+  giusta.
+- **Non toccati:** premio della Casa (D-079), rimborso Machiavelli (D-075), boost mano decisiva,
+  ante progressivo. **487 test verdi** (472 + 15 nuovi comportamentali). Un test preesistente
+  (`testSecondRoundBigBetPressureFoldsMoreForShyBots`) **pinnava la vecchia calibrazione** — sceglieva
+  un **tris** come "mano modesta", vero solo sulla scala ordinale rotta; su equity reale vale ~85% e
+  nessuno lo folda, quindi confrontava 0 con 0. **Riscritto (dichiarato)** con un progetto fallito
+  (equity **misurata** 0.37, tra le due barre reali 0.28/0.41). Il meccanismo di pressione (D-048) è
+  **intatto**.
+

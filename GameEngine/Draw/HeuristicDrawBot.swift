@@ -23,10 +23,17 @@ public struct HeuristicDrawBot: DrawBot {
     public let personality: Personality
     /// The bot's "soul seed": its identity for reproducible randomness.
     public let seed: UInt64
+    /// Monte Carlo rollouts used for the equity estimate (D-082).
+    public let equitySamples: Int
 
-    public init(personality: Personality, seed: UInt64) {
+    /// Default Monte Carlo rollouts for the equity estimate (D-082).
+    public static let defaultEquitySamples = 160
+
+    public init(personality: Personality, seed: UInt64,
+                equitySamples: Int = HeuristicDrawBot.defaultEquitySamples) {
         self.personality = personality
         self.seed = seed
+        self.equitySamples = max(1, equitySamples)
     }
 
     // MARK: - Betting
@@ -41,8 +48,14 @@ public struct HeuristicDrawBot: DrawBot {
         let trashFold = (p.trashFoldTendency * context.trashFoldScale).clamped01
         var rng = SeededGenerator(seed: botMix64(seed ^ context.fingerprint))
 
-        // Perceived strength: the made hand, coloured by fallibility and tilt.
-        let raw = DrawStrategy.strength(context.cards)
+        // Perceived strength: REAL EQUITY (D-082), on the same 0…1 scale the bars
+        // below are built from. In the first round the estimate plays the exchange
+        // forward — nobody is betting a finished hand before the draw.
+        let raw = DrawStrategy.equity(cards: context.cards,
+                                      opponents: max(1, context.activeOpponents),
+                                      drawToCome: context.phase == .firstBet,
+                                      samples: equitySamples,
+                                      using: &rng)
         let noise = (botUnit(&rng) - 0.5) * (1.0 - p.rationality) * 0.30
         let tilt = context.emotionalTemperature * p.tiltReactivity
         let perceived = (raw + noise + tilt * 0.12).clamped01
@@ -77,14 +90,28 @@ public struct HeuristicDrawBot: DrawBot {
             // Nobody has bet: check, or open.
             if legal.canBet {
                 if legal.hasOpeners {
-                    // A legitimate open: value-bet when strong, occasionally thin.
+                    // A legitimate open. Holding provable openers IS the licence to
+                    // bet, so a merely decent hand opens at a normal frequency — the
+                    // old code only ever opened at `valueBar`, which on the broken
+                    // scale meant "a straight or better", so the aggressor opened
+                    // legitimately 3% of the time and on air 36% (D-082).
                     if perceived >= valueBar && roll < raiseWhenStrong { return .bet }
+                    if perceived >= continueBar && roll < 0.25 + 0.55 * aggression { return .bet }
                     if perceived < continueBar && roll < bluffChance * 0.5 { return .bet }
                     return .check
                 } else {
-                    // No openers: only a discipline-gated bluff-open (D-039). A
-                    // strict bot (high openingDiscipline) never does this.
-                    let bluffOpen = (1.0 - p.openingDiscipline) * bluffChance
+                    // No openers: a discipline-gated bluff-open (D-039). A strict bot
+                    // (high openingDiscipline) never does this.
+                    //
+                    // But openers are NOT a strategic option, they are a RULE (D-082):
+                    // an open on air is snapshotted as `openers == nil`, so it wins ONLY
+                    // if every opponent folds — reaching showdown is an automatic loss
+                    // no matter what the exchange brings. So the frequency is weighted
+                    // by how plausible folding everyone out actually is, which collapses
+                    // with each extra live opponent. Heads-up it stays a real weapon;
+                    // four-handed it becomes the losing move it always was.
+                    let foldOutChance = pow(0.45, Double(max(1, context.activeOpponents)))
+                    let bluffOpen = (1.0 - p.openingDiscipline) * bluffChance * foldOutChance
                     if roll < bluffOpen { return .bet }
                     return .check
                 }

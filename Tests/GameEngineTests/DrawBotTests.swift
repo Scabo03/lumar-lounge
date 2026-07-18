@@ -99,10 +99,20 @@ final class DrawBotTests: XCTestCase {
     }
 
     func testSecondRoundBigBetPressureFoldsMoreForShyBots() {
-        // A modest made hand (low trips) facing a pot-sized big bet after the draw —
-        // strong enough to call a small bet, marginal against heavy pressure. Two
-        // personalities identical but for pressureResistance: the shy one folds more.
-        let hand = [c(.five, .spades), c(.five, .hearts), c(.five, .diamonds), c(.king, .clubs), c(.two, .spades)]
+        // REWRITTEN for D-082 (declared): this test used to pick LOW TRIPS as the
+        // "modest made hand". That was only true on the old category-ordinal scale,
+        // where trips scored 0.40 and sat near the bars. On the real equity scale trips
+        // after the draw is a monster (~85%), so neither personality folds it and the
+        // test compared 0 with 0. The pressure mechanism itself (D-048,
+        // `Personality.callThresholdMultiplier`) is unchanged — only the hand had to
+        // become genuinely marginal again.
+        //
+        // A BUSTED DRAW (ace-high) facing a pot-sized big bet after the exchange,
+        // heads-up — the classic "do I pay this off" spot. MEASURED at ~0.37 equity,
+        // which lands between the stubborn bot's call bar (~0.28) and the shy bot's
+        // (~0.41): a genuine decision for exactly one of them.
+        let hand = [c(.ace, .spades), c(.jack, .hearts), c(.nine, .diamonds),
+                    c(.six, .clubs), c(.three, .spades)]
         func personality(pressure: Double) -> Personality {
             Personality(name: "P", tightness: 0.5, aggression: 0.3, bluffFrequency: 0.0,
                         riskTolerance: 0.4, positionAwareness: 0.5, rationality: 1.0,

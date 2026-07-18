@@ -70,6 +70,26 @@ riscoprirle dalla conversazione. Il riassunto operativo per Claude Code sta in
   cambiando la sua `Personality`). Il default dei parametri additivi riproduce sempre il
   comportamento standard.
 
+- **Una personalità si calibra NELL'ECONOMIA DEL SUO TAVOLO, mai in astratto
+  (principio permanente, D-082).** Le leve di una `Personality` non sono giuste o
+  sbagliate di per sé: lo stesso valore che rende un bot "prudente" a un tavolo lo rende
+  **assurdo** a un altro, perché ciò che una leva *costa* dipende dalle poste e dalla
+  struttura di puntata. Un `trashFoldTendency` alto è disciplina dove vedere la carta
+  successiva è caro, ed è **fuga gratuita** a un tavolo limit dove proseguire costa una
+  puntata piccola in un piatto già formato. Perciò: (a) un roster **riusato** da un gioco
+  a un altro va **ricalibrato**, non copiato — i preset per tavolo vivono in `GameWorld`
+  proprio per questo; (b) la calibrazione si valuta **dal comportamento osservato in
+  quel contesto economico** (quanto folda, quanto mette in gioco), non dai numeri delle
+  leve; (c) il **carattere** (le leve-firma: il rock non bluffa mai, l'aggressivo apre
+  leggero) **non si smussa** per riparare un comportamento assurdo — se il comportamento
+  è assurdo la causa è quasi sempre **strutturale**, e va corretta nella struttura.
+- **Un vincolo di REGOLA non è una scelta strategica (D-082).** Quando il gioco impone un
+  requisito (i jacks-or-better per aprire), una leva che ne modula la violazione deve
+  pesare la **conseguenza della regola**, non solo il carattere: aprire senza requisito
+  vince **solo** se tutti foldano, e arrivare allo showdown è una sconfitta d'ufficio.
+  Una leva tarata ignorando questo produce un comportamento **perdente per costruzione**,
+  che nessuna taratura del suo valore può salvare.
+
 ## 2. Lingua del codice e del dominio
 
 - **Codice in inglese:** nomi di tipi, funzioni, variabili e **commenti** sono
@@ -549,6 +569,20 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
     interrogazione il non vedente giocherebbe uno Stud **mutilato**: è la condizione di
     esistenza del gioco, non una rifinitura.
 
+- **Un elemento accessibile espone PER PRIMO ciò che serve più spesso (principio
+  permanente, D-083).** Quando un elemento raccoglie più informazioni, l'ordine non è
+  neutro: chi naviga a swipe **paga il preambolo a ogni interrogazione**. Se un dato è
+  consultato molte volte per mano (le carte scoperte di un avversario nello Stud: è il
+  cuore strategico del gioco) e un altro serve di rado (nome, fiches, stato), fonderli in
+  un unico elemento significa far riascoltare il secondo ogni volta che serve il primo —
+  una tassa che il vedente non paga, perché lui **coglie con lo sguardo** solo ciò che gli
+  interessa. **Regola:** separa in elementi distinti e **ordina per frequenza d'uso**
+  (`.accessibilitySortPriority`), mettendo davanti l'informazione ad alta frequenza.
+  L'**identità** (di chi è questo dato) non è un preambolo e può restare in testa quando
+  senza di essa il dato è inutile; **stato, quantità ed etichette descrittive** sono
+  preambolo e vanno nell'elemento secondario. Vale per ogni gioco presente e futuro; il
+  criterio è "quante volte per mano viene letto", non "quanto è importante".
+
 ## 5. Testabilità
 
 - La logica pura (`GameEngine`, e in prospettiva `GameWorld`) deve essere
@@ -608,3 +642,19 @@ accessibilità e localizzazione. Vedi [`ROADMAP.md`](ROADMAP.md).
   proteggere e testare: **le uniche fiches che entrano in un tavolo sono i buy-in.** È così
   che funzionano il **premio della Casa** dello Stud (D-079, pagato solo a fine sessione, solo
   se il giocatore ha battuto il tavolo) e il **rimborso** del Machiavelli (D-075).
+
+- **L'effetto delle poste sulla durata NON è monotòno: va MISURATO (D-084).** Alzare i
+  minimi di puntata per accorciare una sessione è un'intuizione che **si rovescia** in una
+  fascia intermedia: bui più alti comprano più **fold pre-flop**, quindi piatti più
+  piccoli, quindi fiches che passano da uno stack all'altro **più lentamente** — e la
+  sessione richiede **più** mani, non meno (misurato: Skypool Texas 10/20 → 50/100 = **+75%**
+  di decisioni; solo a 100/200 scende sotto il punto di partenza). **Regole:** (a) misurare
+  sempre prima/dopo su una **curva** di più valori, mai su un singolo salto; (b) misurare il
+  **lavoro** (decisioni, annunci) e non il **numero di mani** — una mano che folda pre-flop
+  costa al giocatore cieco una frazione di una mano giocata (D-075); (c) a un tavolo la cui
+  identità sono le **poste basse**, o in **Pot Limit** dove il tetto di puntata è il piatto
+  (alzare i minimi rende il gioco più *violento*, non solo più rapido), la leva giusta non è
+  alzare le poste ma **`StakeEscalation`** (D-064): la mano uno resta esattamente com'è —
+  identità e tetto intatti — e la sessione stringe solo andando avanti (misurato allo Stud
+  del ClockTower: **−52%** di mani, piatto massimo **invariato**).
+

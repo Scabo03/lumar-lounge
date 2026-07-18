@@ -534,3 +534,29 @@ poi **Blackjack** e **Roulette**. Ogni nuovo gioco è un mattone `GameEngine`
 (regole pure) più i relativi mattoni `GameWorld`/`UI`/`Audio`. Restano temi
 trasversali e continui: ampliamento dei caratteri degli avversari, progressione
 tra casinò, e cura costante di accessibilità e localizzazione.
+
+---
+
+## Rifiniture da test reale (in corso)
+
+### ✅ Calibrazione bot + ritmo + accessibilità Stud (D-082/D-083/D-084)
+Sessione di correzione dai test dell'utente su telefono con VoiceOver — difetti di
+**esperienza e calibrazione**, non di correttezza (i test non li catturavano).
+- **Fold precoce nel Draw:** causa reale = `DrawStrategy.strength` era un punteggio
+  **ordinale di categoria** confrontato con barre su scala **equity**. Sostituito con
+  una equity Monte Carlo reale che **gioca lo scambio in avanti**; roster dedicato
+  `WorldPersonalities.riverwoodWhiskey` in GameWorld. Rock: fold di doppia coppia
+  pre-cambio **93% → 0%**.
+- **Aggressivo squalificato:** stessa causa + bluff-open senza gate di forza. Ora pesato
+  sulla plausibilità di far foldare tutti; **carattere non smussato**.
+- **Ritmo:** poste alzate su **curva misurata** (Riverwood Texas 20/40, Skypool 100/200,
+  Draw 25 / 50-100, Omaha 40/80); **ClockTower Stud accelerato con `StakeEscalation`**,
+  non con le poste (Pot Limit + identità di poste basse).
+- **Stud accessibile:** badge avversario separato in `opponent.N.board` (le scoperte,
+  senza preamboli) + `opponent.N` (nome/fiches/stato).
+
+### 🔭 Prossimo
+Nuovo test sul telefono per validare le calibrazioni; produzione dei restanti file audio
+(`vob_sky_*`, slot storici del mondo M2 e del croupier Draw); calibrazione comparativa
+Riverwood↔Skypool; cassa/DLC per ricarica gettoni; NPC narrativi; piscina/discoteca.
+

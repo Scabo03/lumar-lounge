@@ -22,6 +22,12 @@ func uiLocalized(_ key: String, _ args: CVarArg...) -> String {
     String(format: NSLocalizedString(key, bundle: .main, comment: ""), arguments: args)
 }
 
+/// Array-argument form, for call sites that build their arguments dynamically
+/// (a variadic cannot be forwarded). Same lookup as `uiLocalized`.
+func uiLocalizedList(_ key: String, _ args: [CVarArg]) -> String {
+    String(format: NSLocalizedString(key, bundle: .main, comment: ""), arguments: args)
+}
+
 /// Formats cards for display and for spoken (VoiceOver) output.
 enum CardText {
     /// Compact visual symbol, e.g. "A♠", "10♥".

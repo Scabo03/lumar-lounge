@@ -34,14 +34,17 @@ public struct TableRules: Equatable, Sendable {
         self.decisiveHandBoost = decisiveHandBoost
     }
 
-    /// The M1 table, unchanged: the starting roster, 10/20, 1000 buy-in.
+    /// The M1 table: the starting roster, 20/40, 1000 buy-in. PACE (D-084) — the blinds
+    /// were doubled from 10/20: a 1000 stack was 50 big blinds deep, so sessions dragged.
+    /// Texas here is NO LIMIT, so bigger blinds shorten the session without changing the
+    /// betting structure (there is no pot-size ceiling to inflate).
     public static let classic = TableRules(
-        style: .classic, smallBlind: 10, bigBlind: 20, buyIn: 1000,
+        style: .classic, smallBlind: 20, bigBlind: 40, buyIn: 1000,
         personalities: WorldPersonalities.classic, decisiveHandBoost: false)
 
     /// The Fast table: visibly more aggressive bots and the decisive-hand boost.
     public static let fast = TableRules(
-        style: .fast, smallBlind: 10, bigBlind: 20, buyIn: 1000,
+        style: .fast, smallBlind: 20, bigBlind: 40, buyIn: 1000,
         personalities: WorldPersonalities.fast, decisiveHandBoost: true)
 
     // MARK: - Skypool tables (D-065/D-066)
@@ -54,13 +57,13 @@ public struct TableRules: Equatable, Sendable {
 
     /// The Skypool Classic Texas table: urban bots, higher buy-in (a little above Fast).
     public static let skypoolClassic = TableRules(
-        style: .classic, smallBlind: 10, bigBlind: 20, buyIn: 6000,
+        style: .classic, smallBlind: 100, bigBlind: 200, buyIn: 6000,
         personalities: WorldPersonalities.skypool, decisiveHandBoost: false)
 
     /// The Skypool Fast Texas table: urban bots (fast variants), the decisive-hand
     /// boost, and the cheapest Skypool buy-in.
     public static let skypoolFast = TableRules(
-        style: .fast, smallBlind: 10, bigBlind: 20, buyIn: 5000,
+        style: .fast, smallBlind: 100, bigBlind: 200, buyIn: 5000,
         personalities: WorldPersonalities.skypoolFast, decisiveHandBoost: true)
 }
 
@@ -128,6 +131,48 @@ public enum WorldPersonalities {
                     pressureResistance: 0.92, trashFoldTendency: 0.08,
                     drawDiscipline: 0.50, drawBluffiness: 0.80, openingDiscipline: 0.20,
                     omahaCoordination: 0.30, omahaNuttiness: 0.25),
+    ]
+
+    // MARK: - Riverwood "Sala Whiskey" — Five-Card Draw roster (D-082)
+    //
+    // The Whiskey table used the shared starting roster, which is tuned for TEXAS.
+    // A personality is not right or wrong in the abstract — it is right or wrong IN
+    // THE ECONOMY OF ITS TABLE (CONVENTIONS §1-bis). At a 10-ante / 20-40 LIMIT draw
+    // table the cost of seeing the exchange is trivial, so the two dials that make a
+    // bot walk away before the draw were both wrong here:
+    //
+    //   • trashFoldTendency — now largely REDUNDANT: with real equity (D-082) the
+    //     bot already declines hopeless holdings on the maths. Left high it fired a
+    //     SECOND, blind fold on top, before the exchange that could rescue the hand.
+    //   • tightness — the rock's 0.90 raises its bar by +0.12 on the equity scale,
+    //     which at these stakes is the difference between "prudent" and "never puts
+    //     a chip in play", i.e. unkillable (a wall, not a hard opponent).
+    //
+    // What is NOT touched is each character's SIGNATURE: the rock still never bluffs
+    // (0.03) and never opens without provable openers (0.95); the aggressor keeps its
+    // reckless openingDiscipline of 0.20 — its light opening is now made sane by the
+    // structural fold-out gate in the bot (D-082), NOT by dulling its character; the
+    // novice keeps its low pressureResistance, i.e. it is still the one you can bully.
+    public static let riverwoodWhiskey: [Personality] = [
+        Personality(name: "Whiskey Novice",         // novice slot
+                    tightness: 0.20, aggression: 0.45, bluffFrequency: 0.30, riskTolerance: 0.30,
+                    positionAwareness: 0.15, rationality: 0.30, tiltReactivity: 0.80,
+                    pressureResistance: 0.35,   // still scared off by big bets — its signature
+                    trashFoldTendency: 0.08,    // equity decides now, not a blind second fold
+                    drawDiscipline: 0.25, drawBluffiness: 0.15, openingDiscipline: 0.50),
+        Personality(name: "Whiskey Rock",           // rock slot
+                    tightness: 0.68,            // prudent, but its chips circulate (was 0.90)
+                    aggression: 0.28, bluffFrequency: 0.03, riskTolerance: 0.32,
+                    positionAwareness: 0.70, rationality: 0.90, tiltReactivity: 0.10,
+                    pressureResistance: 0.50,
+                    trashFoldTendency: 0.20,    // was 0.90 — it folded before the draw on a coin flip
+                    drawDiscipline: 0.90, drawBluffiness: 0.05, openingDiscipline: 0.95),
+        Personality(name: "Whiskey Aggressor",      // aggressor slot
+                    tightness: 0.35, aggression: 0.90, bluffFrequency: 0.50, riskTolerance: 0.80,
+                    positionAwareness: 0.20, rationality: 0.55, tiltReactivity: 0.55,
+                    pressureResistance: 0.75, trashFoldTendency: 0.05,
+                    drawDiscipline: 0.50, drawBluffiness: 0.80,
+                    openingDiscipline: 0.20),   // UNCHANGED: character kept, absurdity fixed in the bot
     ]
 
     /// Skypool FAST-table variants of the urban archetypes: pushier and looser still

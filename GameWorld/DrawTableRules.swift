@@ -34,7 +34,7 @@ public struct DrawTableRules: Equatable, Sendable {
     /// starting personalities (D-038), plus the pace mechanics — a progressive ante
     /// (D-052) and decisive hands (D-053) — to keep the traditional draw from dragging.
     public static let riverwoodWhiskey = DrawTableRules(
-        ante: 10, smallBet: 20, bigBet: 40, buyIn: 2000,
-        personalities: [.eagerNovice, .conservativeRock, .hotAggressor],
+        ante: 25, smallBet: 50, bigBet: 100, buyIn: 2000,
+        personalities: WorldPersonalities.riverwoodWhiskey,
         progressiveAnte: true, decisiveHands: true)
 }

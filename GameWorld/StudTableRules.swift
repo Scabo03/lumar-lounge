@@ -47,10 +47,18 @@ public struct StudTableRules: Equatable, Sendable {
     /// (D-078): the brilliant-but-green student is a soft spot the player can beat first;
     /// the old master is the wall. Beating BOTH is the impresa the House rewards (D-079).
     /// (The adult / il Bibliotecario preset exists for a future third seat.)
+    /// PACE (D-084) — the ClockTower is the ONE table whose stakes were deliberately NOT
+    /// doubled. Its Pot-Limit ceiling is the size of the pot, so raising the ante/bet
+    /// would not merely speed the session up, it would make every hand more VIOLENT
+    /// (bigger pots ⇒ bigger maximum bets), and low stakes are part of what this place
+    /// IS. Instead the session is accelerated with `StakeEscalation` (D-064): hand one
+    /// stays exactly as cheap as it is today — the tower's identity is untouched — and
+    /// the stakes only tighten as the session runs on.
     public static let clockTower = StudTableRules(
         ante: 25, bringIn: 25, bet: 50, buyIn: 3000,
         personalities: [WorldPersonalities.clockTowerStudent, WorldPersonalities.clockTowerProfessor],
-        housePrize: HousePrize.clockTowerStud)
+        housePrize: HousePrize.clockTowerStud,
+        escalation: StakeEscalation(interval: 10, factor: 1.5))
 }
 
 // MARK: - The House Prize economy (D-078 → moved in D-079)

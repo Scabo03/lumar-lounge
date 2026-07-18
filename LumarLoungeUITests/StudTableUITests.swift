@@ -45,9 +45,17 @@ final class StudTableUITests: XCTestCase {
         XCTAssertTrue(app.otherElements["studtable.container"].waitForExistence(timeout: 15), "Stud container missing")
         XCTAssertTrue(app.staticTexts["studtable.pot"].exists, "pot missing")
         XCTAssertTrue(app.staticTexts["studtable.stakes"].exists, "stakes missing")
-        // The two opponents' badges — the on-demand board interrogation (D-078).
-        XCTAssertTrue(app.otherElements["opponent.1"].waitForExistence(timeout: 10), "opponent 1 badge missing")
-        XCTAssertTrue(app.otherElements["opponent.2"].exists, "opponent 2 badge missing")
+        // The two opponents' badges — the on-demand board interrogation (D-078), now
+        // SPLIT into a board element and an identity element (D-083). The board must be
+        // its own swipe stop: reading the boards is done many times per hand, so it may
+        // never be buried behind name and chips again.
+        XCTAssertTrue(app.otherElements["opponent.1"].waitForExistence(timeout: 10), "opponent 1 identity missing")
+        XCTAssertTrue(app.otherElements["opponent.2"].exists, "opponent 2 identity missing")
+        XCTAssertTrue(app.otherElements["opponent.1.board"].exists, "opponent 1 board is not its own element")
+        XCTAssertTrue(app.otherElements["opponent.2.board"].exists, "opponent 2 board is not its own element")
+        // The board element must not read chips — that is the whole point of the split.
+        XCTAssertFalse(app.otherElements["opponent.1.board"].label.contains("fiches"),
+                       "the board element still carries the chips preamble")
         // The action bar and leave control.
         XCTAssertTrue(app.buttons["action.raise"].exists, "raise button missing")
         XCTAssertTrue(app.buttons["action.fold"].exists, "fold button missing")

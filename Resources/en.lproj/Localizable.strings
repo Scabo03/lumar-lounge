@@ -539,3 +539,9 @@
 "stud.announce.action.allin" = "%@ is all in.";
 "stud.announce.houseprize" = "You beat the table. The House rewards you with %d chips.";
 "stud.announce.yourturn" = "Your turn.";
+
+/* D-083 — Stud opponent board: the cards FIRST, no preamble. Describes, never advises. */
+"stud.board.a11y" = "%1$@, %2$@";
+"stud.board.none.a11y" = "%@, nothing showing";
+"stud.board.folded.a11y" = "%@, folded";
+"stud.board.busted.a11y" = "%@, out";
