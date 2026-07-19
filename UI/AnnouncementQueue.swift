@@ -37,7 +37,13 @@ public enum AnnouncementPriority: Int, Comparable, Sendable {
 @MainActor
 public final class AnnouncementQueue {
 
-    private struct Item { let text: String; let priority: AnnouncementPriority }
+    private struct Item {
+        let text: String
+        let priority: AnnouncementPriority
+        /// Fires when this item has been SPOKEN — or when it is dropped, so a caller
+        /// sequencing something after it (an outcome effect, D-085) is never stranded.
+        let completion: (() -> Void)?
+    }
 
     private var pending: [Item] = []
     private var current: Item?
@@ -68,6 +74,13 @@ public final class AnnouncementQueue {
     /// croupier mp3 holding it. Lets the UI advance the visual timeline in step with
     /// the ear when the app's VoiceOver mode is on (D-034).
     public var isQuiet: Bool { current == nil && pending.isEmpty && !externalSpeechActive }
+    /// Estimated seconds of speech still owed by this queue: what is being spoken now
+    /// plus everything queued behind it. The UI uses it to size its wait ADAPTIVELY
+    /// instead of against a fixed cap (D-085).
+    public var estimatedRemaining: TimeInterval {
+        (current.map { Self.speakTime($0.text) } ?? 0) + pending.reduce(0) { $0 + Self.speakTime($1.text) }
+    }
+
     /// Test seam: the currently queued (not-yet-started) items.
     public func pendingSnapshot() -> [(String, AnnouncementPriority)] { pending.map { ($0.text, $0.priority) } }
 
@@ -96,9 +109,10 @@ public final class AnnouncementQueue {
 
     /// Enqueues an announcement. Serial, never truncating; low/medium may be
     /// dropped under backlog to keep high-priority timely (Strategy C).
-    public func enqueue(_ text: String, priority: AnnouncementPriority) {
-        guard !text.isEmpty else { return }
-        insert(Item(text: text, priority: priority))
+    public func enqueue(_ text: String, priority: AnnouncementPriority,
+                        completion: (() -> Void)? = nil) {
+        guard !text.isEmpty else { completion?(); return }
+        insert(Item(text: text, priority: priority, completion: completion))
         enforceBacklog()
         SpokenLog.log("enqueue [\(priority)] \(text)  (pending=\(pending.count))")
         process()
@@ -115,7 +129,11 @@ public final class AnnouncementQueue {
 
     /// Drops queued-but-not-started announcements so a following time-critical cue
     /// (the human turn) plays promptly.
-    public func flushPending() { pending.removeAll() }
+    public func flushPending() {
+        let dropped = pending
+        pending.removeAll()
+        for item in dropped { item.completion?() }
+    }
 
     /// Asks VoiceOver to re-scan a newly appeared screen/modal and move focus (the
     /// focus-landing pattern, D-057). This is NOT an announcement, but VoiceOver
@@ -168,6 +186,7 @@ public final class AnnouncementQueue {
             let dropped = pending.remove(at: idx)
             SpokenLog.log("DROP [\(dropped.priority)] \(dropped.text)")
             dropObserver?(dropped.text, dropped.priority)
+            dropped.completion?()      // never strand a caller sequenced behind it
         }
     }
 
@@ -211,7 +230,9 @@ public final class AnnouncementQueue {
     }
 
     private func finishCurrent() {
+        let finished = current
         current = nil
+        finished?.completion?()
         let waiters = idleWaiters; idleWaiters.removeAll()
         for w in waiters { w.resume() }
         if !externalSpeechActive { process() }

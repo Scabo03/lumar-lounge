@@ -583,6 +583,45 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
   preambolo e vanno nell'elemento secondario. Vale per ogni gioco presente e futuro; il
   criterio è "quante volte per mano viene letto", non "quanto è importante".
 
+- **Quando l'ORDINE fra canale audio e canale parlato porta informazione, va reso ESPLICITO —
+  mai affidato al tempo (principio permanente, D-085).** Un effetto sonoro che rivela un esito
+  (il colpo di vittoria/sconfitta, un jingle di fine partita) **non è missaggio: è informazione**.
+  Se lo suona un consumatore parallelo con orologio proprio mentre la riga che dice *cosa è
+  successo* è in coda, l'effetto **spoilera il risultato** — e nessuna taratura di volumi o ritardi
+  lo risolve, perché i due canali non sono ordinati fra loro. **Regola:** un cue il cui significato
+  dipende dall'ordine va **sequenziato sullo stesso canale** dell'annuncio a cui si riferisce (nel
+  progetto: `SpeechConductor.say(trailing:)`, che lo suona alla completion della riga), così
+  l'ordine è garantito **per costruzione**. Corollario: se la riga viene droppata, **il cue suona
+  comunque** — nessuno resta senza. Un cue puramente atmosferico (ambient, colore) non ha questo
+  vincolo e può restare parallelo.
+- **Chi governa una coda deve governarla DOVE il backlog si forma davvero (D-085).** Priorità e
+  drop su una coda servono a nulla se un anello **a monte** la alimenta un elemento alla volta: la
+  coda resta vuota, sembra sana, e l'accumulo avviene nell'anello a monte, invisibile e illimitato.
+  **Regola:** il budget si misura e si applica sul **canale intero** (tutti gli anelli in serie),
+  non sull'ultimo. E attenzione a **riusare la regola di drop di un anello in un altro senza
+  ricontrollarne l'INVARIANTE**: "non droppare mai la testa" è giusto dove la testa è l'elemento in
+  riproduzione, ed è **sbagliato** dove l'elemento in riproduzione è già stato rimosso — lì rende
+  quasi tutto non droppabile e il budget non morde (successo davvero, misurato).
+- **Un tetto di attesa fisso non può distinguere narrazione onesta da un blocco (D-085).** Lo stesso
+  numero deve servire due scopi opposti — coprire il parlato legittimo più lungo e liberare presto
+  la UI se qualcosa si è piantato — e non può. **Regola:** dimensionare l'attesa su **quanto il
+  canale dichiara di dovere ancora** (con pavimento e tetto duro): la narrazione vera viene attesa
+  perché la stima è grande, un canale piantato — che non dichiara nulla — scatta subito. Resta
+  fermo che l'attesa è un **backstop anti-freeze, non un budget di parlato**, e che **la
+  possibilità di agire del giocatore batte la perfezione della sintesi**.
+- **Abbandonare deve essere possibile e avere un COSTO, non essere impedito (D-086).** Un'azione di
+  uscita (alzarsi dal tavolo) non si differisce alla fine di un'unità di gioco: si concede subito,
+  con le conseguenze naturali dell'abbandono. Se le conseguenze cadono già fuori dal motore — le
+  fiches impegnate sono **già** dedotte dallo stack, un premio è **già** condizionato a un traguardo
+  non raggiunto — allora **l'economia si concilia da sola** e non serve alcun caso speciale: prima
+  di aggiungerne uno, verificare se la regola esistente non produca già l'esito giusto.
+- **Un numero detto ad alta voce dev'essere quello VERO, o non va detto (D-087).** In un annuncio
+  accessibile un importo sbagliato è peggio di un importo assente: il giocatore non vedente non ha
+  modo di correggerlo con lo sguardo. Prima di leggere una cifra presa da un evento, verificare che
+  quell'evento porti davvero la grandezza che il giocatore capirà (nel progetto: un piatto è
+  spezzato in un evento **per livello di contribuzione**, quindi nessun singolo `potAwarded` è "ciò
+  che hai vinto" — la cifra giusta è la variazione reale dello stack).
+
 ## 5. Testabilità
 
 - La logica pura (`GameEngine`, e in prospettiva `GameWorld`) deve essere

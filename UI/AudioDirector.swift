@@ -166,12 +166,23 @@ public final class AudioDirector {
     }
     private var tenseBed: SoundID { bed(ambient.tense, ambient.tenseFallback) }
 
+    /// The hand's win/lose sting is NOT played here any more (D-085). It is an
+    /// OUTCOME-REVEALING cue: heard before the line that says who won, it spoils the
+    /// result — a defect of INFORMATION, not of mixing. This director is a parallel
+    /// consumer running on its own clock, so from here the order could never be
+    /// guaranteed. The sting is now sequenced on the spoken channel, as the TRAILING
+    /// cue of the pot announcement (see `TableViewModel.speakPot`). All this keeps is
+    /// the hero's chip bookkeeping.
     private func heroChipDeltaFeedback(_ chips: [Int: Int]) {
-        guard let start = startChips[heroSeatID], let final = chips[heroSeatID] else { return }
-        let fx = final > start ? SoundCatalog.fxWinHand
-               : (final < start ? SoundCatalog.fxLoseHand : SoundCatalog.fxHandNeutral)
-        audio.play(fx, category: .effect)
+        guard let final = chips[heroSeatID] else { return }
         heroChips = final
+    }
+
+    /// The sting that belongs to a hand result, chosen from the hero's chip delta.
+    /// Exposed so the spoken layer can play it AFTER the result is announced.
+    public static func handOutcomeSting(startChips: Int, finalChips: Int) -> SoundID {
+        finalChips > startChips ? SoundCatalog.fxWinHand
+        : (finalChips < startChips ? SoundCatalog.fxLoseHand : SoundCatalog.fxHandNeutral)
     }
 
     /// The novice reacts emotionally to winning/losing a hand (the others don't).

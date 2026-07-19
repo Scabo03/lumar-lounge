@@ -51,20 +51,40 @@ public actor HumanDrawActionProvider: DrawActionProvider {
     public private(set) var pendingAction: DrawBotContext?
     /// The draw situation the human is being asked about (nil when not drawing).
     public private(set) var pendingDraw: DrawDrawContext?
+    /// Set once the player has walked away from the table mid-hand (D-086).
+    private var abandoned = false
 
     public init() {}
 
     public func provideAction(for context: DrawBotContext) async -> DrawAction {
-        await withCheckedContinuation { (cont: CheckedContinuation<DrawAction, Never>) in
+        // ABANDONED (D-086): fold now and for every turn still to come.
+        if abandoned { return .fold }
+        return await withCheckedContinuation { (cont: CheckedContinuation<DrawAction, Never>) in
             self.pendingAction = context
             self.actionContinuation = cont
         }
     }
 
     public func provideDiscards(for context: DrawDrawContext) async -> [Card] {
-        await withCheckedContinuation { (cont: CheckedContinuation<[Card], Never>) in
+        // ABANDONED (D-086): stand pat — the seat has folded, the exchange is moot.
+        if abandoned { return [] }
+        return await withCheckedContinuation { (cont: CheckedContinuation<[Card], Never>) in
             self.pendingDraw = context
             self.drawContinuation = cont
+        }
+    }
+
+    /// The player has left the table: fold (and stand pat) now and for the rest of
+    /// the hand, so BOTH suspensions release and the driver can finish (D-086).
+    public func abandon() {
+        abandoned = true
+        if let cont = actionContinuation {
+            actionContinuation = nil; pendingAction = nil
+            cont.resume(returning: .fold)
+        }
+        if let cont = drawContinuation {
+            drawContinuation = nil; pendingDraw = nil
+            cont.resume(returning: [])
         }
     }
 

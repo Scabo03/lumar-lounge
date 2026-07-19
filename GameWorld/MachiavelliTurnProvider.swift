@@ -46,11 +46,18 @@ public struct MachiavelliBotTurnProvider: MachiavelliTurnProvider {
 public actor HumanMachiavelliTurnProvider: MachiavelliTurnProvider {
     private var continuation: CheckedContinuation<MachiavelliTurnPlan, Never>?
     public private(set) var pendingContext: MachiavelliBotContext?
+    /// Set once the player has walked away from the table mid-match (D-086).
+    private var abandoned = false
 
     public init() {}
 
     public func provideTurn(for context: MachiavelliBotContext) async -> MachiavelliTurnPlan {
-        await withCheckedContinuation { cont in
+        // ABANDONED (D-086): the player walked away. Every remaining turn of theirs
+        // places nothing and draws, so the match resolves at code speed instead of
+        // hanging on a human who has left. At Machiavelli the hand IS the match, so
+        // without this the player would have had to sit through the whole thing.
+        if abandoned { return MachiavelliTurnPlan(finalTable: context.table.map(\.cards), terminal: .draw) }
+        return await withCheckedContinuation { cont in
             self.pendingContext = context
             self.continuation = cont
         }
@@ -62,6 +69,16 @@ public actor HumanMachiavelliTurnProvider: MachiavelliTurnProvider {
         continuation = nil
         pendingContext = nil
         cont.resume(returning: plan)
+    }
+
+    /// The player has left the table: draw now and for every remaining turn.
+    public func abandon() {
+        abandoned = true
+        guard let cont = continuation else { return }
+        let table = (pendingContext?.table ?? []).map(\.cards)
+        continuation = nil
+        pendingContext = nil
+        cont.resume(returning: MachiavelliTurnPlan(finalTable: table, terminal: .draw))
     }
 
     public var isWaiting: Bool { continuation != nil }

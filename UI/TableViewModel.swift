@@ -102,6 +102,12 @@ public final class TableViewModel: ObservableObject {
     /// The player asked to stand up; they leave at the end of the current hand.
     @Published public private(set) var pendingLeave = false
     private var leaveAfterHand = false
+    /// Set once the player has stood up, so the UI stops narrating and no further
+    /// turn is ever offered (D-086).
+    private var hasLeft = false
+    /// Set when the HUMAN folds: the rest of the hand is fast-forwarded to the
+    /// showdown instead of narrating betting rounds they are not part of (D-087).
+    private var fastForward = false
     /// Whether any player folded pre-flop this hand (feeds the boost, D-037).
     private var preflopFoldThisHand = false
     private var sawFlopThisHand = false
@@ -116,6 +122,9 @@ public final class TableViewModel: ObservableObject {
     /// Guards the pot conclusion to once per hand — a hand can award several pots
     /// (main + side), and only the croupier mp3 was deduped before (D-029 fix).
     private var potAnnounced = false
+    /// The hero's stack at the start of the hand, so the hand's NET result can be
+    /// announced from what actually changed hands (D-087).
+    private var heroChipsAtHandStart = 0
 
     /// - Parameter seed: `nil` (production default) → the session deals fresh RANDOM
     ///   cards every hand (D-047); a fixed value makes the whole session deterministic
@@ -176,13 +185,27 @@ public final class TableViewModel: ObservableObject {
 
     // MARK: - Leaving the table (D-036)
 
-    /// The player asks to stand up. Between hands (or after busting) they leave at
-    /// once; during a hand it's deferred to the end of the current hand — nobody
-    /// abandons a hand mid-way.
+    /// The player asks to stand up — and stands up IMMEDIATELY, mid-hand or not (D-086).
+    ///
+    /// This used to be deferred to the end of the current hand ("nobody abandons a hand
+    /// mid-way"), which made leaving a table a request rather than a decision. Walking
+    /// away is now always allowed, and it has the NATURAL CONSEQUENCE of walking away:
+    /// the chips already committed to the pot are FORFEIT, and only the chips still in
+    /// the player's own stack are cashed out. No permission, no waiting — a cost.
+    ///
+    /// Mechanically: the human provider is told to abandon, so the turn suspended right
+    /// now (and every turn still to come this hand) folds at once and the driver finishes
+    /// the hand at code speed with the seat folded. The stack read here is already NET of
+    /// everything committed — the engine deducts a bet from the stack when it is made —
+    /// so cashing it out IS the forfeit, with no engine change and no special case.
     public func requestLeave() {
-        if outcome != nil { finishAndLeave(); return }   // already ended → leave now
+        guard !hasLeft else { return }
+        hasLeft = true
         leaveAfterHand = true
-        pendingLeave = true
+        pendingLeave = false
+        let remaining = state.seat(heroSeatID)?.chips ?? 0
+        Task { await human.abandon() }
+        onLeave(remaining)
     }
 
     private func finishAndLeave() {
@@ -235,7 +258,7 @@ public final class TableViewModel: ObservableObject {
     }
 
     private func consume() async {
-        while !Task.isCancelled {
+        while !Task.isCancelled, !hasLeft {
             if !eventQueue.isEmpty {
                 await present(eventQueue.removeFirst())
             } else if let context = await human.pendingContext {
@@ -258,6 +281,8 @@ public final class TableViewModel: ObservableObject {
             shownCategory.removeAll()
             shownBestFive.removeAll()
             potAnnounced = false
+            heroChipsAtHandStart = state.seat(heroSeatID)?.chips ?? 0
+            fastForward = false
             preflopFoldThisHand = false
             sawFlopThisHand = false
             state = TableReducer.reduce(state, payload)
@@ -292,7 +317,7 @@ public final class TableViewModel: ObservableObject {
             if seatID != heroSeatID { await pause(mode.isEnabled ? 0.1 : 0.55) } // bot "thinking"
             state = TableReducer.reduce(state, payload)
             if case .folded = action, !sawFlopThisHand { preflopFoldThisHand = true } // for the boost (D-037)
-            speakAction(seatID: seatID, action: action)   // opponent synthesis + vob_ (D-031)
+            if !fastForward { speakAction(seatID: seatID, action: action) }  // (D-031/D-087)
             await pace(payload, human: 0.4)
             if state.activeSeatID == seatID { state.activeSeatID = nil }
 
@@ -310,6 +335,7 @@ public final class TableViewModel: ObservableObject {
 
         case .handEnded:
             state = TableReducer.reduce(state, payload)
+            speakNetResult()
             // Feed the boost BEFORE releasing the gate, so the producer sees the
             // updated streak when it acquires it for the next hand (D-037).
             if rules.decisiveHandBoost { boost.recordHand(anyFoldPreflop: preflopFoldThisHand) }
@@ -333,6 +359,8 @@ public final class TableViewModel: ObservableObject {
     /// the spoken channel (croupier + announcement queue) to go quiet, so eye and ear
     /// walk together (D-034); OFF → keep the fast internal human rhythm.
     private func pace(_ payload: EventPayload, human: Double) async {
+        // Fast-forwarding after the human folded: no pause at all until the payoff.
+        if fastForward, !Self.isPayoff(payload) { return }
         announcements.pacedWhenSilent = mode.isEnabled
         SpokenLog.log("visual \(eventLabel(payload)) mode=\(mode.isEnabled ? "ON" : "OFF")")
         if mode.isEnabled {
@@ -348,9 +376,12 @@ public final class TableViewModel: ObservableObject {
     /// Bounded by a safeguard so a stuck voice can never freeze the UI (D-056).
     private func awaitSpokenChannelQuiet() async {
         SpokenLog.log("visual WAIT begin (texas)")
+        // ADAPTIVE cap (D-085): sized on what the spoken channel says it still owes,
+        // so honest long narration is waited out and a genuine hang trips fast.
         let quiet = await SpokenChannelPacing.awaitQuiet(
             isQuiet: { self.conductor.isIdle && self.announcements.isQuiet },
             isCancelled: { Task.isCancelled },
+            maxWait: SpokenChannelPacing.adaptiveMaxWait(channelRemaining: self.conductor.channelRemaining),
             label: "texas")
         SpokenLog.log("visual WAIT end (texas) quiet=\(quiet)")
     }
@@ -371,9 +402,29 @@ public final class TableViewModel: ObservableObject {
         }
     }
 
+    /// Announces what the hand actually netted the player, when they gained (D-087).
+    /// Sourced from the real change in their stack, not from a pot event's amount.
+    private func speakNetResult() {
+        let now = state.seat(heroSeatID)?.chips ?? 0
+        let gain = now - heroChipsAtHandStart
+        guard gain > 0 else { return }
+        conductor.say(lead: nil, synthesis: SpeechMap.text(for: .heroNetWin(chips: gain)),
+                      priority: .high, reason: "net-result")
+    }
+
+    /// The events that carry the RESULT of a hand — the only ones still narrated (and
+    /// paced) while fast-forwarding past rounds the folded human cannot act in (D-087).
+    static func isPayoff(_ payload: EventPayload) -> Bool {
+        switch payload {
+        case .handShown, .potAwarded, .handEnded, .playerBusted, .sessionEnded: return true
+        default: return false
+        }
+    }
+
     /// Sends an event's spoken plan (croupier lead and/or synthesis, with fallback)
     /// to the conductor.
     private func speak(_ payload: EventPayload, _ reason: String = "") {
+        if fastForward, !Self.isPayoff(payload) { return }
         say(SpeechMap.plan(for: payload, heroSeatID: heroSeatID, names: names), reason: reason)
     }
 
@@ -440,13 +491,21 @@ public final class TableViewModel: ObservableObject {
         }
         let prio = line.map(SpeechMap.priority) ?? .high
         let (lead, fbKey) = casinoAudio.croupier(plan.croupier)
+        // ORDER CARRIES INFORMATION (D-085): the win/lose sting is the TRAILING cue of
+        // this announcement, so it can never be heard before the line that says who won.
+        // It used to be fired independently by the AudioDirector on `handEnded`, on its
+        // own clock, and so regularly spoiled the result while this line was still queued.
+        let sting = winners.contains(heroSeatID) ? SoundCatalog.fxWinHand : SoundCatalog.fxLoseHand
         conductor.say(lead: lead, synthesis: line.map(SpeechMap.text), fallback: fbKey.map(uiLocalized),
-                      priority: prio, reason: "pot")
+                      trailing: sting, priority: prio, reason: "pot")
     }
 
     // MARK: - The human's turn
 
     private func runHumanTurn(_ context: BotContext) async {
+        // The player has left: never offer a turn again (D-086). The provider is
+        // already abandoned, so the driver has its fold.
+        if hasLeft { return }
         let info = HumanTurnInfo(from: context)
         humanTurn = info
         state.activeSeatID = heroSeatID
@@ -479,7 +538,16 @@ public final class TableViewModel: ObservableObject {
 
     // MARK: - Action-bar intents (called by the view)
 
-    public func fold() { playUI(SoundCatalog.uiButtonTap); act(.fold) }
+    public func fold() {
+        playUI(SoundCatalog.uiButtonTap)
+        // FAST-FORWARD (D-087): once the human is out of the hand, the betting rounds
+        // they are not part of are skipped — no pauses, no narration — and the hand
+        // runs straight to the showdown, which IS narrated in full. Automatic, not
+        // optional. This takes nothing away from reading the opponents: every surviving
+        // hand is still announced; only the wait for rounds they cannot act in is cut.
+        fastForward = true
+        act(.fold)
+    }
 
     public func checkOrCall() {
         guard let turn = humanTurn else { return }

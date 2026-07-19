@@ -97,6 +97,8 @@ public final class MachiavelliTableViewModel: ObservableObject {
     private let progress: MachiavelliProgressStore
 
     private var leaveAfterHand = false
+    /// Set once the player has stood up: stop narrating, never offer another turn (D-086).
+    private var hasLeft = false
     private var eventQueue: [MachiavelliEventPayload] = []
     private var streamFinished = false
     private var turnContinuation: CheckedContinuation<Void, Never>?
@@ -177,10 +179,25 @@ public final class MachiavelliTableViewModel: ObservableObject {
 
     // MARK: - Leaving
 
+    /// The player stands up IMMEDIATELY, mid-hand or not (D-086). Walking away is a
+    /// decision, not a request: it costs whatever is already committed, and keeps only
+    /// what is unambiguously the player's. The human provider is abandoned so the turn
+    /// suspended right now — and every one still to come — resolves at once and the
+    /// driver finishes at code speed.
     public func requestLeave() {
-        if outcome != nil { onLeave(cashOut); return }
+        guard !hasLeft else { return }
+        hasLeft = true
         leaveAfterHand = true
-        pendingLeave = true
+        pendingLeave = false
+        // MACHIAVELLI ECONOMY (D-086): here the buy-in IS what is in the pot, and the
+        // refund (D-075) is earned by playing the hand OUT — it rewards how well you
+        // played, measured on a final score that an abandoned match does not have.
+        // So walking away FORFEITS the stake entirely: the faithful analogue of losing
+        // the chips you already pushed in, and non-gameable (no leaving at a good moment
+        // to bank a partial refund). The refund mechanic itself is untouched.
+        let remaining = 0
+        Task { await human.abandon() }
+        onLeave(remaining)
     }
     /// Chips to cash out at game end: full buy-in if the hero WON (prestige, D-072), else
     /// the score-based partial REFUND (D-075). Whoever GOES OUT wins; the loser recovers a
@@ -219,7 +236,7 @@ public final class MachiavelliTableViewModel: ObservableObject {
     }
 
     private func consume() async {
-        while !Task.isCancelled {
+        while !Task.isCancelled, !hasLeft {
             if !eventQueue.isEmpty {
                 await present(eventQueue.removeFirst())
             } else if await human.isWaiting, let context = await human.pendingContext {
@@ -325,7 +342,9 @@ public final class MachiavelliTableViewModel: ObservableObject {
     private func awaitSpokenChannelQuiet() async {
         _ = await SpokenChannelPacing.awaitQuiet(
             isQuiet: { self.conductor.isIdle && self.announcements.isQuiet },
-            isCancelled: { Task.isCancelled }, label: "machiavelli")
+            isCancelled: { Task.isCancelled },
+            maxWait: SpokenChannelPacing.adaptiveMaxWait(channelRemaining: self.conductor.channelRemaining),
+            label: "machiavelli")
     }
 
     // MARK: - Speech helpers
@@ -360,6 +379,8 @@ public final class MachiavelliTableViewModel: ObservableObject {
     // MARK: - The human's turn
 
     private func runHumanTurn(_ context: MachiavelliBotContext) async {
+        // The player has left: never offer a turn again (D-086).
+        if hasLeft { return }
         turnContext = context
         workspace = MachiavelliWorkspace(hand: context.hand, table: context.table.map { $0.cards })
         state.activeSeatID = heroSeatID

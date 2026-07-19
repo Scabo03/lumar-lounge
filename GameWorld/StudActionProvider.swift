@@ -26,12 +26,17 @@ public struct StudBotActionProvider: StudActionProvider {
 /// A human provider: `provideAction` suspends until the UI calls `submit(_:)`.
 public actor HumanStudActionProvider: StudActionProvider {
     private var continuation: CheckedContinuation<StudAction, Never>?
+    /// Set once the player has walked away from the table mid-hand (D-086).
+    private var abandoned = false
     public private(set) var pendingContext: StudBotContext?
 
     public init() {}
 
     public func provideAction(for context: StudBotContext) async -> StudAction {
-        await withCheckedContinuation { cont in
+        // ABANDONED (D-086): the player left mid-hand — fold now and for every turn
+        // still to come, so the driver finishes the hand at code speed.
+        if abandoned { return .fold }
+        return await withCheckedContinuation { cont in
             self.pendingContext = context
             self.continuation = cont
         }
@@ -43,6 +48,15 @@ public actor HumanStudActionProvider: StudActionProvider {
         continuation = nil
         pendingContext = nil
         cont.resume(returning: action)
+    }
+
+    /// The player has left the table: fold now and for the rest of the hand.
+    public func abandon() {
+        abandoned = true
+        guard let cont = continuation else { return }
+        continuation = nil
+        pendingContext = nil
+        cont.resume(returning: .fold)
     }
 
     public var isWaiting: Bool { continuation != nil }

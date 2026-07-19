@@ -33,6 +33,29 @@ enum SpokenChannelPacing {
     /// announcement queue's own cap, so this only fires if BOTH of those also fail.
     /// (VoiceOver-OFF mode never uses this path — it keeps its fixed human pauses.)
     static let defaultMaxWait: TimeInterval = 8.0
+    /// The HARD ceiling for an adaptive wait: however much speech the channel still
+    /// claims to owe, the UI never blocks longer than this (D-085).
+    /// Measured on device (D-085): a fully preserved three-way showdown — every hand
+    /// revealed, nothing dropped — costs 21.7 s of spoken channel. The ceiling sits
+    /// above it so that legitimate narration is waited out in full; a genuine hang is
+    /// still caught in `minimumWait`, because a hung channel reports nothing outstanding.
+    static let hardCeiling: TimeInterval = 25.0
+    /// The floor for an adaptive wait, so a channel that reports nothing outstanding
+    /// still gets a moment to settle.
+    static let minimumWait: TimeInterval = 2.0
+
+    /// The wait to allow given how much speech the channel says it still owes.
+    ///
+    /// A FIXED cap cannot be right for both jobs (measured, D-085): a three-way
+    /// showdown legitimately needs ~18 s of narration, so an 8 s cap fired in the
+    /// MIDDLE of honest speech and let the display run away from the ear; but raising
+    /// the cap to cover it would leave a genuine hang frozen for that long. Sizing the
+    /// wait on the channel's own estimate separates the two: real narration is waited
+    /// out (estimate is large), while a hang — nothing outstanding yet never quiet —
+    /// trips in `minimumWait`.
+    static func adaptiveMaxWait(channelRemaining: TimeInterval) -> TimeInterval {
+        min(hardCeiling, max(minimumWait, channelRemaining * 1.4 + 1.0))
+    }
     /// Polling granularity while waiting.
     static let defaultStep: TimeInterval = 0.025
 

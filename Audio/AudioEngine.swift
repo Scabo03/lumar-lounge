@@ -158,6 +158,14 @@ public final class AudioEngine: NSObject, AudioServicing, AVAudioPlayerDelegate 
         }
     }
 
+    /// The nominal duration of a bundled clip, or `nil` if it isn't bundled/loadable.
+    /// Lets a caller BUDGET a spoken sequence in advance (D-085) instead of only
+    /// discovering its length by waiting for it.
+    public func duration(of id: SoundID) -> TimeInterval? {
+        guard let player = makePlayer(id) else { return nil }
+        return player.duration
+    }
+
     public func spokenAudioRemaining() -> TimeInterval {
         spokenPlayers.reduce(0) { longest, player in
             guard player.isPlaying else { return longest }

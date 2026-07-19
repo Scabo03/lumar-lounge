@@ -40,14 +40,31 @@ public actor HumanActionProvider: ActionProvider {
     private var continuation: CheckedContinuation<Action, Never>?
     /// The situation the human is currently being asked about (nil when idle).
     public private(set) var pendingContext: BotContext?
+    /// Set once the player has walked away from the table mid-hand (D-086).
+    private var abandoned = false
 
     public init() {}
 
     public func provideAction(for context: BotContext) async -> Action {
-        await withCheckedContinuation { (continuation: CheckedContinuation<Action, Never>) in
+        // ABANDONED (D-086): the player left the table. Every turn of theirs — the one
+        // suspended right now and every one still to come this hand — folds at once, so
+        // the driver runs the rest of the hand at code speed, the session ends cleanly
+        // and no chips are stranded. Folding IS the natural consequence of walking away:
+        // whatever they had already committed stays in the pot.
+        if abandoned { return .fold }
+        return await withCheckedContinuation { (continuation: CheckedContinuation<Action, Never>) in
             self.pendingContext = context
             self.continuation = continuation
         }
+    }
+
+    /// The player has left the table: fold now and for the rest of the hand.
+    public func abandon() {
+        abandoned = true
+        guard let continuation else { return }
+        self.continuation = nil
+        self.pendingContext = nil
+        continuation.resume(returning: .fold)
     }
 
     /// Delivers the human's chosen action, resuming the suspended driver.

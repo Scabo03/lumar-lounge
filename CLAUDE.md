@@ -146,6 +146,14 @@ e la sua **musica** (archi al poker, clockwork dosato al Machiavelli — D-080).
   `vo_it_pass_and_out`, `vo_it_carried_pot`, `vo_it_openers_disqualified`, `vo_it_high_stakes_draw`),
   e i 2 storici (`amb_crowd_distant`, `fx_hand_neutral`).
 
+**Sessione ritmo + controllo della sessione (D-085/D-086/D-087):** ristrutturata la
+sincronizzazione dei tre canali dopo **misure sul device reale** — il backlog non era nella coda
+annunci ma nel `SpeechConductor` che la alimenta una voce alla volta, quindi la Strategy C di D-032
+era scavalcata per costruzione; budget ora sull'**intero canale**, ordine **esplicito** fra effetto
+di esito e annuncio (l'effetto non può più spoilerare), safeguard **adattivo** al posto del tetto
+fisso. Il giocatore può **lasciare il tavolo quando vuole** (perdendo ciò che ha nel piatto), e dopo
+il **fold** la mano **corre allo showdown** annunciando comunque tutte le mani. 506 test verdi.
+
 **Sessione di calibrazione post-test reale (D-082/D-083/D-084):** corretta al fondo la **causa** del
 fold precoce nel Draw (un **disallineamento di scala** — punteggio ordinale di categoria confrontato
 con una barra di equity — non la taratura delle leve), che spiegava **anche** le squalifiche
@@ -2584,4 +2592,86 @@ l'assunto:
   nessuno lo folda, quindi confrontava 0 con 0. **Riscritto (dichiarato)** con un progetto fallito
   (equity **misurata** 0.37, tra le due barre reali 0.28/0.41). Il meccanismo di pressione (D-048) è
   **intatto**.
+
+### D-085 — Sincronizzazione dei tre canali: il backlog non era dove la sorvegliavamo (misurato SUL DEVICE)
+Quattro sintomi riportati dal test con VoiceOver, che si sono rivelati **facce dello stesso
+problema strutturale**. Misurato **sul telefono reale via cavo** con un banco dedicato
+(`PacingBench`, lanciato con `-pacingBench`, file audio veri nel bundle) — perché sul simulatore
+le completion arrivano sempre e i tempi sono altri (lezione D-056).
+- **Numeri misurati.** *(a)* **Latenza clip play→completion: da +0.078 s a +0.127 s** su nove voci
+  croupier ⇒ **la garanzia di completion di D-056 FUNZIONA**, l'ipotesi "callback perse" è **morta**.
+  *(b)* **Ritmo di parlato reale** 1.17–5.02 s per riga; la stima `speakTime` sbaglia tra **−1% e
+  +27%**, sempre per eccesso ⇒ è conservativa e resta valida come euristica di drop. *(c)* **Una
+  raffica di showdown a quattro elementi impiega 18.30 s a drenare**, e — il dato decisivo — **la
+  profondità della coda annunci non ha MAI superato 1** in tutti quei secondi.
+- **LA CAUSA REALE, comune ai sintomi 1, 3 e 4.** La Strategy C di D-032 (priorità + drop) governa
+  la `AnnouncementQueue`, ma il `SpeechConductor` — diventato in D-032 l'**unico alimentatore** della
+  coda — le passa le voci **una alla volta**, aspettando ogni mp3. Quindi la coda non vede mai un
+  backlog da governare: **il backlog si forma nel conductor**, che era una **FIFO ILLIMITATA, senza
+  priorità né drop**. Tutto il meccanismo di D-032 era scavalcato **per costruzione**. Non era una
+  taratura sbagliata: era il governo applicato nel posto sbagliato.
+- **Sintomo 2 (l'effetto di vittoria anticipa l'annuncio) — causa distinta ma imparentata.**
+  `AudioDirector.heroChipDeltaFeedback` suonava `fx_win_hand`/`fx_lose_hand` **direttamente** su
+  `handEnded`, da **consumatore parallelo con orologio proprio** (D-023), mentre la riga "hai vinto
+  con…" era in coda dietro il backlog. Nessun ordinamento fra i due canali: l'effetto **spoilerava
+  il risultato**. È un difetto di **informazione**, non di missaggio.
+- **Correzioni.**
+  1. **Il budget è del CANALE INTERO** (`SpeechConductor.channelBudget` = 6 s): conductor +
+     coda, con lo stesso drop per priorità, applicato **dove il backlog si forma davvero**.
+     ⚠️ **Trappola in cui sono caduto e che vale registrare:** ho copiato dalla coda la regola
+     "non droppare mai la testa" (`dropFirst()`), ma **l'invariante è diverso** — nel conductor
+     `pump()` ha già **rimosso** l'elemento in riproduzione, quindi ogni elemento in `pending` è in
+     attesa ed è droppabile. Con `dropFirst()` non c'era quasi mai nulla da droppare e **il budget
+     non mordeva**: misurato, la raffica restava a **18.26 s**. Codice identico, invariante diverso.
+  2. **Ordine esplicito suono↔annuncio:** il conductor accetta un `trailing:` sequenziato **dopo**
+     che la riga è stata detta (via la nuova completion per-elemento della coda). L'effetto di
+     esito **non può più anticipare il risultato per costruzione**, non per taratura. Se la riga
+     viene droppata il cue **suona lo stesso** (nessuno resta senza).
+  3. **Il RISULTATO non si droppa mai:** le mani rivelate allo showdown passano da `.medium` a
+     `.high`. Il budget può sacrificare il chiacchiericcio, **mai** l'esito della mano.
+  4. **Safeguard ADATTIVO** al posto del tetto fisso di 8 s: dimensionato su quanto il canale
+     dichiara di dovere (`adaptiveMaxWait`), con pavimento 2 s e tetto duro 25 s. **Un tetto fisso
+     non poteva fare entrambi i lavori:** 8 s scattava **in mezzo** a uno showdown onesto, ma
+     alzarlo avrebbe congelato altrettanto un freeze vero. Con la stima, la narrazione legittima
+     viene attesa e un canale piantato (che non dichiara nulla) scatta in 2 s.
+- **Effetto misurato dopo (device).** Raffica di **chiacchiericcio** (10 azioni ravvicinate): il
+  canale resta a **4.7 s**, **8 righe droppate**, drenato in **6.8 s** (prima sarebbe cresciuto
+  senza limite). **Showdown a tre completamente preservato: 21.69 s**, nulla droppato — il costo
+  onesto dell'informazione, ora **atteso** dalla UI invece che troncato a 8 s. Il drop parte dalle
+  righe **più vecchie**, così ciò che sopravvive è lo stato attuale del tavolo, non la cronaca stantia.
+- **Vincolo rispettato:** il **produttore non è stato toccato**. `SessionDriver` continua a emettere
+  a velocità di codice; tutta la soluzione vive nei **consumatori** (`UI`/`Audio`), come da D-015/D-018.
+
+### D-086 — Lasciare il tavolo è una DECISIONE, non una richiesta
+Alzarsi era differito a fine mano ("nessuno abbandona una mano a metà"): irritante al poker e
+**assurdo al Machiavelli**, dove la mano È la partita e aspettare significa aspettare tutto.
+Ora `requestLeave()` **esce subito**, sempre, con le **conseguenze naturali dell'abbandono**.
+- **Meccanica:** i provider umani hanno `abandon()`; il turno sospeso **in questo momento** e ogni
+  turno ancora a venire si risolvono all'istante (fold; al Draw anche stand-pat sullo scambio; al
+  Machiavelli "pesca"), così il driver **finisce la mano a velocità di codice** e la sessione chiude
+  pulita senza fiches orfane. Il consumatore smette di narrare e non offre più turni.
+- **Costo dell'abbandono, per gioco.** **Poker:** si incassa lo **stack**, e le fiches già spinte
+  nel piatto sono **perse** — e questo **non ha richiesto alcuna modifica al motore**, perché lo
+  stack è già **al netto** di tutto ciò che è stato puntato: incassarlo **È** la confisca.
+  **Machiavelli:** il buy-in **è** la posta e il rimborso (D-075) si **guadagna giocando la mano
+  fino in fondo** — si misura su un punteggio finale che una partita abbandonata non ha. Quindi
+  abbandonare **perde l'intera posta**: analogo fedele del piatto perso, e **non sfruttabile** (non
+  si può uscire al momento giusto per incassare un rimborso parziale). **Stud:** il **premio della
+  Casa non ha richiesto alcun caso speciale** — si paga solo a chi **batte il tavolo** (D-079), e
+  abbandonare lascia gli avversari vivi, quindi semplicemente non è guadagnato. **Le tre economie si
+  conciliano da sole; nessuna meccanica economica è stata toccata nella sostanza.**
+- Testato col **movimento reale dei gettoni**, `DEBUG_FREE_PLAY` **spento**.
+
+### D-087 — Fast-forward dopo il fold: toglie l'attesa, non l'informazione
+Chi folda non deve più ascoltare i giri di puntata a cui non partecipa. Premuto **fold**, la mano
+**corre allo showdown**: gli eventi dei giri non vengono né narrati né pausati (`isPayoff` decide),
+mentre **tutti** gli eventi di esito restano **integralmente narrati** — ogni mano superstite, poi
+chi ha vinto e con cosa. **Automatico, non opzionale.** Non toglie nulla alla lettura degli
+avversari: elimina l'attesa, non l'informazione (test-guardiano esplicito su questo).
+- **Fiches vinte: incluse, ma NON dall'evento `potAwarded`.** Un piatto è spezzato in un evento
+  **per livello di contribuzione** — anche una mano non contesa ne genera due (D-031) — quindi
+  l'importo di un singolo evento **non è** ciò che il giocatore ha vinto, e **un numero sbagliato
+  detto ad alta voce è peggio di nessun numero**. La riga (`heroNetWin`, priorità alta) riporta il
+  **guadagno netto reale**, dal cambiamento effettivo dello stack fra inizio e fine mano.
+- Applicato a Texas, Draw, Omaha e Stud.
 

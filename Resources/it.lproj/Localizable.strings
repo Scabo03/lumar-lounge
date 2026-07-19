@@ -232,7 +232,7 @@
 "chrome.chips.a11y" = "%d gettoni";
 "chrome.back" = "Indietro";
 "table.leave" = "Lascia il tavolo";
-"table.leave.hint" = "Ti alzi alla fine della mano in corso";
+"table.leave.hint" = "Ti alzi subito. Le fiches già nel piatto restano al tavolo.";
 "table.leave.pending" = "Ti alzerai dopo questa mano";
 "endgame.return" = "Torna al Riverwood";
 "announce.high.stakes" = "mano decisiva, tutti puntano forte";
@@ -564,3 +564,6 @@
 "stud.board.none.a11y" = "%@, nessuna scoperta";
 "stud.board.folded.a11y" = "%@, ha fouldato";
 "stud.board.busted.a11y" = "%@, eliminato";
+
+/* D-087 — net chips gained on a won hand. */
+"announce.hero.net.win" = "hai guadagnato %d fiche";

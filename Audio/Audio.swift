@@ -93,6 +93,10 @@ public protocol AudioServicing: AnyObject {
     /// speech layer fall back to a declared VoiceOver synthesis when a mapped mp3
     /// hasn't been produced yet (D-030), and switch back automatically once it is.
     func isAvailable(_ id: SoundID) -> Bool
+    /// The nominal duration of a bundled clip, or `nil` if absent/unloadable. Lets the
+    /// speech layer BUDGET a spoken sequence in advance rather than only discovering
+    /// its length by waiting for it (D-085).
+    func duration(of id: SoundID) -> TimeInterval?
 
     // MARK: Dynamic ambient (opaque ids — the caller decides which bed fits when)
     /// Crossfades the looping ambient bed to a new sound (no-op if already on it).
@@ -114,6 +118,7 @@ public extension AudioServicing {
     func spokenAudioRemaining() -> TimeInterval { 0 }
     /// Default: assume present (null/preview services don't gate on the bundle).
     func isAvailable(_ id: SoundID) -> Bool { true }
+    func duration(of id: SoundID) -> TimeInterval? { nil }
     /// Default: forward to the plain play and report completion at once.
     func play(_ id: SoundID, category: SoundCategory, completion: (() -> Void)?) {
         play(id, category: category)

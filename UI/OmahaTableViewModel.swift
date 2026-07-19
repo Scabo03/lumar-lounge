@@ -95,6 +95,11 @@ public final class OmahaTableViewModel: ObservableObject {
     private let onLeave: (Int) -> Void
 
     private var leaveAfterHand = false
+    /// Set once the player has stood up: stop narrating, never offer another turn (D-086).
+    private var hasLeft = false
+    /// Set when the HUMAN folds: the rest of the hand is fast-forwarded to the
+    /// showdown instead of narrating rounds they cannot act in (D-087).
+    private var fastForward = false
     private var eventQueue: [OmahaEventPayload] = []
     private var streamFinished = false
     private var turnContinuation: CheckedContinuation<Void, Never>?
@@ -154,10 +159,19 @@ public final class OmahaTableViewModel: ObservableObject {
 
     // MARK: - Leaving
 
+    /// The player stands up IMMEDIATELY, mid-hand or not (D-086). Walking away is a
+    /// decision, not a request: it costs whatever is already committed, and keeps only
+    /// what is unambiguously the player's. The human provider is abandoned so the turn
+    /// suspended right now — and every one still to come — resolves at once and the
+    /// driver finishes at code speed.
     public func requestLeave() {
-        if outcome != nil { onLeave(state.seat(heroSeatID)?.chips ?? 0); return }
+        guard !hasLeft else { return }
+        hasLeft = true
         leaveAfterHand = true
-        pendingLeave = true
+        pendingLeave = false
+        let remaining = state.seat(heroSeatID)?.chips ?? 0
+        Task { await human.abandon() }
+        onLeave(remaining)
     }
 
     // MARK: - Lifecycle
@@ -190,7 +204,7 @@ public final class OmahaTableViewModel: ObservableObject {
     }
 
     private func consume() async {
-        while !Task.isCancelled {
+        while !Task.isCancelled, !hasLeft {
             if !eventQueue.isEmpty {
                 await present(eventQueue.removeFirst())
             } else if let context = await human.pendingContext {
@@ -208,6 +222,7 @@ public final class OmahaTableViewModel: ObservableObject {
     private func present(_ payload: OmahaEventPayload) async {
         switch payload {
         case let .handBegan(_, _, _, _, _, _, _, seats):
+            fastForward = false      // a new hand: narrate it fully again (D-087)
             conductor.handBegan()
             botChatter.handBegan(seats: seats)
             shownCategory.removeAll()
@@ -274,6 +289,8 @@ public final class OmahaTableViewModel: ObservableObject {
     }
 
     private func pace(_ payload: OmahaEventPayload, human: Double) async {
+        // Fast-forwarding after the human folded: no pause until the payoff (D-087).
+        if fastForward, !Self.isPayoff(payload) { return }
         announcements.pacedWhenSilent = mode.isEnabled
         if mode.isEnabled { await awaitSpokenChannelQuiet() } else { await pause(human) }
     }
@@ -283,13 +300,24 @@ public final class OmahaTableViewModel: ObservableObject {
         let quiet = await SpokenChannelPacing.awaitQuiet(
             isQuiet: { self.conductor.isIdle && self.announcements.isQuiet },
             isCancelled: { Task.isCancelled },
+            maxWait: SpokenChannelPacing.adaptiveMaxWait(channelRemaining: self.conductor.channelRemaining),
             label: "omaha")
         SpokenLog.log("visual WAIT end (omaha) quiet=\(quiet)")
     }
 
     // MARK: - Speech
 
+    /// The events carrying the RESULT — the only ones still narrated and paced while
+    /// fast-forwarding past rounds the folded human cannot act in (D-087).
+    static func isPayoff(_ payload: OmahaEventPayload) -> Bool {
+        switch payload {
+        case .handShown, .potAwarded, .handEnded, .playerBusted, .sessionEnded: return true
+        default: return false
+        }
+    }
+
     private func speak(_ payload: OmahaEventPayload, _ reason: String = "") {
+        if fastForward, !Self.isPayoff(payload) { return }
         say(OmahaSpeechMap.plan(for: payload, heroSeatID: heroSeatID, names: names), reason: reason)
     }
 
@@ -356,6 +384,8 @@ public final class OmahaTableViewModel: ObservableObject {
     // MARK: - The human's betting turn
 
     private func runHumanTurn(_ context: OmahaBotContext) async {
+        // The player has left: never offer a turn again (D-086).
+        if hasLeft { return }
         let info = OmahaTurnInfo(from: context)
         humanTurn = info
         state.activeSeatID = heroSeatID
@@ -385,7 +415,11 @@ public final class OmahaTableViewModel: ObservableObject {
 
     // MARK: - Action-bar + raise-box intents (called by the view)
 
-    public func fold() { playUI(SoundCatalog.uiButtonTap); act(.fold) }
+    public func fold() {
+        playUI(SoundCatalog.uiButtonTap)
+        fastForward = true      // run straight to the showdown (D-087)
+        act(.fold)
+    }
 
     public func checkOrCall() {
         guard let turn = humanTurn else { return }

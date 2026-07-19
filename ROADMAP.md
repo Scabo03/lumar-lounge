@@ -555,6 +555,18 @@ Sessione di correzione dai test dell'utente su telefono con VoiceOver — difett
 - **Stud accessibile:** badge avversario separato in `opponent.N.board` (le scoperte,
   senza preamboli) + `opponent.N` (nome/fiches/stato).
 
+### ✅ Ritmo dei tre canali + controllo della sessione (D-085/D-086/D-087)
+Misurato **sul device reale via cavo** (`PacingBench`, `-pacingBench`), non sul simulatore.
+- **Causa reale del ritardo/blocco:** il backlog si formava nel `SpeechConductor`, non nella
+  coda annunci che sorvegliavamo — la Strategy C di D-032 era scavalcata per costruzione.
+  Budget ora sull'**intero canale**; showdown protetto (mai droppato), chiacchiericcio limitato.
+- **Effetto di esito ordinato** rispetto all'annuncio: non può più anticipare il risultato.
+- **Safeguard adattivo** (2 s–25 s sulla stima del canale) al posto del tetto fisso di 8 s.
+- **Uscita dal tavolo immediata**, con confisca di quanto è nel piatto; economie (premio della
+  Casa, rimborso Machiavelli) conciliate **senza casi speciali**.
+- **Fast-forward dopo il fold** fino allo showdown, con tutte le mani comunque annunciate e il
+  guadagno netto reale.
+
 ### 🔭 Prossimo
 Nuovo test sul telefono per validare le calibrazioni; produzione dei restanti file audio
 (`vob_sky_*`, slot storici del mondo M2 e del croupier Draw); calibrazione comparativa

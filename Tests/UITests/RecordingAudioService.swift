@@ -22,10 +22,19 @@ final class RecordingAudioService: AudioServicing {
     var missing: Set<String> = []
 
     func isAvailable(_ id: SoundID) -> Bool { !missing.contains(id.rawValue) }
+    /// Test seam (D-085): per-clip nominal durations the channel budget can read.
+    var durations: [String: TimeInterval] = [:]
+    func duration(of id: SoundID) -> TimeInterval? { durations[id.rawValue] ?? 1.5 }
+    /// Test seam (D-085): observes each play in ORDER, so a test can assert that an
+    /// outcome cue never precedes the announcement that reveals the outcome.
+    var onPlay: ((SoundID, SoundCategory) -> Void)?
+
     func startAmbient(_ id: SoundID) { ambient.append(id) }
-    func play(_ id: SoundID, category: SoundCategory) { log.append(Entry(id: id, category: category)) }
+    func play(_ id: SoundID, category: SoundCategory) {
+        log.append(Entry(id: id, category: category)); onPlay?(id, category)
+    }
     func play(_ id: SoundID, category: SoundCategory, completion: (() -> Void)?) {
-        log.append(Entry(id: id, category: category)); completion?()
+        log.append(Entry(id: id, category: category)); onPlay?(id, category); completion?()
     }
     func stopAll() { stoppedAll += 1 }
     func setMasterVolume(_ volume: Float) {}

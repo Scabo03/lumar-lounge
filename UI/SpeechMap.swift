@@ -55,6 +55,12 @@ public enum SynthLine: Equatable, Sendable {
     /// The human won the pot (with the winning hand's best five if it went to
     /// showdown, so the combination + kicker can be spoken).
     case heroWon(category: HandCategory?, bestFive: [Card]?)
+    /// What the hand actually PUT IN THE PLAYER'S POCKET, net of what they staked
+    /// (D-087). Deliberately NOT taken from a `potAwarded` amount: a hand awards one
+    /// pot per contribution level — even an uncontested blind hand produces two
+    /// (D-031) — so no single event's amount is what the player won, and a wrong
+    /// number spoken aloud is worse than none.
+    case heroNetWin(chips: Int)
     /// Someone else won the pot.
     case otherWon(who: String, category: HandCategory?, bestFive: [Card]?)
     /// Two or more players tied for the pot, all with the same combination (D-045).
@@ -165,6 +171,8 @@ public enum SpeechMap {
             return uiLocalized("announce.your.turn.context", toCall, pot)
         case let .shown(who, category, bestFive):
             return uiLocalized("announce.shown", who, handDescription(category: category, bestFive: bestFive))
+        case let .heroNetWin(chips):
+            return uiLocalized("announce.hero.net.win", chips)
         case let .heroWon(category, bestFive):
             if let category, let bestFive {
                 return uiLocalized("announce.hero.won.category", handDescription(category: category, bestFive: bestFive))
@@ -251,9 +259,14 @@ public enum SpeechMap {
     /// high (never dropped); opponent info = medium; secondary description = low.
     public static func priority(for line: SynthLine) -> AnnouncementPriority {
         switch line {
-        case .heroCards, .yourTurnContext, .heroWon, .splitWon, .sessionWon, .sessionLost, .roleButton:
+        case .heroCards, .yourTurnContext, .heroWon, .heroNetWin, .splitWon, .sessionWon, .sessionLost, .roleButton:
             return .high
-        case .otherWon, .opponentAction, .shown:
+        case .shown:
+            // A revealed hand at showdown is HIGH (D-085): it is the information the
+            // whole hand was building to, and for a blind player it is the only way to
+            // read the opponents. The channel budget may drop chatter, never the result.
+            return .high
+        case .otherWon, .opponentAction:
             return .medium
         case .communityCards:
             return .low

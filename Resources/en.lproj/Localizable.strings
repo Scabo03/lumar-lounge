@@ -224,7 +224,7 @@
 "chrome.chips.a11y" = "%d chips";
 "chrome.back" = "Back";
 "table.leave" = "Leave table";
-"table.leave.hint" = "You stand up at the end of the current hand";
+"table.leave.hint" = "You stand up at once. Chips already in the pot stay on the table.";
 "table.leave.pending" = "You'll stand up after this hand";
 "endgame.return" = "Back to the Riverwood";
 "announce.high.stakes" = "decisive hand, everyone bets big";
@@ -545,3 +545,6 @@
 "stud.board.none.a11y" = "%@, nothing showing";
 "stud.board.folded.a11y" = "%@, folded";
 "stud.board.busted.a11y" = "%@, out";
+
+/* D-087 — net chips gained on a won hand. */
+"announce.hero.net.win" = "you gained %d chips";

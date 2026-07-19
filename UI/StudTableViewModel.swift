@@ -91,6 +91,11 @@ public final class StudTableViewModel: ObservableObject {
     private let housePrize: Int
 
     private var leaveAfterHand = false
+    /// Set once the player has stood up: stop narrating, never offer another turn (D-086).
+    private var hasLeft = false
+    /// Set when the HUMAN folds: the rest of the hand is fast-forwarded to the
+    /// showdown instead of narrating rounds they cannot act in (D-087).
+    private var fastForward = false
     private var eventQueue: [StudEventPayload] = []
     private var streamFinished = false
     private var turnContinuation: CheckedContinuation<Void, Never>?
@@ -145,10 +150,23 @@ public final class StudTableViewModel: ObservableObject {
 
     // MARK: - Leaving
 
+    /// The player stands up IMMEDIATELY, mid-hand or not (D-086). Walking away is a
+    /// decision, not a request: it costs whatever is already committed, and keeps only
+    /// what is unambiguously the player's. The human provider is abandoned so the turn
+    /// suspended right now — and every one still to come — resolves at once and the
+    /// driver finishes at code speed.
     public func requestLeave() {
-        if outcome != nil { onLeave(heroCashOut); return }
+        guard !hasLeft else { return }
+        hasLeft = true
         leaveAfterHand = true
-        pendingLeave = true
+        pendingLeave = false
+        // THE HOUSE PRIZE NEEDS NO SPECIAL CASE (D-086): it is paid only to a player who
+        // BEAT THE TABLE (D-079), and abandoning leaves both opponents alive, so
+        // `beatTheTable` is simply false and no prize is earned. The economics reconcile
+        // themselves — nothing about D-079 changes.
+        let remaining = heroCashOut
+        Task { await human.abandon() }
+        onLeave(remaining)
     }
 
     // MARK: - Lifecycle
@@ -181,7 +199,7 @@ public final class StudTableViewModel: ObservableObject {
     }
 
     private func consume() async {
-        while !Task.isCancelled {
+        while !Task.isCancelled, !hasLeft {
             if !eventQueue.isEmpty {
                 await present(eventQueue.removeFirst())
             } else if let context = await human.pendingContext {
@@ -199,6 +217,7 @@ public final class StudTableViewModel: ObservableObject {
     private func present(_ payload: StudEventPayload) async {
         switch payload {
         case .handBegan:
+            fastForward = false      // a new hand: narrate it fully again (D-087)
             conductor.handBegan()
             shownCategory.removeAll()
             shownBestFive.removeAll()
@@ -264,6 +283,8 @@ public final class StudTableViewModel: ObservableObject {
     }
 
     private func pace(_ payload: StudEventPayload, override: Double? = nil) async {
+        // Fast-forwarding after the human folded: no pause until the payoff (D-087).
+        if fastForward, !Self.isPayoff(payload) { return }
         announcements.pacedWhenSilent = mode.isEnabled
         if mode.isEnabled { await awaitSpokenChannelQuiet() }
         else { await pause(override ?? StudPacing.seconds(for: payload)) }
@@ -274,13 +295,24 @@ public final class StudTableViewModel: ObservableObject {
         let quiet = await SpokenChannelPacing.awaitQuiet(
             isQuiet: { self.conductor.isIdle && self.announcements.isQuiet },
             isCancelled: { Task.isCancelled },
+            maxWait: SpokenChannelPacing.adaptiveMaxWait(channelRemaining: self.conductor.channelRemaining),
             label: "stud")
         SpokenLog.log("visual WAIT end (stud) quiet=\(quiet)")
     }
 
     // MARK: - Speech
 
+    /// The events carrying the RESULT — the only ones still narrated and paced while
+    /// fast-forwarding past rounds the folded human cannot act in (D-087).
+    static func isPayoff(_ payload: StudEventPayload) -> Bool {
+        switch payload {
+        case .handShown, .potAwarded, .handEnded, .playerBusted, .sessionEnded: return true
+        default: return false
+        }
+    }
+
     private func speak(_ payload: StudEventPayload, _ reason: String = "") {
+        if fastForward, !Self.isPayoff(payload) { return }
         say(StudSpeechMap.plan(for: payload, heroSeatID: heroSeatID, names: names), reason: reason)
     }
 
@@ -339,6 +371,8 @@ public final class StudTableViewModel: ObservableObject {
     // MARK: - The human's betting turn
 
     private func runHumanTurn(_ context: StudBotContext) async {
+        // The player has left: never offer a turn again (D-086).
+        if hasLeft { return }
         let info = StudTurnInfo(from: context)
         humanTurn = info
         state.activeSeatID = heroSeatID
@@ -368,7 +402,11 @@ public final class StudTableViewModel: ObservableObject {
 
     // MARK: - Action-bar + raise-box intents (called by the view)
 
-    public func fold() { playUI(SoundCatalog.uiButtonTap); act(.fold) }
+    public func fold() {
+        playUI(SoundCatalog.uiButtonTap)
+        fastForward = true      // run straight to the showdown (D-087)
+        act(.fold)
+    }
 
     public func checkOrCall() {
         guard let turn = humanTurn else { return }

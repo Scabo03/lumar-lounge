@@ -101,6 +101,11 @@ public final class DrawTableViewModel: ObservableObject {
     private let onLeave: (Int) -> Void
 
     private var leaveAfterHand = false
+    /// Set once the player has stood up: stop narrating, never offer another turn (D-086).
+    private var hasLeft = false
+    /// Set when the HUMAN folds: the rest of the hand is fast-forwarded to the
+    /// showdown instead of narrating rounds they cannot act in (D-087).
+    private var fastForward = false
 
     private var eventQueue: [DrawEventPayload] = []
     private var streamFinished = false
@@ -161,10 +166,19 @@ public final class DrawTableViewModel: ObservableObject {
 
     // MARK: - Leaving
 
+    /// The player stands up IMMEDIATELY, mid-hand or not (D-086). Walking away is a
+    /// decision, not a request: it costs whatever is already committed, and keeps only
+    /// what is unambiguously the player's. The human provider is abandoned so the turn
+    /// suspended right now — and every one still to come — resolves at once and the
+    /// driver finishes at code speed.
     public func requestLeave() {
-        if outcome != nil { finishAndLeave(); return }
+        guard !hasLeft else { return }
+        hasLeft = true
         leaveAfterHand = true
-        pendingLeave = true
+        pendingLeave = false
+        let remaining = state.seat(heroSeatID)?.chips ?? 0
+        Task { await human.abandon() }
+        onLeave(remaining)
     }
 
     private func finishAndLeave() {
@@ -201,7 +215,7 @@ public final class DrawTableViewModel: ObservableObject {
     }
 
     private func consume() async {
-        while !Task.isCancelled {
+        while !Task.isCancelled, !hasLeft {
             if !eventQueue.isEmpty {
                 await present(eventQueue.removeFirst())
             } else if await human.pendingAction != nil {
@@ -221,6 +235,7 @@ public final class DrawTableViewModel: ObservableObject {
     private func present(_ payload: DrawEventPayload) async {
         switch payload {
         case let .handBegan(_, _, _, _, _, _, carriedPot, seats):
+            fastForward = false      // a new hand: narrate it fully again (D-087)
             conductor.handBegan()
             botChatter.handBegan(seats: seats)
             shownCategory.removeAll()
@@ -312,6 +327,8 @@ public final class DrawTableViewModel: ObservableObject {
     }
 
     private func pace(_ payload: DrawEventPayload, human: Double) async {
+        // Fast-forwarding after the human folded: no pause until the payoff (D-087).
+        if fastForward, !Self.isPayoff(payload) { return }
         announcements.pacedWhenSilent = mode.isEnabled
         if mode.isEnabled { await awaitSpokenChannelQuiet() } else { await pause(human) }
     }
@@ -322,13 +339,24 @@ public final class DrawTableViewModel: ObservableObject {
         let quiet = await SpokenChannelPacing.awaitQuiet(
             isQuiet: { self.conductor.isIdle && self.announcements.isQuiet },
             isCancelled: { Task.isCancelled },
+            maxWait: SpokenChannelPacing.adaptiveMaxWait(channelRemaining: self.conductor.channelRemaining),
             label: "draw")
         SpokenLog.log("visual WAIT end (draw) quiet=\(quiet)")
     }
 
     // MARK: - Speech
 
+    /// The events carrying the RESULT — the only ones still narrated and paced while
+    /// fast-forwarding past rounds the folded human cannot act in (D-087).
+    static func isPayoff(_ payload: DrawEventPayload) -> Bool {
+        switch payload {
+        case .handShown, .potAwarded, .handEnded, .playerBusted, .sessionEnded: return true
+        default: return false
+        }
+    }
+
     private func speak(_ payload: DrawEventPayload, _ reason: String = "") {
+        if fastForward, !Self.isPayoff(payload) { return }
         let plan = DrawSpeechMap.plan(for: payload, heroSeatID: heroSeatID, names: names)
         conductor.say(lead: plan.croupier, synthesis: plan.synthesis.map(DrawSpeechMap.text),
                       fallback: plan.croupierFallback.map(DrawSpeechMap.text),
@@ -380,6 +408,8 @@ public final class DrawTableViewModel: ObservableObject {
     // MARK: - The human's betting turn
 
     private func runBettingTurn(_ context: DrawBotContext) async {
+        // The player has left: never offer a turn again (D-086).
+        if hasLeft { return }
         let info = DrawBettingTurn(from: context)
         bettingTurn = info
         state.activeSeatID = heroSeatID
@@ -402,7 +432,11 @@ public final class DrawTableViewModel: ObservableObject {
         }
     }
 
-    public func fold() { playUI(SoundCatalog.uiButtonTap); act(.fold) }
+    public func fold() {
+        playUI(SoundCatalog.uiButtonTap)
+        fastForward = true      // run straight to the showdown (D-087)
+        act(.fold)
+    }
     public func checkOrCall() {
         guard let turn = bettingTurn else { return }
         playUI(SoundCatalog.uiButtonTap)
@@ -422,6 +456,8 @@ public final class DrawTableViewModel: ObservableObject {
     // MARK: - The human's draw turn
 
     private func runDrawTurn(_ context: DrawDrawContext) async {
+        // The player has left: never offer a turn again (D-086).
+        if hasLeft { return }
         drawBox = DrawBoxState(cards: context.cards)
         state.activeSeatID = heroSeatID
         conductor.flushPending()
