@@ -264,3 +264,33 @@ Entrambe valgono per Texas (`HeuristicBot`) e Draw (`HeuristicDrawBot`); non
 spostano lo stream RNG per le decisioni non interessate (trashRoll pescato dopo il
 roll e solo nel ramo garbage). I **valori Classico** vivono nei preset qui; i valori
 **Rapido** in `GameWorld` (`WorldPersonalities.fast`).
+
+---
+
+## Blackjack (`Blackjack/`) — D-090
+
+**Sesto motore, e il primo che non è un contesto fra giocatori.** Il giocatore
+affronta **il banco**, non altri giocatori, e questo toglie di mezzo per
+costruzione tre cose che tutti gli altri motori hanno:
+
+- **niente `PotMath`** — non c'è un piatto conteso da spartire; il pagamento è
+  un **moltiplicatore** su una posta;
+- **niente bot e nessuna dimensione di `Personality`** — quelle leve descrivono
+  un comportamento verso **avversari**, e il banco non è un avversario: è una
+  **regola**, e vive qui dentro come tale;
+- **niente anello di posti** — il giocatore risolve **le proprie** mani una a una
+  (la divisione ne crea altre), poi il banco gioca **una volta sola**.
+
+Resta lo scheletro provato degli altri motori: value type, `apply(_:)` che valida
+e muta, e **tutta** la progressione in un solo `progress()`.
+
+| Tipo | Cosa fa |
+|---|---|
+| `BlackjackValue` | L'aritmetica: punti per rango (asso 1 o 11, figure 10), totale **duro o morbido**, sballo, *natural*, divisibilità **per valore**. |
+| `Shoe` | Il sabot **persistente** a più mazzi, col proprio generatore seedato e la carta di taglio. `draw()` è **totale**: un sabot esaurito si rimescola da sé, così la macchina a stati non ha rami di fallimento. |
+| `BlackjackRules` | Le regole della casa, ogni variante un campo — così il contratto del tavolo si legge in un punto solo ed è testabile riga per riga. |
+| `BlackjackRound` | Una mano, dalla distribuzione al conto saldato: sbirciata del banco, divisioni, raddoppio, resa, gioco del banco, pagamenti. |
+
+**Ciò che NON contiene:** puntate di sessione (le decide il driver), il sabot fra
+una mano e l'altra (entra ed esce da `BlackjackRound`), e **l'assicurazione**, che
+è una scommessa perdente e non esiste nell'insieme chiuso delle azioni.

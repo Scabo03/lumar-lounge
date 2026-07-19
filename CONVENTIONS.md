@@ -650,6 +650,45 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
   (candidate scalate + pavimento fisso): riparare il layout non deve costare l'accessibilità che il
   layout serviva.
 
+- **In un gioco VELOCE, la compattezza dell'annuncio è un requisito di accessibilità, non una
+  rifinitura (principio permanente, D-091).** Il costo di un annuncio non si giudica in assoluto ma
+  **contro il ritmo del gioco**: lo stesso carico che va benissimo in una mano di poker — decine di
+  righe, decine di secondi — trasforma un gioco da pochi secondi a mano (blackjack, e domani la
+  roulette) in una **versione lenta del gioco veloce**, dove il vedente corre e il non vedente
+  cammina. È "nessuno perde niente" applicato al **ritmo**. Regole operative:
+  *(a)* **definisci l'annuncio essenziale come l'informazione MINIMA PER DECIDERE** (al blackjack:
+  il proprio totale e la scoperta del banco — una riga breve), e sposta tutto il resto su
+  **elementi interrogabili** (D-083/D-078), che è la memoria che il vedente ha con lo sguardo;
+  *(b)* **ciò che il vedente coglie in un colpo d'occhio arriva come UN SOLO evento**, non come una
+  coda (la distribuzione di due carte più la scoperta del banco è un fatto, non quattro);
+  *(c)* **non pronunciare ciò che non può cambiare una decisione** — al blackjack il **seme** non
+  influenza né un totale né un pagamento né una mossa legale, quindi non viaggia nella riga che si
+  sente a ogni mano, pur restando visibile e interrogabile;
+  *(d)* **misura, non stimare** (D-075/D-084), e tieni il risultato con un test che pinna sia il
+  **rapporto** contro un gioco già esistente sia un **tetto assoluto**.
+- **Una misura di ciò che il giocatore SENTE va fatta sul testo reso davvero (D-091).** Sotto
+  `swift test` non esiste bundle e la localizzazione **ricade sulla chiave**: una misura di lunghezza
+  del parlato fatta così misura i **nomi degli identificatori**, non l'italiano, e può sbagliare di
+  molto (successo davvero: 8,36 s/mano contro i 6,14 reali). Regola: dare alla funzione di rendering
+  una **cucitura di localizzazione** iniettabile e far rendere al test le stringhe **lette da disco**;
+  e quando una metrica non si può rendere onesta, misurarla in un'unità che **non dipende dal
+  bundle** (le righe, non i caratteri).
+- **Il sistema descrive lo stato anche quando esiste una strategia ottimale NOTA (D-091).** Il
+  confine descrivi-non-consigliare (D-072) è più esposto in un gioco che ha una soluzione pubblicata
+  e banale da implementare: al blackjack la strategia di base è tabellare, e sussurrarla al non
+  vedente sarebbe costato tre righe. Non si fa. «Sedici, il banco mostra dieci» è descrizione;
+  «conviene chiedere carta» è consiglio, e il vedente non riceve alcun suggerimento. Difesa
+  strutturale: un **guardiano che scandisce le stringhe spedite** cercando il lessico del consiglio,
+  e un secondo che scandisce le **righe rese davvero**.
+- **Un gioco contro il BANCO non riusa le astrazioni pensate per un contesto fra giocatori (D-090).**
+  Quando il giocatore affronta la casa e non altri giocatori, cadono per costruzione: la matematica
+  del piatto conteso (`PotMath` — non c'è nulla da spartire, il pagamento è un moltiplicatore), i
+  **bot** e le dimensioni di `Personality` (che descrivono un comportamento verso **avversari**: al
+  banco non c'è nessuno da leggere, e il banco non è un avversario ma una **regola** nel motore), e
+  l'anello di posti che ciclano. Resta invece lo scheletro provato — value type, `apply` che valida e
+  muta, **tutta** la progressione in un solo punto. Riusare per abitudine un'astrazione il cui
+  soggetto non esiste è il modo più rapido di portarsi dietro complessità senza valore.
+
 ## 5. Testabilità
 
 - La logica pura (`GameEngine`, e in prospettiva `GameWorld`) deve essere

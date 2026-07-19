@@ -251,3 +251,30 @@ giocabile** (mancano UI/audio/casinò): qui c'è solo l'orchestrazione.
   dal giocatore: non un rake, un **incentivo** che ricompensa il gioco più difficile. Vive
   nel driver (`housePrize`/`prizeRecipientID`), **non nel motore**. Testato col **movimento
   reale dei gettoni, `DEBUG_FREE_PLAY` OFF** (il premio arriva al saldo persistente).
+
+---
+
+## Blackjack (D-090)
+
+`BlackjackSessionDriver` è la sorella dei driver di poker, con due differenze che
+vengono dal gioco e non dallo stile:
+
+- **Due sospensioni per mano**, non una: prima la **posta**, poi le **mosse** (una
+  per ogni mano prodotta da una divisione). Come il Draw (D-042), solo una può
+  essere pendente per volta.
+- **Un solo seme per SESSIONE**, non per mano. I driver di poker riseminano a ogni
+  mano perché ogni mano nasce da un mazzo nuovo; qui il **sabot persiste davvero**,
+  quindi il seme per sessione dà ciò che D-047 chiede — ogni sessione e ogni mano
+  diverse, casuale dal generatore di sistema in produzione, fisso nei test —
+  **modellando il sabot onestamente** invece di fingere un mazzo nuovo ogni volta.
+
+`BlackjackTableRules` porta **solo** il denaro (poste minima/massima, buy-in): le
+regole della casa sono identiche a ogni tavolo, e senza bot non c'è alcun roster di
+personalità da calibrare. `.riverwood` = 20–200 su buy-in 1000; `.skypool` = 100–1000
+su buy-in 5000.
+
+**Economia (§8):** nessuna iniezione in sessione — **entra solo il buy-in**.
+Alzarsi (D-086) non ha richiesto casi speciali: la posta è già uscita dalle fiches
+quando la mano è cominciata, quindi incassare ciò che resta **è** la confisca. Perché
+regga, `playerActed` porta le fiches **residue** a ogni mossa, altrimenti raddoppio e
+divisione lascerebbero il numero stantio.

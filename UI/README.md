@@ -291,3 +291,33 @@ Il **primo gioco non-poker giocabile** e la **UI più diversa** del progetto: no
 - **`StudSpeechMap`/`StudAudioDirector`/`StudAudioScore`** — layer parlato (croupier = lo
   stesso custode anziano, italiano erudito, 10 slot `vo_it_clock_poker_*` → fallback sintesi;
   cue distintivo del **premio della Casa**) e non parlato (fisici + ambient classico ClockTower).
+
+---
+
+## Blackjack (D-090/D-091)
+
+Il tavolo di blackjack ha lo stesso scheletro degli altri (`…TableState` +
+reducer puri, view model che drena a ritmo umano, `SpeechMap`, `AudioScore`,
+`AudioDirector`), ma esiste per risolvere un problema che gli altri non avevano:
+**la velocità**.
+
+Una mano è due carte e una decisione. Col carico di annunci di una mano di poker,
+il non vedente avrebbe avuto una **versione lenta del gioco veloce**. Perciò:
+
+- **`BlackjackSpeechMap`** comprime l'annuncio essenziale all'**informazione
+  minima per decidere** — il proprio totale e la scoperta del banco — e tace su
+  tutto ciò che il giocatore sa per struttura. **Non pronuncia il seme**: nel
+  blackjack non può cambiare nessuna decisione.
+- **`BlackjackReadout`** tiene il dettaglio (le carte dietro il totale, il banco
+  per intero) su **elementi interrogabili**, totale prima e carte dopo (D-083):
+  la memoria che il vedente ha guardando, restituita a richiesta.
+- **Misurato**, non stimato: 3,88 righe e 6,14 secondi parlati a mano, contro le
+  20,44 righe di una mano di Stud (`BlackjackAnnouncementLoadTests`).
+
+`BlackjackBetBox` è il pattern di input a incremento di D-020 applicato alla
+posta, con una curva **lineare in minimi di tavolo** invece di quella progressiva
+del poker — e lo snap a multipli interi è ciò che tiene esatti il 3:2 e la
+mezza-resa.
+
+Il colpo di vittoria/sconfitta passa da `SpeechConductor.say(trailing:)` (D-085),
+quindi **non può anticipare** la riga che spiega com'è andata.

@@ -572,3 +572,94 @@
 
 /* D-087 — net chips gained on a won hand. */
 "announce.hero.net.win" = "hai guadagnato %d fiches";
+
+/* =====================================================================
+   BLACKJACK (D-090/D-091)
+   ===================================================================== */
+
+/* Lobby */
+"table.blackjack.title" = "Blackjack";
+"table.blackjack.riverwood" = "Tavolo del Saloon";
+"table.blackjack.skypool" = "Tavolo Vetrata";
+
+/* --- Totals. The ONLY adjective the player is given is "morbido", because
+   softness is the one thing that changes what the hand can do. --- */
+"blackjack.total.hard" = "%d";
+"blackjack.total.soft" = "%d morbido";
+
+/* --- The essential announcement (D-091): your total, the dealer's up card.
+   Nothing else. The cards behind the total live on the interrogable
+   elements below, so the player is not read a list every single round. --- */
+"blackjack.announce.deal" = "%1$@. Banco: %2$@.";
+"blackjack.announce.deal.natural" = "Blackjack. Banco: %@.";
+"blackjack.announce.handturn" = "Mano %1$d di %2$d. %3$@.";
+"blackjack.announce.hit" = "%1$@. Totale %2$@.";
+"blackjack.announce.hit.bust" = "%1$@. Sballi con %2$d.";
+"blackjack.announce.double" = "Raddoppi. %1$@. Totale %2$@.";
+"blackjack.announce.double.bust" = "Raddoppi. %1$@. Sballi con %2$d.";
+"blackjack.announce.split" = "Dividi. Ora hai %d mani.";
+"blackjack.announce.dealer" = "Il banco: %@.";
+"blackjack.announce.dealer.bust" = "Il banco sballa con %d.";
+"blackjack.announce.dealer.natural" = "Il banco ha blackjack.";
+
+/* --- Results. The figure quoted is always the REAL one (D-087). --- */
+"blackjack.result.natural" = "Blackjack. Vinci %d.";
+"blackjack.result.win" = "Vinci %d.";
+"blackjack.result.push" = "Pari. Riprendi %d.";
+"blackjack.result.lose" = "Perdi %d.";
+"blackjack.result.bust" = "Perdi %d.";
+"blackjack.result.surrender" = "Ti ritiri. Perdi %d.";
+"blackjack.result.hand" = "Mano %1$d: %2$@";
+"blackjack.round.net.positive" = "In tutto: più %d.";
+"blackjack.round.net.negative" = "In tutto: meno %d.";
+"blackjack.round.net.zero" = "In tutto: in pari.";
+"blackjack.session.lost" = "Non ti restano fiches per continuare.";
+
+/* --- The detail, ON DEMAND (D-083): total first, cards after. --- */
+"blackjack.hero.hand.a11y" = "La tua mano: %1$@. Carte: %2$@.";
+"blackjack.hero.hand.multi.a11y" = "Mano %1$d di %2$d: %3$@. Carte: %4$@.";
+"blackjack.dealer.a11y" = "Il banco mostra %@.";
+"blackjack.dealer.full.a11y" = "Il banco: %1$@. Carte: %2$@.";
+"blackjack.dealer.bust.a11y" = "Il banco sballa con %1$d. Carte: %2$@.";
+"blackjack.dealer.empty.a11y" = "Il banco non ha ancora carte.";
+"blackjack.dealer.title" = "Banco";
+"blackjack.chips.a11y" = "Le tue fiches: %d.";
+"blackjack.stakes.a11y" = "Le tue fiches: %1$d. In gioco: %2$d.";
+
+/* --- Outcome captions shown on the table. --- */
+"blackjack.outcome.natural" = "Blackjack";
+"blackjack.outcome.win" = "Vinta";
+"blackjack.outcome.push" = "Pari";
+"blackjack.outcome.lose" = "Persa";
+"blackjack.outcome.bust" = "Sballata";
+"blackjack.outcome.surrender" = "Ritirata";
+
+/* --- The five moves. Visible titles keep the English of the game; the
+   VoiceOver labels are real ITALIAN words, correct by construction and
+   awaiting the user's ear verdict before any English rendering is wired
+   (D-090, method of D-060). --- */
+"blackjack.action.hit" = "Hit";
+"blackjack.action.hit.a11y" = "carta";
+"blackjack.action.stand" = "Stand";
+"blackjack.action.stand.a11y" = "stai";
+"blackjack.action.double" = "Double";
+"blackjack.action.double.a11y" = "raddoppia";
+"blackjack.action.split" = "Split";
+"blackjack.action.split.a11y" = "dividi";
+"blackjack.action.surrender" = "Surrender";
+"blackjack.action.surrender.a11y" = "resa";
+
+/* --- The wager box (increment pattern, D-020). --- */
+"blackjack.bet.title" = "Puntata";
+"blackjack.bet.display" = "%d";
+"blackjack.bet.value.a11y" = "%d fiches";
+"blackjack.bet.minus.a11y" = "meno";
+"blackjack.bet.plus.a11y" = "più";
+"blackjack.bet.max" = "Max";
+"blackjack.bet.max.a11y" = "puntata massima";
+"blackjack.bet.confirm" = "Punta";
+"blackjack.bet.confirm.a11y" = "punta %d fiches";
+
+/* --- The croupier's one wired line (D-090): rare, and it explains a real pause. --- */
+"blackjack.croupier.shuffle" = "Mazzo nuovo.";
+"skypool.croupier.bj.shuffle" = "Carte nuove. Si ricomincia.";

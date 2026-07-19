@@ -211,6 +211,24 @@ public enum SoundCatalog {
     public static let vobAggressorTaunt = SoundID("vob_aggressor_taunt_01")
     public static let vobAggressorBluffGiveaway = SoundID("vob_aggressor_bluff_giveaway_01")
 
+    // MARK: Blackjack — croupier voice (D-090, NOT delivered yet)
+    // Blackjack keeps the croupier deliberately QUIET: the game is fast and every
+    // spoken line is time the player spends waiting. The only voice wired is the
+    // shuffle, which lands roughly once every sixty rounds and explains a real
+    // pause. Both carry a synthesis fallback (informative → D-030/D-066).
+    public static let voBjShuffle = SoundID("vo_it_bj_shuffle")               // not delivered
+    public static let voSkyBjShuffle = SoundID("vo_it_sky_bj_shuffle")        // not delivered
+
+    // MARK: Blackjack — the presence of other players (D-090, NOT delivered yet)
+    // There are no other players at the table mechanically: these are pure
+    // ATMOSPHERE, so they are `.botVoice` (ambient) and fall back to SILENCE, never
+    // to synthesis — an unproduced colour must never become an announcement that
+    // interrupts a blind player's listening (D-066). Because no NPC ever speaks,
+    // one shared set serves every casino.
+    public static let fxBjPresenceChips = SoundID("fx_bj_presence_chips")     // not delivered
+    public static let fxBjPresenceMurmur = SoundID("fx_bj_presence_murmur")   // not delivered
+    public static let fxBjPresenceCards = SoundID("fx_bj_presence_cards")     // not delivered
+
     // MARK: Outcome feedback (8)
     public static let fxWinHand = SoundID("fx_win_hand")
     public static let fxLoseHand = SoundID("fx_lose_hand")
@@ -243,6 +261,8 @@ public enum SoundCatalog {
         (voFlop, .croupier), (voTurn, .croupier), (voRiver, .croupier), (voShowdown, .croupier),
         (voActionFold, .croupier), (voActionCheck, .croupier), (voActionCall, .croupier),
         (voActionRaise, .croupier), (voActionAllIn, .croupier), (voPotAwarded, .croupier), (voSplitPot, .croupier),
+        (voBjShuffle, .croupier), (voSkyBjShuffle, .croupier),
+        (fxBjPresenceChips, .botVoice), (fxBjPresenceMurmur, .botVoice), (fxBjPresenceCards, .botVoice),
         (voAnte, .croupier), (voDrawPhase, .croupier), (voPassAndOut, .croupier),
         (voCarriedPot, .croupier), (voOpenersDisqualified, .croupier), (voHighStakesDraw, .croupier),
         (voSkyHandStart, .croupier), (voSkyBlindSmall, .croupier), (voSkyBlindBig, .croupier),

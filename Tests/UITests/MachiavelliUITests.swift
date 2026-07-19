@@ -38,9 +38,11 @@ final class MachiavelliUITests: XCTestCase {
 
     func testRiverwoodAndSkypoolUntouched() {
         // Same tables, same buy-ins as before the ClockTower arrived.
-        XCTAssertEqual(Casinos.riverwood.tables.map { $0.id },
+        // The poker tables these two houses opened with, unchanged in order and
+        // price. Blackjack was appended later (D-090) and is checked separately.
+        XCTAssertEqual(Array(Casinos.riverwood.tables.prefix(3)).map { $0.id },
                        ["riverwood.table.classic", "riverwood.table.fast", "riverwood.table.draw"])
-        XCTAssertEqual(Casinos.skypool.tables.map { $0.buyIn }, [5000, 6000, 10000])
+        XCTAssertEqual(Array(Casinos.skypool.tables.prefix(3)).map { $0.buyIn }, [5000, 6000, 10000])
         XCTAssertEqual(CasinoAudio.of(casinoID: "riverwood").id, "riverwood")
         XCTAssertEqual(CasinoAudio.of(casinoID: "skypool").id, "skypool")
     }

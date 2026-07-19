@@ -117,8 +117,14 @@ nei file collegati.
   motore+bot+driver: nessuna UI, nessun audio, nessun casinò ospitante (terzo casinò non anticipato).**
   Giochi esistenti invariati.
 
-**🏢 Fase 1 (M1) completa; Fase 2 (M2) in corso.** Girano end-to-end **cinque giochi** in **tre
-casinò**: al **Riverwood** Texas Hold'em No Limit (Classico/Rapido) e **Five-Card Draw** (Sala
+**🏢 Fase 1 (M1) completa; Fase 2 (M2) in corso.** Girano end-to-end **sei giochi** in **tre
+casinò** — al Riverwood e allo Skypool c'è ora anche il **Blackjack** (D-090/D-091), il primo gioco
+della casa in cui si affronta **il banco** e non altri giocatori: niente bot al tavolo, niente
+piatto, regole della casa fisse (banco fermo su ogni 17, blackjack 3:2, raddoppio, divisione, resa,
+**nessuna assicurazione**) e un'unica differenza fra i due tavoli, il denaro. La sua sfida non erano
+le regole ma la **velocità**: l'annuncio essenziale è compresso all'informazione minima per decidere
+(**3,88 righe e 6,14 secondi parlati a mano, misurati**, contro le 20,44 righe di una mano di Stud),
+col dettaglio spostato su elementi interrogabili. Il quadro completo: al **Riverwood** Texas Hold'em No Limit (Classico/Rapido) e **Five-Card Draw** (Sala
 Whiskey); allo **Skypool** Texas (Classico/Rapido) e **Omaha Pot Limit** (Marble); al **ClockTower**
 il **Machiavelli** (Sala degli Orologi) e il **Seven-Card Stud Pot Limit** (Sala delle Carte, D-077/
 D-078). `GameEngine` contiene **cinque motori**, tutti e cinque ora con driver, UI e audio. Navigazione
@@ -171,7 +177,17 @@ riascolta più nome e fiches a ogni lettura delle scoperte); **poste ricalibrate
 `StakeEscalation` invece che alzando le poste**, per non snaturarne l'identità né gonfiare il tetto
 pot-limit. 487 test verdi.
 
-**Prossimo passo** (vedi [`ROADMAP.md`](ROADMAP.md)): **produzione dei file audio del ClockTower**
+**Sessione Blackjack (D-090/D-091):** sesto motore in `GameEngine/Blackjack/` (sabot persistente a
+sei mazzi, sbirciata del banco, divisione fino a quattro mani, pagamenti esatti in fiches intere),
+driver di sessione con **due sospensioni** (la posta, poi le mosse), tavoli giocabili al **Riverwood**
+(buy-in 1000, poste 20–200) e allo **Skypool** (buy-in 5000, poste 100–1000). **Il ClockTower non lo
+riceve.** Nessun file audio prodotto: il croupier tace quasi sempre per scelta, e la presenza degli
+altri avventori è solo effetto ambientale con fallback al silenzio. **Campioni fonetici dei termini
+nuovi generati e in attesa dell'ascolto** in `~/Desktop/lumar-phonetics/blackjack/`. 574 test verdi.
+
+**Prossimo passo** (vedi [`ROADMAP.md`](ROADMAP.md)): **ascolto e approvazione dei campioni fonetici
+del blackjack** (hit/stand/double/split/surrender: inglese o italiano — oggi sono cablate le parole
+italiane, device-safe per costruzione); **produzione dei file audio del ClockTower**
 (custode anziano — Machiavelli + **10 slot Stud** `vo_it_clock_poker_*`, D-077 — su ElevenLabs; ambient/
 musica archi+clockwork su StableAudio) e dello **Skypool** (`vob_sky_*`); **calibrazione** dei bot dopo
 il test reale (le personalità ClockTower poker D-078 e il **premio della Casa** sono leve non calibrate;
@@ -2760,3 +2776,154 @@ Due correzioni dal test sul telefono, entrambe al solo tavolo di Seven-Card Stud
   di `ViewThatFits` **non tocca l'albero d'accessibilità** — resta una foglia stabile la cui *label*
   cambia (pattern D-046/D-083). Canale parlato, budget e sincronizzazione (D-085) **non toccati**.
 
+
+### D-090 — Blackjack: sesto motore, il primo che NON è un contesto fra giocatori
+**Sesto motore** del progetto, in `GameEngine/Blackjack/`, **parallelo e indipendente**
+(nessun import incrociato; condivide **solo** i fondazionali `Card`/`Rank`/`Suit`). È il primo
+gioco della casa in cui il giocatore **non affronta altri giocatori ma il banco**, e questo ha
+conseguenze architetturali reali, non cosmetiche:
+- **Niente `PotMath`.** L'intero soggetto di quel file — dividere un piatto conteso — **non
+  esiste** qui. Ogni mano è un conto a due fra il giocatore e la casa, e il pagamento è un
+  moltiplicatore, non una spartizione. Riusarlo per abitudine sarebbe stato un errore.
+- **Niente bot e niente nuove dimensioni di `Personality`** (scelta dell'utente). Le leve del
+  progetto — aggressività, bluff, disciplina d'apertura, lettura del tabellone — descrivono il
+  comportamento verso **avversari**, e al banco non c'è nessuno da leggere. Il banco non è un
+  avversario: è una **regola**, e vive nel motore come tale.
+- **Un tipo di mazzo proprio, `Shoe`.** Il `Deck` condiviso è 52 carte ricostruite a ogni mano —
+  giusto per il poker, sbagliato qui, dove il sabot **persiste fra le mani** e il suo consumo è
+  parte del gioco. `Shoe` porta il proprio generatore seedato, quindi una sessione è riproducibile
+  **rimescoli compresi**, e `draw()` è **totale** (un sabot esaurito si rimescola da sé) così la
+  macchina a stati non ha rami di fallimento da modellare.
+- **Il turno non è un anello.** Gli altri motori ciclano su `actingIndex` fra i posti; qui il
+  giocatore risolve **le proprie mani una a una** (la divisione ne crea altre) e **poi** il banco
+  gioca una volta sola contro ciò che resta. Resta però lo scheletro provato: `apply` valida e muta,
+  e **tutta** la progressione passa da un solo `progress()`.
+
+**Regole della casa — imposte dall'utente:** il banco **si ferma su ogni diciassette**, morbido
+compreso; il blackjack paga **3:2**; **raddoppio** con una sola carta e stop obbligato; **divisione**
+su carte di **pari valore** (un re accanto a un dieci si divide) con raddoppio consentito dopo;
+**resa** subito dopo la distribuzione per **metà** posta. **L'assicurazione non esiste e non è stata
+implementata**: è una scommessa perdente, e il progetto non offre al giocatore una mossa perdente.
+Un test **strutturale** pinna l'insieme chiuso delle azioni, così una sessione futura non può
+reintrodurla di soppiatto.
+
+**Regole di dettaglio scelte (libertà di giudizio, come per Omaha), col criterio:** sempre la
+variante **più diffusa**, e a parità di diffusione quella **più favorevole al giocatore**, perché
+il banco ha già il vantaggio strutturale e non serve accentuarlo.
+- **Sei mazzi**, taglio al **75%**: lo standard dei casinò; il rimescolo è controllato **fra** le
+  mani, mai dentro una, così nessuna mano è distribuita da due mescolate diverse.
+- **Il banco sbircia** sotto un asso o un dieci e chiude subito la mano se ha blackjack. È la
+  variante che **protegge i soldi di raddoppio e divisione** del giocatore, e rende la narrazione
+  più semplice (la mano finisce prima che il giocatore impegni altro).
+- **Assi divisi: una carta ciascuno**, poi fermi, e **non si ridividono**. Standard.
+- **Ventuno dopo una divisione è un ventuno ordinario, non un blackjack** — paga alla pari. È la
+  regola universale; il contrario sarebbe un regalo.
+- **Fino a tre divisioni, quattro mani.** Standard.
+- **Resa tardiva** (dopo la sbirciata) e **solo sulla mano distribuita**: chi ha già chiesto carta o
+  diviso non può più ritirarsi.
+- **Le poste minime sono PARI e ogni puntata è un multiplo intero del minimo.** Non è un dettaglio
+  estetico: è ciò che rende **esatti in fiches intere** sia il 3:2 sia la metà della resa. Un test
+  lo verifica su ogni valore che la cassa può offrire.
+
+**Due tavoli, stesse regole, economie diverse (D-065/D-067 hanno retto):** aggiungerli è costato un
+caso di `CasinoGame`, due righe di `CasinoTable`, un ramo in `AppRootView` e le stringhe — **nessuna
+riscrittura** di lobby, conductor, director o percorso audio, e la palette del casinò arriva **per
+dati**. **Riverwood** «Tavolo del Saloon»: buy-in **1000**, poste **20–200**. **Skypool** «Tavolo
+Vetrata»: buy-in **5000** (il ×5 di casa), poste **100–1000**. Poiché non ci sono bot, ciò che
+distingue i due tavoli è **solo** il denaro e il suono del posto. **Il ClockTower non riceve il
+blackjack**: resta il luogo speciale del Machiavelli e dello Stud (test esplicito).
+
+**Economia:** invariante di §8 rispettato senza casi speciali — **le uniche fiches che entrano al
+tavolo sono il buy-in**; nessun premio, comp o bonus in sessione. **Lasciare il tavolo** (D-086) non
+ha richiesto alcuna meccanica nuova: la posta è **già** uscita dalle fiches del giocatore quando la
+mano è cominciata, quindi incassare ciò che resta **È** la confisca. Perché regga, però,
+`playerActed` porta le fiches **residue** a ogni mossa, altrimenti un raddoppio o una divisione
+lascerebbero il numero stantio e l'uscita pagherebbe troppo. Testato col movimento **reale** dei
+gettoni, `DEBUG_FREE_PLAY` **spento**.
+
+**Determinismo (D-047), con una differenza dichiarata:** i driver di poker riseminano **per mano**
+perché ogni mano nasce da un mazzo nuovo; qui il sabot **persiste davvero**, quindi il seme è **uno
+per sessione** — casuale dal generatore di sistema in produzione, fisso nei test. Il risultato è
+esattamente ciò che D-047 chiede (ogni sessione e ogni mano diverse) **modellando il sabot
+onestamente** invece di fingere un mazzo nuovo ogni volta.
+
+**574 test verdi** (515 → +59). Motori esistenti, Riverwood, Skypool e ClockTower **invariati** nei
+loro tavoli (tre test di regressione aggiornati da lista esatta a **prefisso**, per pinnare ciò per
+cui erano stati scritti senza congelare la crescita della casa).
+
+### D-091 — La RAPIDITÀ come problema di accessibilità: l'annuncio essenziale, e il dettaglio a richiesta
+Il blackjack ha un carattere che nessun gioco precedente aveva: **è veloce**. Una mano è due carte e
+una decisione, e un vedente ne gioca decine in pochi minuti. Con il carico di annunci di una mano di
+poker, il non vedente si sarebbe ritrovato una **versione lenta del gioco veloce** — il vedente
+rapido, lui al passo d'uomo. È "qualcuno perde qualcosa" nel punto in cui è più facile perderlo, e
+andava progettato **dal motore**, non aggiunto dopo.
+
+**Il criterio: l'annuncio essenziale è l'informazione MINIMA PER DECIDERE.** Il tuo totale, e la
+carta scoperta del banco. Una riga sola e breve. Tutto il resto è **dettaglio interrogabile**.
+
+**Tre scelte, e la terza è quella che ha sorpreso:**
+1. **La distribuzione è UN evento, non quattro.** Il vedente coglie le proprie due carte e la
+   scoperta del banco **in un colpo d'occhio**: il non vedente le riceve come **un fatto solo**
+   (`dealt`), non come una coda di quattro annunci. Stessa logica per il banco che gioca: gira la
+   coperta e pesca in **un** evento, non uno per carta.
+2. **Si tace tutto ciò che il giocatore sa per struttura** (D-089). Con una mano sola non gli si
+   dice di chi è il turno (lo sa); dopo una divisione sì, perché lì le mani vanno distinte davvero.
+   La puntata appena scelta non gli viene ripetuta (l'ha appena premuta, D-055). Con una mano sola
+   non c'è riepilogo di fine mano, perché la riga del risultato ha già dato la cifra.
+3. **IL SEME NON SI PRONUNCIA.** Nel blackjack il seme **non può influenzare nulla** — non un
+   totale, non un pagamento, non una mossa legale. Dire «dieci di fiori» invece di «dieci» spende
+   ogni mano, per sempre, un pezzo di secondo su un'informazione che non può cambiare **nessuna**
+   decisione. Il seme resta **visibile** sul tavolo e resta **sugli elementi interrogabili** per chi
+   lo vuole; semplicemente non viaggia nella riga che il giocatore sente a ogni mano. Stessa
+   ragione per cui la riga del banco dice **il totale** e non l'elenco delle sue carte: era la riga
+   più lunga della mano, misurata, e il totale è tutto ciò su cui l'esito si decide.
+
+**Il dettaglio non è soppresso, è SPOSTATO** (D-083/D-089): la mano del giocatore e il banco sono
+**elementi accessibili** che allo swipe leggono lo stato corrente — **totale prima, carte dopo**,
+perché il totale è ciò che si consulta più spesso. È la stessa memoria che il vedente ha guardando,
+restituita a richiesta invece che imposta.
+
+**MISURATO, non stimato** (`BlackjackAnnouncementLoadTests`, 60 mani reali contro 40 mani di Stud):
+
+| | righe parlate | secondi parlati |
+|---|---|---|
+| **Blackjack** | **3,88 / mano** | **6,14 / mano** |
+| Seven-Card Stud | 20,44 / mano | — |
+
+Una mano di blackjack chiede all'orecchio **poco meno di un quinto** di una mano di Stud. Il test
+tiene **due** sbarre: il rapporto contro lo Stud (in **righe**, l'unica unità che non dipende dal
+bundle) e un tetto assoluto in secondi, così la garanzia sopravvive a una futura modifica del tavolo
+di Stud.
+
+**Trappola trovata strada facendo, che vale registrare:** la prima misura diceva 8,36 s/mano ed era
+**falsa**. Sotto `swift test` non c'è bundle, quindi `uiLocalized` restituisce **la chiave**: stavo
+misurando la lunghezza degli identificatori, non dell'italiano. Corretto dando a
+`BlackjackSpeechMap.text` una **cucitura di localizzazione** (come già `BlackjackReadout`) e
+rendendo le righe dal file `it.lproj` letto da disco. **Regola generale: una misura di ciò che il
+giocatore SENTE va fatta sul testo reso davvero, mai su quello che il test riesce a risolvere.**
+
+**Il confine descrivi-non-consigliare, qui più che altrove.** Il blackjack ha una strategia di base
+**ottimale e nota**, e sarebbe stato banale sussurrarla. Non se ne dà **nessuna** traccia: «sedici, il
+banco mostra dieci» è descrizione, «conviene chiedere carta» è consiglio, e il vedente non riceve
+alcun suggerimento. Due guardiani lo tengono: uno scandisce **tutte** le stringhe `blackjack.*`
+spedite cercando il lessico del consiglio, l'altro le **righe rese davvero**. L'unico aggettivo
+concesso è **«morbido»**, che è un fatto sulle carte (un asso che conta undici) e non un'opinione su
+cosa farne.
+
+**Termini nuovi — campioni generati, NON cablati a indovinare (metodo D-060).** Hit, stand, double,
+split e surrender finiscono in label accessibili. Provvisoriamente le label VoiceOver usano le
+**parole italiane** — *carta, stai, raddoppia, dividi, resa* — che sono **parole vere nella lingua
+che la voce parla** e quindi corrette **per costruzione**, senza il rischio che ha fatto attraversare
+tre sessioni a «raise» con una grafia inventata. **16 campioni** con la voce di destinazione (Alice
+it-IT) — candidati inglesi, italiani e grafemici per ogni termine — sono in
+`~/Desktop/lumar-phonetics/blackjack/` **in attesa dell'ascolto dell'utente**: se preferisce
+l'inglese, cambiano **solo** le stringhe `.a11y`, niente codice.
+
+**Audio: nessun file prodotto, tutto degrada da sé.** Il croupier del blackjack **tace quasi sempre**
+— l'unica voce cablata è il **rimescolo** (~una volta ogni sessanta mani, e spiega una pausa vera),
+in due registri per i due casinò (D-067). La presenza degli altri avventori è **solo** effetti
+ambientali (`fx_bj_presence_*`), categoria `.botVoice` → **fallback al silenzio** (D-066), suonati
+**fra** le mani con probabilità ~28% e mai due volte di fila lo stesso: mai durante una decisione,
+mai sopra un risultato. Poiché **nessun NPC parla**, un solo set serve tutti i casinò. Il colpo di
+vittoria/sconfitta passa da `SpeechConductor.say(trailing:)` (D-085), quindi **non può anticipare**
+il risultato. Catalogo completo in [`Blackjack_audio_catalog.md`](Blackjack_audio_catalog.md).

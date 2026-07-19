@@ -580,8 +580,40 @@ Resa approvata all'orecchio = il plurale corretto `fiches` (grafia piana, device
   `FittedCardRow`/`ViewThatFits` con pavimento non scalato → contenimento strutturale;
   Dynamic Type ripristinato con candidate scalate. Verificato iPhone SE / 15 / Pro Max.
 
+### ✅ Blackjack — motore, driver e DUE tavoli giocabili (D-090/D-091)
+Sesto motore in `GameEngine/Blackjack/`, **indipendente** (solo i fondazionali; niente `PotMath`,
+niente bot, nessuna nuova dimensione di `Personality`). Il primo gioco contro **il banco**.
+- **Regole della casa (imposte):** banco fermo su ogni 17 (morbido compreso), blackjack **3:2**,
+  raddoppio con una carta sola, divisione su **pari valore** con raddoppio dopo, resa a metà posta,
+  **nessuna assicurazione** (pinnata da un test strutturale).
+- **Dettagli scelti (variante più diffusa, a parità la più favorevole al giocatore):** sei mazzi,
+  taglio al 75% controllato **fra** le mani; **sbirciata del banco** (protegge i soldi di raddoppio
+  e divisione); assi divisi = una carta ciascuno, niente ridivisione; **21 dopo divisione = 21
+  ordinario**, non blackjack; fino a 3 divisioni / 4 mani; resa tardiva solo sulla mano distribuita;
+  **poste pari e multiple del minimo**, che è ciò che rende esatti 3:2 e mezza-resa in fiches intere.
+- **Tavoli:** Riverwood «Tavolo del Saloon» (buy-in 1000, poste 20–200), Skypool «Tavolo Vetrata»
+  (buy-in 5000, poste 100–1000). **Il ClockTower NON lo riceve.**
+- **Rapidità come accessibilità (D-091):** annuncio essenziale = totale proprio + scoperta del banco;
+  distribuzione e gioco del banco come **un evento ciascuno**; **il seme non si pronuncia** (non può
+  cambiare nessuna decisione); dettaglio su elementi interrogabili. **Misurato: 3,88 righe e 6,14 s
+  parlati a mano** contro 20,44 righe di una mano di Stud.
+- **Economia:** invariante §8 intatto (solo il buy-in entra al tavolo); uscita immediata che
+  confisca la posta viva senza casi speciali. Testato con `DEBUG_FREE_PLAY` **spento**.
+
+**Residui aperti:**
+- **Ascolto dei campioni fonetici** dei termini nuovi (hit/stand/double/split/surrender) in
+  `~/Desktop/lumar-phonetics/blackjack/`: 16 candidati inglesi/italiani/grafemici. Oggi sono cablate
+  le **parole italiane** (device-safe per costruzione); se l'utente preferisce l'inglese cambiano
+  **solo** le stringhe `.a11y`.
+- **File audio del blackjack: nessuno prodotto.** Due voci croupier (`vo_it_bj_shuffle`,
+  `vo_it_sky_bj_shuffle`) e tre effetti di presenza (`fx_bj_presence_*`). Catalogo in
+  [`Blackjack_audio_catalog.md`](Blackjack_audio_catalog.md).
+- **Calibrazione delle poste dopo il test reale**: le bande 20–200 e 100–1000 sono scelte per
+  proporzione con la casa, **non misurate** su una sessione giocata.
+
 ### 🔭 Prossimo
-Nuovo test sul telefono per validare le calibrazioni; produzione dei restanti file audio
-(`vob_sky_*`, slot storici del mondo M2 e del croupier Draw); calibrazione comparativa
-Riverwood↔Skypool; cassa/DLC per ricarica gettoni; NPC narrativi; piscina/discoteca.
+Ascolto/approvazione dei campioni fonetici del blackjack; nuovo test sul telefono per validare le
+calibrazioni; produzione dei restanti file audio (blackjack, `vob_sky_*`, slot storici del mondo M2
+e del croupier Draw); calibrazione comparativa Riverwood↔Skypool; cassa/DLC per ricarica gettoni;
+NPC narrativi; piscina/discoteca.
 

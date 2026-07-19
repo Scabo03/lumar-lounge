@@ -12,7 +12,10 @@ final class CasinoTests: XCTestCase {
     func testRiverwoodTablesAndBuyInsAreUnchanged() {
         let r = Casinos.riverwood
         XCTAssertEqual(r.id, "riverwood")
-        XCTAssertEqual(r.tables.map(\.id),
+        // The ORIGINAL tables, in their original order, still lead the list. Later
+        // games are appended after them (blackjack, D-090), so this pins the
+        // regression it was written for without freezing the house's growth.
+        XCTAssertEqual(Array(r.tables.prefix(3)).map(\.id),
                        ["riverwood.table.classic", "riverwood.table.fast", "riverwood.table.draw"])
         // Same buy-ins and rules as before the generalisation.
         XCTAssertEqual(table(r, "riverwood.table.classic").buyIn, 1000)
@@ -34,7 +37,7 @@ final class CasinoTests: XCTestCase {
     func testSkypoolHasThreeTablesWithIncreasingBuyInScale() {
         let s = Casinos.skypool
         XCTAssertEqual(s.id, "skypool")
-        XCTAssertEqual(s.tables.map(\.id),
+        XCTAssertEqual(Array(s.tables.prefix(3)).map(\.id),
                        ["skypool.table.fast", "skypool.table.classic", "skypool.table.marble"])
         let fast = table(s, "skypool.table.fast").buyIn
         let classic = table(s, "skypool.table.classic").buyIn

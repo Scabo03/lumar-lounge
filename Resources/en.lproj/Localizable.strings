@@ -551,3 +551,80 @@
 
 /* D-087 — net chips gained on a won hand. */
 "announce.hero.net.win" = "you gained %d chips";
+
+/* =====================================================================
+   BLACKJACK (D-090/D-091)
+   ===================================================================== */
+
+/* Lobby */
+"table.blackjack.title" = "Blackjack";
+"table.blackjack.riverwood" = "Saloon Table";
+"table.blackjack.skypool" = "Glasshouse Table";
+
+"blackjack.total.hard" = "%d";
+"blackjack.total.soft" = "soft %d";
+
+"blackjack.announce.deal" = "%1$@. Dealer: %2$@.";
+"blackjack.announce.deal.natural" = "Blackjack. Dealer: %@.";
+"blackjack.announce.handturn" = "Hand %1$d of %2$d. %3$@.";
+"blackjack.announce.hit" = "%1$@. Total %2$@.";
+"blackjack.announce.hit.bust" = "%1$@. Bust with %2$d.";
+"blackjack.announce.double" = "Double. %1$@. Total %2$@.";
+"blackjack.announce.double.bust" = "Double. %1$@. Bust with %2$d.";
+"blackjack.announce.split" = "Split. You now hold %d hands.";
+"blackjack.announce.dealer" = "Dealer: %@.";
+"blackjack.announce.dealer.bust" = "Dealer busts with %d.";
+"blackjack.announce.dealer.natural" = "Dealer has blackjack.";
+
+"blackjack.result.natural" = "Blackjack. You win %d.";
+"blackjack.result.win" = "You win %d.";
+"blackjack.result.push" = "Push. You take back %d.";
+"blackjack.result.lose" = "You lose %d.";
+"blackjack.result.bust" = "You lose %d.";
+"blackjack.result.surrender" = "You surrender. You lose %d.";
+"blackjack.result.hand" = "Hand %1$d: %2$@";
+"blackjack.round.net.positive" = "In all: plus %d.";
+"blackjack.round.net.negative" = "In all: minus %d.";
+"blackjack.round.net.zero" = "In all: even.";
+"blackjack.session.lost" = "You have no chips left to play.";
+
+"blackjack.hero.hand.a11y" = "Your hand: %1$@. Cards: %2$@.";
+"blackjack.hero.hand.multi.a11y" = "Hand %1$d of %2$d: %3$@. Cards: %4$@.";
+"blackjack.dealer.a11y" = "Dealer shows %@.";
+"blackjack.dealer.full.a11y" = "Dealer: %1$@. Cards: %2$@.";
+"blackjack.dealer.bust.a11y" = "Dealer busts with %1$d. Cards: %2$@.";
+"blackjack.dealer.empty.a11y" = "The dealer has no cards yet.";
+"blackjack.dealer.title" = "Dealer";
+"blackjack.chips.a11y" = "Your chips: %d.";
+"blackjack.stakes.a11y" = "Your chips: %1$d. At stake: %2$d.";
+
+"blackjack.outcome.natural" = "Blackjack";
+"blackjack.outcome.win" = "Won";
+"blackjack.outcome.push" = "Push";
+"blackjack.outcome.lose" = "Lost";
+"blackjack.outcome.bust" = "Bust";
+"blackjack.outcome.surrender" = "Surrendered";
+
+"blackjack.action.hit" = "Hit";
+"blackjack.action.hit.a11y" = "hit";
+"blackjack.action.stand" = "Stand";
+"blackjack.action.stand.a11y" = "stand";
+"blackjack.action.double" = "Double";
+"blackjack.action.double.a11y" = "double";
+"blackjack.action.split" = "Split";
+"blackjack.action.split.a11y" = "split";
+"blackjack.action.surrender" = "Surrender";
+"blackjack.action.surrender.a11y" = "surrender";
+
+"blackjack.bet.title" = "Bet";
+"blackjack.bet.display" = "%d";
+"blackjack.bet.value.a11y" = "%d chips";
+"blackjack.bet.minus.a11y" = "minus";
+"blackjack.bet.plus.a11y" = "plus";
+"blackjack.bet.max" = "Max";
+"blackjack.bet.max.a11y" = "maximum bet";
+"blackjack.bet.confirm" = "Bet";
+"blackjack.bet.confirm.a11y" = "bet %d chips";
+
+"blackjack.croupier.shuffle" = "Fresh deck.";
+"skypool.croupier.bj.shuffle" = "New cards. Starting over.";
