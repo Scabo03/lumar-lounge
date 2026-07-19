@@ -622,6 +622,14 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
   spezzato in un evento **per livello di contribuzione**, quindi nessun singolo `potAwarded` è "ciò
   che hai vinto" — la cifra giusta è la variazione reale dello stack).
 
+- **Prima di indagare la PRONUNCIA di una parola, verificare la sua ORTOGRAFIA (D-088).** "Viene
+  letta male" ha due cause possibili con soluzioni opposte: la stringa contiene la parola sbagliata,
+  oppure la voce pronuncia male la parola giusta. La prima si accerta con un `grep` e si corregge in
+  un minuto; la seconda costa un giro completo di campioni, ascolto e cablaggio (D-060). **Ordine
+  obbligatorio: (1) la stringa dice la parola giusta? (2) solo allora, la voce la pronuncia bene?**
+  Corollario: quando la grafia approvata all'orecchio risulta essere **la parola corretta**, è
+  l'esito migliore — piana, device-safe, senza dipendere dal percorso IPA→VoiceOver mai verificato.
+
 ## 5. Testabilità
 
 - La logica pura (`GameEngine`, e in prospettiva `GameWorld`) deve essere

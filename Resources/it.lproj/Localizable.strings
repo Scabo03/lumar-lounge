@@ -45,13 +45,13 @@
 
 /* ------------------------------------------------------------------ */
 /* Seat labels and spoken summary (poker terms rendered phonetically) */
-"seat.chips" = "%d fiche";
+"seat.chips" = "%d fiches";
 "badge.button" = "D";
 "badge.smallBlind" = "SB";
 "badge.bigBlind" = "BB";
 "badge.allIn" = "ALL-IN";
 "badge.busted" = "OUT";
-"seat.a11y.base" = "%1$@, %2$d fiche";
+"seat.a11y.base" = "%1$@, %2$d fiches";
 "seat.a11y.button" = "ha il bàtton";
 "seat.a11y.smallBlind" = "smòl blaind";
 "seat.a11y.bigBlind" = "big blaind";
@@ -70,7 +70,7 @@
 "board.a11y.empty" = "Nessuna carta comune";
 "board.a11y" = "Carte comuni: %@";
 "pot.label" = "Pot: %d";
-"pot.a11y" = "Pot di %d fiche";
+"pot.a11y" = "Pot di %d fiches";
 
 /* Winner banner */
 "winner.banner" = "Vince %@!";
@@ -110,7 +110,7 @@
 
 /* Hero (bottom) zone */
 "hero.you" = "Tu";
-"hero.stack.a11y" = "il tuo stack: %d fiche";
+"hero.stack.a11y" = "il tuo stack: %d fiches";
 "hero.cards.a11y" = "le tue carte: %@";
 "hero.nocards" = "—";
 "hero.nocards.a11y" = "nessuna carta in mano";
@@ -145,20 +145,20 @@
 "raise.plus.a11y" = "più";
 "raise.allin" = "All-in";
 "raise.allin.a11y" = "ol-in";
-"raise.value.a11y" = "cifra: %d fiche";
+"raise.value.a11y" = "cifra: %d fiches";
 "raise.cancel" = "Annulla";
 "raise.cancel.a11y" = "annulla";
 "raise.confirm.to" = "Raise a %d";
-"raise.confirm.a11y" = "conferma Raise a %d fiche";
-"raise.confirm.allin.a11y" = "conferma ol-in di %d fiche";
+"raise.confirm.a11y" = "conferma Raise a %d fiches";
+"raise.confirm.allin.a11y" = "conferma ol-in di %d fiches";
 
 /* Turn + raise announcements */
 "announce.hero.cards" = "le tue carte: %@";
 "announce.your.turn.call" = "il tuo turno. Il pot è di %1$d, per chiamare servono %2$d";
 "announce.your.turn.check" = "il tuo turno. Il pot è di %d, puoi fare cek";
-"announce.raise.value" = "%d fiche";
-"announce.raise.allin" = "ol-in, %d fiche";
-"announce.pot.you" = "vinci il pot di %d fiche";
+"announce.raise.value" = "%d fiches";
+"announce.raise.allin" = "ol-in, %d fiches";
+"announce.pot.you" = "vinci il pot di %d fiches";
 "announce.you.won" = "hai vinto la partita";
 "announce.you.lost" = "hai perso la partita";
 
@@ -244,7 +244,7 @@
 "draw.phase.draw" = "Fase di scambio";
 "draw.phase.secondbet" = "Secondo giro di puntate";
 "draw.pot.carried" = "Progressivo: %d";
-"draw.pot.a11y.carried" = "Pot di %1$d fiche, di cui %2$d progressivi";
+"draw.pot.a11y.carried" = "Pot di %1$d fiches, di cui %2$d progressivi";
 "draw.passedin.banner" = "Nessuno apre, ante conservato";
 
 /* Opponent badges */
@@ -280,7 +280,7 @@
 
 /* Spoken layer (croupier fallbacks + synthesis) */
 "draw.announce.ante" = "tutti versano l'ante";
-"draw.announce.carried" = "pot progressivo di %d fiche";
+"draw.announce.carried" = "pot progressivo di %d fiches";
 "draw.announce.hero.cards" = "le tue carte: %@";
 "draw.announce.hero.drew" = "le tue nuove carte: %@";
 "draw.announce.opp.drew" = "giocatore %1$d scarta %2$d carte";
@@ -335,7 +335,7 @@
 /* ------------------------------------------------------------------ */
 /* M1.9 rifinitura — ante progressivo + mani decisive al Whiskey (D-052/D-053) */
 "draw.ante.label" = "Ante: %d";
-"draw.ante.a11y" = "ante di %d fiche";
+"draw.ante.a11y" = "ante di %d fiches";
 "draw.decisive.banner" = "MANO DECISIVA";
 "draw.decisive.a11y" = "mano decisiva, puntate raddoppiate";
 "draw.announce.decisive" = "mano decisiva";
@@ -373,8 +373,8 @@
 "omaha.raise.max.pot" = "Piatto";
 "omaha.raise.max.pot.a11y" = "punta il massimo consentito, il piatto";
 "omaha.raise.cap.caption" = "Tetto Pot Limit: %d";
-"omaha.raise.cap.a11y" = "tetto pot limit, %d fiche";
-"omaha.raise.value.a11y" = "%d fiche";
+"omaha.raise.cap.a11y" = "tetto pot limit, %d fiches";
+"omaha.raise.value.a11y" = "%d fiches";
 
 /* Omaha spoken layer (croupier fallbacks + synthesis) */
 "omaha.announce.hero.cards" = "le tue quattro carte: %@";
@@ -522,7 +522,7 @@
 "stud.table.a11y" = "Tavolo di Seven-Card Stud, Pot Limit.";
 "stud.potlimit.tag" = "POT LIMIT";
 "stud.stakes" = "Ante %1$d · Obbligata %2$d · Puntata %3$d";
-"stud.stakes.a11y" = "Ante %1$d fiche, obbligata %2$d, puntata %3$d.";
+"stud.stakes.a11y" = "Ante %1$d fiches, obbligata %2$d, puntata %3$d.";
 "stud.community" = "Comune:";
 "stud.community.a11y" = "Carta comune, per tutti: %@.";
 
@@ -556,7 +556,7 @@
 "stud.announce.action.bet" = "%1$@ apre a %2$d.";
 "stud.announce.action.raise" = "%1$@ rilancia a %2$d.";
 "stud.announce.action.allin" = "%@ punta tutto.";
-"stud.announce.houseprize" = "Hai battuto il tavolo. La Casa ti premia con %d fiche.";
+"stud.announce.houseprize" = "Hai battuto il tavolo. La Casa ti premia con %d fiches.";
 "stud.announce.yourturn" = "A te la parola.";
 
 /* D-083 — Stud opponent board: the cards FIRST, no preamble. Describes, never advises. */
@@ -566,4 +566,4 @@
 "stud.board.busted.a11y" = "%@, eliminato";
 
 /* D-087 — net chips gained on a won hand. */
-"announce.hero.net.win" = "hai guadagnato %d fiche";
+"announce.hero.net.win" = "hai guadagnato %d fiches";

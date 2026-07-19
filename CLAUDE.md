@@ -152,7 +152,9 @@ annunci ma nel `SpeechConductor` che la alimenta una voce alla volta, quindi la 
 era scavalcata per costruzione; budget ora sull'**intero canale**, ordine **esplicito** fra effetto
 di esito e annuncio (l'effetto non può più spoilerare), safeguard **adattivo** al posto del tetto
 fisso. Il giocatore può **lasciare il tavolo quando vuole** (perdendo ciò che ha nel piatto), e dopo
-il **fold** la mano **corre allo showdown** annunciando comunque tutte le mani. 506 test verdi.
+il **fold** la mano **corre allo showdown** annunciando comunque tutte le mani. Cablata la resa
+di **`fiches`** approvata all'orecchio (D-088: il difetto era ortografico — le stringhe dicevano
+`fiche` al singolare in 18 punti). 507 test verdi.
 
 **Sessione di calibrazione post-test reale (D-082/D-083/D-084):** corretta al fondo la **causa** del
 fold precoce nel Draw (un **disallineamento di scala** — punteggio ordinale di categoria confrontato
@@ -2674,4 +2676,35 @@ avversari: elimina l'attesa, non l'informazione (test-guardiano esplicito su que
   detto ad alta voce è peggio di nessun numero**. La riga (`heroNetWin`, priorità alta) riporta il
   **guadagno netto reale**, dal cambiamento effettivo dello stack fra inizio e fine mano.
 - Applicato a Texas, Draw, Omaha e Stud.
+
+### D-088 — "fiches": il difetto era ORTOGRAFICO, non fonetico (e la grafia giusta è la parola giusta)
+L'utente riferiva che Alice leggeva "fiches" come **"fiche"**, al singolare. Prima di generare
+qualunque campione, la lettura del codice ha mostrato la causa: **le stringhe italiane dicevano già
+`fiche`**, al singolare, in **18 punti** (`"seat.chips" = "%d fiche"`, `pot.a11y`, `hero.stack.a11y`,
+…). **La sintesi non stava sbagliando la pronuncia di una parola giusta: stava pronunciando
+correttamente una parola sbagliata.** Il difetto era di **ortografia**, non di fonetica.
+- **Metodo D-060 applicato comunque** (non si dichiara una resa senza ascoltarla): generati **18
+  campioni** con la voce di destinazione (Alice it-IT) — parola sola e frase in contesto — su nove
+  candidati (`fiche` attuale, `fiches`, `fisc`, `fisch`, `fisce`, `fisci`, `fish`, `fiscia`, e il
+  ripiego `chips`). **L'utente ha approvato il 02 = `fiches`**, cioè **il plurale italiano corretto**
+  (secondo accettabile: `fish`; tutti gli altri "tremendamente sbagliati").
+- **È l'esito migliore possibile secondo D-060:** una **grafia piana che è anche la parola giusta** —
+  nessun grafema inventato, nessun IPA, quindi **device-safe per costruzione** (nessuna dipendenza
+  dal percorso SwiftUI→VoiceOver mai verificato end-to-end). **Il ripiego pre-approvato (`chips`
+  anche in italiano) NON è servito** e non è stato cablato.
+- **Verifica di byte-identità (passo 4 del metodo D-060):** rigenerata la resa **così com'è nelle
+  stringhe spedite** (`fiches`; `"il tuo stack: 1200 fiches"`) e confrontata coi campioni approvati:
+  **md5 identici** su entrambi (`0d1073d7…` = campione 02, `adfc5a22…` = campione 11).
+- **Guardiano** (`PhoneticsTests.testEarVerifiedChipWordRendering`): pinna la resa udita su tutte le
+  chiavi che nominano le fiches **e vieta il ritorno del singolare** in qualunque stringa italiana —
+  cioè esattamente la regressione riportata. Coerente col principio di D-060: **si asserisce solo
+  ciò che un umano ha udito.**
+
+### ⚠️ Lezione per sessioni future — prima di indagare la PRONUNCIA, verificare l'ORTOGRAFIA
+Quando una parola "viene letta male", **leggere prima la stringa**. Tre sessioni (D-049/D-054/D-059)
+sono state spese a inseguire grafie fonetiche per *Raise* perché il problema era davvero di
+pronuncia; qui il sintomo era identico ma la causa era banale — la parola era scritta al singolare.
+Il costo di controllare è un `grep`; il costo di non controllarlo è un giro di campioni, di ipotesi
+e di cablaggi su un problema che non esiste. **Ordine corretto: (1) la stringa dice la parola
+giusta? (2) solo allora, la voce la pronuncia bene?**
 

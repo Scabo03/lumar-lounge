@@ -68,6 +68,36 @@ final class PhoneticsTests: XCTestCase {
         XCTAssertEqual(s["table.omaha.marble"], "Marble", "Marble — ear-verified plain word (sample 01)")
     }
 
+    /// The chip word — EAR-VERIFIED on Alice by the user (D-088). The strings said
+    /// "fiche" (SINGULAR) in 18 places, so the voice was reading a wrong WORD correctly,
+    /// not reading a right word wrongly: the defect was orthographic, not phonetic. The
+    /// approved render is the plainly correct Italian plural "fiches" (sample 02, and
+    /// sample 11 in a full sentence), verified byte-identical to the strings as shipped.
+    /// The pre-approved fallback ("chips" in Italian too) was NOT needed.
+    func testEarVerifiedChipWordRendering() throws {
+        let s = try italianStrings()
+        // Every spoken/visible string that names chips must use the approved plural.
+        let chipKeys = ["seat.chips", "seat.a11y.base", "pot.a11y", "hero.stack.a11y",
+                        "raise.value.a11y", "announce.raise.value", "announce.pot.you",
+                        "draw.ante.a11y", "omaha.raise.value.a11y", "announce.hero.net.win"]
+        for key in chipKeys {
+            let value = s[key] ?? ""
+            XCTAssertFalse(value.isEmpty, "\(key) is missing")
+            XCTAssertTrue(value.contains("fiches"),
+                          "\(key) does not use the ear-verified \"fiches\": \(value)")
+        }
+        // The singular must not creep back anywhere in the shipped Italian strings —
+        // that regression IS the bug the user reported.
+        for (key, value) in s {
+            let singular = value.range(of: #"\bfiche\b(?!s)"#, options: .regularExpression) != nil
+            XCTAssertFalse(singular,
+                           "\(key) reverted to the singular \"fiche\" (the reported defect): \(value)")
+        }
+        // The pre-approved fallback was not needed: Italian keeps its own word.
+        XCTAssertFalse((s["seat.chips"] ?? "").lowercased().contains("chips"),
+                       "the Italian UI fell back to \"chips\" although \"fiches\" was approved")
+    }
+
     // MARK: - Structural: every action-bar accessibility label comes from a `.a11y` key (D-054)
 
     func testActionBarAccessibilityLabelsUsePhoneticKeys() throws {

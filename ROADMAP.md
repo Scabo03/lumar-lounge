@@ -567,6 +567,11 @@ Misurato **sul device reale via cavo** (`PacingBench`, `-pacingBench`), non sul 
 - **Fast-forward dopo il fold** fino allo showdown, con tutte le mani comunque annunciate e il
   guadagno netto reale.
 
+### ✅ Resa di "fiches" (D-088)
+Difetto **ortografico**, non fonetico: le stringhe dicevano `fiche` al singolare in 18 punti.
+Resa approvata all'orecchio = il plurale corretto `fiches` (grafia piana, device-safe); ripiego
+`chips` non servito. Verificata byte-identità coi campioni approvati; guardiano anti-regressione.
+
 ### 🔭 Prossimo
 Nuovo test sul telefono per validare le calibrazioni; produzione dei restanti file audio
 (`vob_sky_*`, slot storici del mondo M2 e del croupier Draw); calibrazione comparativa
