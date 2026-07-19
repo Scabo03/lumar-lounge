@@ -16,13 +16,24 @@ struct CardView: View {
 
     /// The rendered size. `medium` suits the five hero cards of Five-Card Draw,
     /// where two big cards' worth of width must hold five (D-044).
-    enum Size { case normal, medium, big, huge }
+    enum Size: Equatable {
+        case normal, medium, big, huge
+        /// An EXACT, NON-Dynamic-Type-scaled size (D-089). Used where the caller has
+        /// already sized the card to the space it must fit into — re-scaling it there
+        /// would defeat the fitting and push the row off screen again.
+        case exact(CGFloat, CGFloat)
+    }
 
     let face: Face
     private let size: Size
 
-    @ScaledMetric private var width: CGFloat
-    @ScaledMetric private var height: CGFloat
+    @ScaledMetric private var scaledWidth: CGFloat
+    @ScaledMetric private var scaledHeight: CGFloat
+    /// Set only for `.exact`, which opts OUT of Dynamic Type scaling (D-089).
+    private let fixed: CGSize?
+
+    private var width: CGFloat { fixed?.width ?? scaledWidth }
+    private var height: CGFloat { fixed?.height ?? scaledHeight }
 
     /// - Parameter big: a large variant for the human's own hole cards (Texas).
     init(face: Face, big: Bool = false) {
@@ -39,12 +50,17 @@ struct CardView: View {
         case .medium: (w, h) = (52, 74)
         case .big:    (w, h) = (78, 108)
         case .huge:   (w, h) = (64, 92)
+        case let .exact(ew, eh): (w, h) = (ew, eh)
         }
-        _width = ScaledMetric(wrappedValue: w, relativeTo: .title3)
-        _height = ScaledMetric(wrappedValue: h, relativeTo: .title3)
+        if case .exact = size { fixed = CGSize(width: w, height: h) } else { fixed = nil }
+        _scaledWidth = ScaledMetric(wrappedValue: w, relativeTo: .title3)
+        _scaledHeight = ScaledMetric(wrappedValue: h, relativeTo: .title3)
     }
 
     private var big: Bool { size == .big || size == .huge }
+
+    /// Below this width the rank glyph needs the smaller font to stay legible.
+    private var tiny: Bool { (fixed?.width ?? 40) < 34 }
 
     var body: some View {
         ZStack {
@@ -54,7 +70,7 @@ struct CardView: View {
                 .strokeBorder(Color.black.opacity(0.25), lineWidth: 1)
             if case let .up(card) = face {
                 Text(CardText.symbol(card))
-                    .font((big ? Font.largeTitle : Font.title3).weight(.bold))
+                    .font((big ? Font.largeTitle : (tiny ? Font.footnote : Font.title3)).weight(.bold))
                     .minimumScaleFactor(0.5)
                     .foregroundStyle(TablePalette.suitColor(card.suit))
                     .padding(2)

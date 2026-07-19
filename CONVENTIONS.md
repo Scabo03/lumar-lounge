@@ -630,6 +630,26 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
   Corollario: quando la grafia approvata all'orecchio risulta essere **la parola corretta**, è
   l'esito migliore — piana, device-safe, senza dipendere dal percorso IPA→VoiceOver mai verificato.
 
+- **Un annuncio non ripete ciò che il giocatore sa PER STRUTTURA DEL GIOCO, e non spezza un
+  insieme che il vedente percepisce unitariamente (principio permanente, D-089).** Due prove da
+  fare su ogni riga parlata: *(1)* **lo sta già sapendo?** — se l'informazione discende dalle regole
+  (nello Stud una carta scoperta è scoperta; una carta comune è di tutti), ribadirla a ogni lettura
+  è verbosità, non accessibilità; *(2)* **sta spezzando un insieme?** — se il vedente coglie qualcosa
+  *in un colpo d'occhio* (la propria mano), la resa parlata dev'essere **una sola lettura continua**,
+  non blocchi separati da preamboli. Un preambolo si paga a **ogni** interrogazione, e la parità
+  vedente/non vedente si misura sull'esperienza, non sul contenuto trasmesso. **Corollario:** una
+  distinzione tolta dalla lettura principale non va **soppressa** ma **spostata** su un elemento
+  proprio, raggiungibile a richiesta (D-083) — si separa per frequenza d'uso, non si butta.
+- **Quando il contenuto CRESCE durante la partita, la dimensione deve seguire lo spazio (D-089).**
+  Un layout a carte di dimensione fissa è corretto finché il numero di elementi è fisso; in un gioco
+  dove cresce (Stud: quattro scoperte per avversario più sette carte proprie) sborda **con
+  certezza**, e su un telefono prima di quanto si stimi. **Regola:** usare un contenitore che prova
+  dimensioni decrescenti (`ViewThatFits`) con **un'ultima candidata piccola e non scalata**, così il
+  contenimento è **strutturalmente garantito** e non affidato alla taratura. E quando si esce dallo
+  scaling automatico per ottenere l'adattamento, **ripristinare esplicitamente il Dynamic Type**
+  (candidate scalate + pavimento fisso): riparare il layout non deve costare l'accessibilità che il
+  layout serviva.
+
 ## 5. Testabilità
 
 - La logica pura (`GameEngine`, e in prospettiva `GameWorld`) deve essere

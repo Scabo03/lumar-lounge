@@ -233,7 +233,14 @@ struct StudOpponentBadgesView: View {
         .accessibilityElement(children: .contain)
     }
 
-    /// The opponent's visible cards: their up cards face-up + a couple of down-card backs.
+    /// The opponent's visible cards: their UP cards only, sized to fit (D-089).
+    ///
+    /// The two face-down backs are deliberately gone. They carried no information —
+    /// a back is a back — but they cost a third of the row's width, and with them the
+    /// band overflowed the phone from fourth street onward. Dropping them lets the
+    /// four up cards, which ARE the strategic content of Stud (D-078), stay large
+    /// enough to read. That a seat still holds cards is already conveyed: a folded or
+    /// busted seat says so in words, right here.
     @ViewBuilder
     private func cardsRow(_ seat: StudSeatPresentation) -> some View {
         if seat.isFolded || seat.isBusted {
@@ -241,15 +248,8 @@ struct StudOpponentBadgesView: View {
                 .font(.caption2).foregroundStyle(TablePalette.foldedDim)
                 .frame(minHeight: 46)
         } else {
-            HStack(spacing: 3) {
-                if seat.hasCards {
-                    CardView(face: .down)
-                    CardView(face: .down)
-                }
-                ForEach(Array(seat.upCards.enumerated()), id: \.offset) { _, card in
-                    CardView(face: .up(card))
-                }
-            }
+            FittedCardRow(faces: seat.upCards.map { .up($0) })
+                .frame(minHeight: 46)
         }
     }
 
@@ -301,19 +301,23 @@ struct StudHeroZoneView: View {
         state.heroSeatID.flatMap { id in state.seats.first { $0.id == id } }
     }
 
+    /// Name and stack sit ABOVE the cards rather than beside them (D-089): at seventh
+    /// street the player holds seven cards, and a side column stole ~90 pt of the width
+    /// they need. Stacked, the hand gets the full width of the zone and the cards stay
+    /// legible instead of shrinking to fit around the stack.
     var body: some View {
-        HStack(spacing: 12) {
-            cards
-            Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 2) {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
                 Text(verbatim: uiLocalized("hero.you"))
-                    .font(.headline).foregroundStyle(TablePalette.primaryText)
+                    .font(.subheadline.weight(.semibold)).foregroundStyle(TablePalette.primaryText)
+                Spacer(minLength: 8)
                 Text(verbatim: uiLocalized("seat.chips", heroSeat?.chips ?? 0))
                     .font(.title3.weight(.bold).monospacedDigit())
                     .foregroundStyle(ClockPalette.accent)
                     .accessibilityLabel(Text(verbatim: uiLocalized("hero.stack.a11y", heroSeat?.chips ?? 0)))
                     .voiceOverFocusLanding()   // land VoiceOver on the hero on table entry (D-057)
             }
+            cards
         }
         .padding(.horizontal, 16).padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -328,24 +332,30 @@ struct StudHeroZoneView: View {
     private var cards: some View {
         if let down = state.heroDown, !down.isEmpty {
             let up = heroSeat?.upCards ?? []
-            HStack(spacing: 5) {
-                ForEach(Array(down.enumerated()), id: \.offset) { _, card in
-                    CardView(face: .up(card), size: .medium)
-                }
-                if !up.isEmpty {
-                    Rectangle().fill(ClockPalette.accent.opacity(0.5)).frame(width: 1, height: 60)
-                    ForEach(Array(up.enumerated()), id: \.offset) { _, card in
-                        CardView(face: .up(card))
-                    }
-                }
+            VStack(alignment: .leading, spacing: 4) {
+                // THE HAND — one element, read as ONE CONTINUOUS WHOLE (D-089). The old
+                // label split it in two ("your hole cards: … / showing, seen by all: …"),
+                // which both told the player something they already know — in Stud a card
+                // that is up is up — and broke a hand the sighted player takes in at a
+                // glance into two blocks with a preamble between them.
+                FittedCardRow(faces: (down + up).map { .up($0) }, spacing: 4)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityIdentifier("hero.cards")
+                    .accessibilityLabel(Text(verbatim: uiLocalized("stud.hero.cards.a11y",
+                                                                   CardText.spoken(down + up))))
+                    .accessibilitySortPriority(2)
+
+                // The up/down split stays AVAILABLE, just no longer in the way: its own
+                // element, reached on demand, mirroring the opponents' board (D-083).
+                Text(verbatim: uiLocalized("stud.hero.showing", up.count))
+                    .font(.caption2).foregroundStyle(TablePalette.secondaryText)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityIdentifier("hero.board")
+                    .accessibilityLabel(Text(verbatim: up.isEmpty
+                        ? uiLocalized("stud.hero.board.none.a11y")
+                        : uiLocalized("stud.hero.board.a11y", CardText.spoken(up))))
+                    .accessibilitySortPriority(1)
             }
-            // One element distinguishing the hero's DOWN (private) cards from their UP
-            // (public) cards, so the blind player knows what everyone else can read.
-            .accessibilityElement(children: .ignore)
-            .accessibilityIdentifier("hero.cards")
-            .accessibilityLabel(Text(verbatim: uiLocalized("stud.hero.cards.a11y",
-                                                            CardText.spoken(down),
-                                                            up.isEmpty ? uiLocalized("stud.hero.noup") : CardText.spoken(up))))
         } else {
             Text(verbatim: uiLocalized("hero.nocards"))
                 .font(.subheadline).foregroundStyle(TablePalette.secondaryText)

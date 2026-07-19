@@ -572,6 +572,14 @@ Difetto **ortografico**, non fonetico: le stringhe dicevano `fiche` al singolare
 Resa approvata all'orecchio = il plurale corretto `fiches` (grafia piana, device-safe); ripiego
 `chips` non servito. Verificata byte-identità coi campioni approvati; guardiano anti-regressione.
 
+### ✅ Rifinitura tavolo Stud (D-089)
+- **Mano del giocatore letta come un insieme unico**: via il preambolo "viste da tutti"; la
+  distinzione coperte/scoperte spostata su `hero.board`, a richiesta. Rimosso anche il "per
+  tutti" della carta comune e due stringhe morte (una sorvegliata da un test ormai cieco).
+- **Layout contenuto nello schermo**: sbordava di +47% dalla quarta strada (misurato).
+  `FittedCardRow`/`ViewThatFits` con pavimento non scalato → contenimento strutturale;
+  Dynamic Type ripristinato con candidate scalate. Verificato iPhone SE / 15 / Pro Max.
+
 ### 🔭 Prossimo
 Nuovo test sul telefono per validare le calibrazioni; produzione dei restanti file audio
 (`vob_sky_*`, slot storici del mondo M2 e del croupier Draw); calibrazione comparativa

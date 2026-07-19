@@ -146,6 +146,12 @@ e la sua **musica** (archi al poker, clockwork dosato al Machiavelli — D-080).
   `vo_it_pass_and_out`, `vo_it_carried_pot`, `vo_it_openers_disqualified`, `vo_it_high_stakes_draw`),
   e i 2 storici (`amb_crowd_distant`, `fx_hand_neutral`).
 
+**Sessione rifinitura Stud (D-089):** la mano del giocatore si legge come **un insieme unico**
+(via il preambolo "viste da tutti", che ripeteva ciò che il giocatore sa per struttura del gioco e
+spezzava in due una mano che il vedente coglie in un colpo d'occhio); la distinzione coperte/scoperte
+resta su un **elemento proprio**. Layout reso **adattivo** (`FittedCardRow`/`ViewThatFits`): sbordava
+di **+47%** dalla quarta strada, ora sta in schermo su ogni telefono e a ogni strada. 515 test verdi.
+
 **Sessione ritmo + controllo della sessione (D-085/D-086/D-087):** ristrutturata la
 sincronizzazione dei tre canali dopo **misure sul device reale** — il backlog non era nella coda
 annunci ma nel `SpeechConductor` che la alimenta una voce alla volta, quindi la Strategy C di D-032
@@ -2707,4 +2713,50 @@ pronuncia; qui il sintomo era identico ma la causa era banale — la parola era 
 Il costo di controllare è un `grep`; il costo di non controllarlo è un giro di campioni, di ipotesi
 e di cablaggi su un problema che non esiste. **Ordine corretto: (1) la stringa dice la parola
 giusta? (2) solo allora, la voce la pronuncia bene?**
+
+### D-089 — Stud: la mano si legge come UN INSIEME, e il tavolo sta nello schermo
+Due correzioni dal test sul telefono, entrambe al solo tavolo di Seven-Card Stud.
+- **L'annuncio della propria mano.** Diceva *"Le tue coperte: … . Scoperte, VISTE DA TUTTI: … ."*
+  Due difetti in una riga: (a) **superfluo** — nello Stud una carta scoperta è scoperta, e il
+  giocatore lo sa per **struttura del gioco**; (b) **dannoso** — spezzava in **due blocchi con un
+  preambolo in mezzo** una mano che il vedente coglie **in un solo colpo d'occhio**. Ora è **una
+  sola riga continua**: *"Le tue carte: …"*, un unico elenco (guardiano: **un solo segnaposto**
+  nella stringa; due significherebbero che è di nuovo spezzata).
+- **Nulla è andato perso.** La distinzione coperte/scoperte resta **disponibile a richiesta** su un
+  **elemento proprio** (`hero.board` → *"Le tue scoperte: …"*), accanto alla mano e ordinato **dopo**
+  di essa. È lo stesso criterio di D-083 applicato al giocatore invece che agli avversari: separare
+  per **frequenza d'uso**, non sopprimere. Sapere cosa gli altri leggono di te è informazione
+  strategica vera dello Stud, quindi **doveva restare raggiungibile** — solo non in mezzo alla mano.
+- **Altri preamboli dello stesso genere, cercati e trovati:** `stud.community.a11y` diceva *"Carta
+  comune, PER TUTTI: …"* — una carta comune è per tutti **per definizione**. Rimosso. Nella passata
+  sono emerse anche **due stringhe morte**: `stud.seat.upcards.a11y` (sostituita da `stud.board.a11y`
+  in D-083 e mai cancellata) e `stud.hero.noup`. Rimosse — e un test **puntava** sulla prima, quindi
+  **sorvegliava una stringa che nessuno più rendeva**: riagganciato alla chiave viva.
+- **Il layout usciva dallo schermo — misurato, non stimato.** Larghezza utile su iPhone 15: **369 pt**.
+  Banda avversari con carte fisse da 40 pt: **372 pt alla QUARTA strada** (non alla sesta come
+  ipotizzato) e **544 pt alla sesta** (+47%); zona hero alla settima strada **486 pt** (+32%).
+- **Soluzione: la carta segue lo spazio, non il contrario.** Nuovo `FittedCardRow` costruito su
+  `ViewThatFits`, che prova larghezze decrescenti e prende la prima che entra — niente aritmetica di
+  geometria, e si adatta **al dispositivo e al Dynamic Type** da solo. L'ultima candidata è un
+  **pavimento non scalato (20 pt)**, quindi lo sbordamento è **strutturalmente impossibile**, non
+  soltanto improbabile. Aggiunta a `CardView` la taglia additiva `.exact(w,h)`, **non** scalata dal
+  Dynamic Type (ri-scalarla vanificherebbe l'adattamento); gli altri tavoli usano le loro taglie e
+  **non cambiano**.
+- **Cosa ho sacrificato per farci stare tutto.** *(1)* I **due dorsi** delle coperte degli avversari:
+  non portavano informazione — un dorso è un dorso — ma costavano **un terzo** della riga; senza di
+  essi le **quattro scoperte**, che sono il cuore strategico dello Stud (D-078), restano abbastanza
+  grandi da leggersi. Che un posto abbia ancora carte è già detto a parole (fould/eliminato).
+  *(2)* Nella zona hero, nome e fiches sono passati **sopra** le carte invece che di fianco: la
+  colonna laterale rubava ~90 pt proprio alla mano da sette carte. Verificato **iPhone SE, 15 e Pro
+  Max**, ogni strada: tutto dentro.
+- **Dynamic Type — attenzione a non regredire mentre si ripara.** `.exact` esclude lo scaling, quindi
+  candidate costanti avrebbero fatto **smettere di crescere** le carte di un ipovedente: regressione
+  reale introdotta *dalla* correzione. Perciò le candidate sono **scalate**, con in coda il pavimento
+  **non** scalato: il Dynamic Type è onorato **finché onorarlo non spinge la mano fuori dallo
+  schermo**, e lì vince restare visibili — lo stesso compromesso di D-056 sul ritmo.
+- **Accessibilità:** identifier conservati (`hero.cards`, `opponent.N`, `opponent.N.board`, …) più il
+  nuovo `hero.board`; elementi degli avversari **ancora separati** (D-083); focus-landing (D-057)
+  invariato; le righe di carte vivono **dentro elementi collassati**, quindi la scelta di candidata
+  di `ViewThatFits` **non tocca l'albero d'accessibilità** — resta una foglia stabile la cui *label*
+  cambia (pattern D-046/D-083). Canale parlato, budget e sincronizzazione (D-085) **non toccati**.
 

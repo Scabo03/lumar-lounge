@@ -114,8 +114,10 @@ final class StudSpeechMapTests: XCTestCase {
             }
         }
         // The interrogation label really carries the board (a card placeholder), i.e. it
-        // reads the opponent's exposed cards rather than a summary/hint.
-        XCTAssertTrue((strings["stud.seat.upcards.a11y"] ?? "").contains("%@"),
+        // reads the opponent's exposed cards rather than a summary/hint. Pinned on the
+        // LIVE key: `stud.seat.upcards.a11y` died with D-083 and has now been deleted,
+        // so this assertion was silently guarding a string nobody rendered.
+        XCTAssertTrue((strings["stud.board.a11y"] ?? "").contains("%2$@"),
                       "the opponent interrogation reads the actual exposed cards")
     }
 }

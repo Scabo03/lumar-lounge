@@ -524,7 +524,7 @@
 "stud.stakes" = "Ante %1$d · Obbligata %2$d · Puntata %3$d";
 "stud.stakes.a11y" = "Ante %1$d fiches, obbligata %2$d, puntata %3$d.";
 "stud.community" = "Comune:";
-"stud.community.a11y" = "Carta comune, per tutti: %@.";
+"stud.community.a11y" = "Carta comune: %@.";
 
 "stud.street.3" = "Terza strada";
 "stud.street.4" = "Quarta strada";
@@ -534,10 +534,15 @@
 "stud.street.none" = "—";
 
 "stud.badge.bringin" = "APRE";
-"stud.seat.upcards.a11y" = "scoperte: %@";
 "stud.seat.bringin.a11y" = "ha aperto l'obbligata";
-"stud.hero.cards.a11y" = "Le tue coperte: %1$@. Scoperte, viste da tutti: %2$@.";
-"stud.hero.noup" = "nessuna";
+/* D-089 — the player's own hand is read as ONE continuous whole, in the order it
+   was dealt, with no "seen by all" aside: the player knows how Stud works, and the
+   sighted player takes all seven in at a glance. The up/down distinction stays
+   available on demand via `stud.hero.board.a11y` below. */
+"stud.hero.cards.a11y" = "Le tue carte: %@.";
+"stud.hero.showing" = "%d scoperte";
+"stud.hero.board.none.a11y" = "Non hai ancora carte scoperte.";
+"stud.hero.board.a11y" = "Le tue scoperte: %@.";
 "stud.hero.nocards.a11y" = "Non hai carte in questa mano.";
 
 "stud.announce.handstart" = "Nuova mano.";

@@ -505,7 +505,7 @@
 "stud.stakes" = "Ante %1$d · Bring-in %2$d · Bet %3$d";
 "stud.stakes.a11y" = "Ante %1$d chips, bring-in %2$d, bet %3$d.";
 "stud.community" = "Community:";
-"stud.community.a11y" = "Community card, shared: %@.";
+"stud.community.a11y" = "Community card: %@.";
 
 "stud.street.3" = "Third street";
 "stud.street.4" = "Fourth street";
@@ -515,10 +515,13 @@
 "stud.street.none" = "—";
 
 "stud.badge.bringin" = "BRING-IN";
-"stud.seat.upcards.a11y" = "showing: %@";
 "stud.seat.bringin.a11y" = "posted the bring-in";
-"stud.hero.cards.a11y" = "Your hole cards: %1$@. Showing, seen by all: %2$@.";
-"stud.hero.noup" = "none";
+/* D-089 — one continuous read of the whole hand; the up/down split stays available
+   on demand via `stud.hero.board.a11y`. */
+"stud.hero.cards.a11y" = "Your cards: %@.";
+"stud.hero.showing" = "%d showing";
+"stud.hero.board.none.a11y" = "You have no up cards yet.";
+"stud.hero.board.a11y" = "Your up cards: %@.";
 "stud.hero.nocards.a11y" = "You have no cards this hand.";
 
 "stud.announce.handstart" = "New hand.";

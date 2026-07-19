@@ -56,6 +56,25 @@ final class StudTableUITests: XCTestCase {
         // The board element must not read chips — that is the whole point of the split.
         XCTAssertFalse(app.otherElements["opponent.1.board"].label.contains("fiches"),
                        "the board element still carries the chips preamble")
+
+        // D-089 — the player's own hand is ONE element read as a continuous whole, and
+        // the up/down split lives on its own element beside it (never inside the hand).
+        XCTAssertTrue(app.otherElements["hero.cards"].waitForExistence(timeout: 10), "hero hand missing")
+        XCTAssertTrue(app.otherElements["hero.board"].exists, "the hero up/down split lost its own element")
+        let hand = app.otherElements["hero.cards"].label
+        XCTAssertFalse(hand.lowercased().contains("da tutti"),
+                       "the hand readout reintroduced the superfluous aside: \(hand)")
+
+        // Nothing may run off the right edge, at any street (D-089).
+        let screen = app.windows.element(boundBy: 0).frame
+        for identifier in ["opponent.1.board", "opponent.2.board", "hero.cards", "studtable.pot"] {
+            let element = app.otherElements[identifier]
+            guard element.exists else { continue }
+            XCTAssertLessThanOrEqual(element.frame.maxX, screen.maxX + 0.5,
+                                     "\(identifier) overflows the right edge of the screen")
+            XCTAssertGreaterThanOrEqual(element.frame.minX, screen.minX - 0.5,
+                                        "\(identifier) overflows the left edge of the screen")
+        }
         // The action bar and leave control.
         XCTAssertTrue(app.buttons["action.raise"].exists, "raise button missing")
         XCTAssertTrue(app.buttons["action.fold"].exists, "fold button missing")
