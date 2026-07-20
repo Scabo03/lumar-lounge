@@ -22,6 +22,9 @@ private struct BlackjackActionButton: View {
     let title: String
     let a11yLabel: String
     let identifier: String
+    /// Explicit place in the reading order (D-096): the five moves come straight
+    /// after the player's stack, never after the chrome at the top of the screen.
+    let sortPriority: Double
     let kind: BlackjackButtonKind
     let enabled: Bool
     let action: () -> Void
@@ -49,6 +52,7 @@ private struct BlackjackActionButton: View {
         .disabled(!enabled)
         .accessibilityIdentifier(identifier)
         .accessibilityLabel(Text(verbatim: a11yLabel))
+        .accessibilitySortPriority(sortPriority)
     }
 }
 
@@ -62,29 +66,29 @@ struct BlackjackActionBarView: View {
             HStack(spacing: 8) {
                 BlackjackActionButton(title: uiLocalized("blackjack.action.hit"),
                                       a11yLabel: uiLocalized("blackjack.action.hit.a11y"),
-                                      identifier: "action.hit", kind: .accent,
+                                      identifier: "action.hit", sortPriority: 70, kind: .accent,
                                       enabled: turn?.legal.canHit ?? false) { model.hit() }
 
                 BlackjackActionButton(title: uiLocalized("blackjack.action.stand"),
                                       a11yLabel: uiLocalized("blackjack.action.stand.a11y"),
-                                      identifier: "action.stand", kind: .neutral,
+                                      identifier: "action.stand", sortPriority: 69, kind: .neutral,
                                       enabled: turn?.legal.canStand ?? false) { model.stand() }
             }
 
             HStack(spacing: 8) {
                 BlackjackActionButton(title: uiLocalized("blackjack.action.double"),
                                       a11yLabel: uiLocalized("blackjack.action.double.a11y"),
-                                      identifier: "action.double", kind: .quiet,
+                                      identifier: "action.double", sortPriority: 68, kind: .quiet,
                                       enabled: turn?.legal.canDouble ?? false) { model.double() }
 
                 BlackjackActionButton(title: uiLocalized("blackjack.action.split"),
                                       a11yLabel: uiLocalized("blackjack.action.split.a11y"),
-                                      identifier: "action.split", kind: .quiet,
+                                      identifier: "action.split", sortPriority: 67, kind: .quiet,
                                       enabled: turn?.legal.canSplit ?? false) { model.split() }
 
                 BlackjackActionButton(title: uiLocalized("blackjack.action.surrender"),
                                       a11yLabel: uiLocalized("blackjack.action.surrender.a11y"),
-                                      identifier: "action.surrender", kind: .danger,
+                                      identifier: "action.surrender", sortPriority: 66, kind: .danger,
                                       enabled: turn?.legal.canSurrender ?? false) { model.surrender() }
             }
         }

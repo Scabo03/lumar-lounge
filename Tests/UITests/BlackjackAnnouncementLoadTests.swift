@@ -145,9 +145,16 @@ final class BlackjackAnnouncementLoadTests: XCTestCase {
     // MARK: - Where the compactness comes from
 
     @MainActor
-    func testTheDealIsONElineCarryingTotalAndDealerUpCard() throws {
-        // The essential announcement: what you have, what the dealer shows.
-        // It must NOT enumerate the player's cards — that is the whole point.
+    func testTheDealLineCarriesTheDEALERSCardAndNotThePlayersOwnTotal() throws {
+        // REVISED in D-096. D-091 packed the total and the dealer's card into one
+        // line, and on a real device that was worse than either half: the hand
+        // element appeared at the same instant, VoiceOver focus landed on it and
+        // began reading the total, and this line fired on top of it. The two
+        // talked over each other and the dealer's card — the half the element does
+        // NOT carry — was the one that got lost.
+        //
+        // So the line now says only what no element is about to say by itself,
+        // and it is spoken a beat later, into a quiet channel.
         let plan = BlackjackSpeechMap.plan(for: .dealt(playerCards: [Card(.ace, .spades),
                                                                     Card(.six, .hearts)],
                                                        total: 17, isSoft: true,
@@ -157,15 +164,41 @@ final class BlackjackAnnouncementLoadTests: XCTestCase {
         let text = BlackjackSpeechMap.text(for: line,
                                            localized: BlackjackLocalizedStrings.localizer())
 
-        XCTAssertTrue(text.contains("17"), "The total is the decision, so it is said: \(text)")
         XCTAssertTrue(text.lowercased().contains("dieci"),
-                      "The dealer's up card is the other half of the decision: \(text)")
+                      "The dealer's up card is what this line exists to carry: \(text)")
+        XCTAssertFalse(text.contains("17"),
+                       "The player's total belongs to the hand element, which focus lands on: \(text)")
         XCTAssertFalse(text.lowercased().contains("asso"),
                        "The player's own cards are NOT read out on every deal: \(text)")
         XCTAssertFalse(text.lowercased().contains("fiori"),
                        "The SUIT cannot affect anything in blackjack, so it is not spoken: \(text)")
-        XCTAssertLessThan(AnnouncementQueue.speakTime(text), 3.0,
-                          "The essential line must be short enough to be worth hearing every round.")
+        XCTAssertLessThan(AnnouncementQueue.speakTime(text), 2.0,
+                          "Short enough to be worth hearing every round.")
+    }
+
+    @MainActor
+    func testANaturalStillGetsItsOwnLine() throws {
+        // The exception: a natural settles the hand at once, so it is worth
+        // saying rather than leaving to be discovered on an element.
+        let plan = BlackjackSpeechMap.plan(for: .dealt(playerCards: [Card(.ace, .spades),
+                                                                    Card(.king, .hearts)],
+                                                       total: 21, isSoft: true,
+                                                       dealerUpCard: Card(.ten, .clubs),
+                                                       isNatural: true))
+        let text = BlackjackSpeechMap.text(for: try XCTUnwrap(plan.synthesis),
+                                           localized: BlackjackLocalizedStrings.localizer())
+        XCTAssertTrue(text.lowercased().contains("blackjack"), "A natural announces itself: \(text)")
+    }
+
+    /// The dealer's total is the REASON a hand ended as it did, so it must never
+    /// be the line the channel gives up (D-096). It was `.medium`, droppable
+    /// alongside chatter — in a game that has no chatter.
+    func testTheDealersTotalIsNeverDroppable() {
+        let dealer = BlackjackSpeechMap.priority(for: .dealer(cards: [Card(.ten, .clubs),
+                                                                      Card(.nine, .hearts)],
+                                                              total: 19, isSoft: false,
+                                                              didBust: false, hasNatural: false))
+        XCTAssertEqual(dealer, .high, "The cause of the result is as protected as the result.")
     }
 
     func testASingleHandIsNotToldWhoseTurnItIs() {

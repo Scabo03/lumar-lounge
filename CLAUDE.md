@@ -3090,3 +3090,59 @@ IPA, nessuna dipendenza dal percorso SwiftUI→VoiceOver mai verificato end-to-e
   campioni è ricostruito nello scratchpad (`render1.swift`); **nota operativa nuova**: su riga di
   comando macOS il processo deve **pompare il run loop**, non bloccarsi su un semaforo, altrimenti
   la callback di `write` non scatta mai e non esce audio.
+
+### D-096 — Blackjack: tre meccanismi corretti che si annullavano a vicenda (dal test sul telefono)
+Il giro del blackjack è un ciclo **modale → tavolo → modale** più stretto di ogni altro tavolo del
+progetto, e i tre difetti segnalati erano tutti la stessa forma di errore: **due meccanismi giusti che
+scattano nello stesso istante e si cancellano**. Nessuno era sbagliato da solo; era sbagliata la
+**sequenza**.
+- **La distribuzione ora è DUE tempi, non uno.** Arrivava tutto insieme: la mano compariva, il focus
+  VoiceOver ci atterrava (D-092) e cominciava a leggerla, e l'annuncio della distribuzione partiva
+  **sopra**. I due si parlavano addosso, e la metà che si perdeva era **la carta del banco** — proprio
+  quella che l'elemento della mano **non** contiene. Ora la mano arriva **da sola** e viene letta nel
+  silenzio che il focus le dà; **2,5 secondi dopo** la carta del banco viene scoperta e annunciata in
+  un canale che non usa nessun altro (`BlackjackPacing.dealerRevealDelay`, rispettata da `fastMode`).
+- **Correzione di D-091 (dichiarata):** la riga della distribuzione **non porta più il totale del
+  giocatore**, solo la carta del banco. D-091 aveva impacchettato i due dati in una riga sola per
+  compattezza — giusto in astratto, **peggio di entrambe le metà sul device**, perché duplicava un
+  elemento che stava già parlando (l'anti-pattern di D-055, qui in forma temporale invece che
+  testuale). Il **natural resta una riga propria**: chiude la mano all'istante e merita di essere
+  detto, non scoperto su un elemento.
+- **Costo misurato: NEGATIVO.** Righe per mano **invariate a 3,88** (nessuna riga aggiunta: la riga
+  esistente si è accorciata) e secondi parlati **da 6,14 a 5,84** (−5%). Le sbarre di D-091 (4,5
+  righe, 7 s) reggono **senza essere toccate**. Il ritmo migliora e il carico cala: era il segnale
+  che il totale in quella riga era ridondante fin dall'inizio.
+- **L'ORDINE DI LETTURA ORA È DICHIARATO, NON EREDITATO.** Lasciato alla geometria, uno swipe in
+  avanti dallo stack saltava **in cima allo schermo** — badge della modalità test, Impostazioni,
+  «abbandona tavolo» — e **solo dopo** arrivava alle cinque mosse. Il non vedente attraversava mezza
+  interfaccia tra il sapere cosa ha in mano e il poterci fare qualcosa. Tutto lo schermo porta ora
+  priorità esplicite: **banco 100 · mani 90 · stack 80 · le cinque mosse 70…66 · abbandona 5**. Le
+  mosse le dichiarano **una per una** (parametro `sortPriority` su `BlackjackActionButton`) e non per
+  ereditarietà da un contenitore, perché la priorità applicata a un contenitore che non è esso stesso
+  un elemento non è garantita propagarsi — e collassare il contenitore per forzarla è esattamente la
+  trappola di D-019.
+- **La causa reale del «pop-up senza aver capito la mano», trovata nel codice.** Non era che le righe
+  di fine mano mancassero: il banco e la liquidazione **erano già annunciati**. Era che il box della
+  puntata successiva si apre con `voiceOverFocusLanding()`, che posta `.screenChanged` — e
+  `.screenChanged` **INTERROMPE il parlato in corso**. Ogni singolo giro, la spiegazione veniva
+  tagliata a metà frase dal box successivo, lasciando al giocatore **solo il colpo di
+  vittoria/sconfitta** (che è audio, non sintesi, e quindi sopravviveva: esattamente il sintomo
+  descritto). Correzione: `runBet` **attende che il canale parlato sia quieto** prima di aprire il
+  box. Per un vedente non costa nulla — se non si sta dicendo niente l'attesa ritorna subito — ed è
+  tutta la differenza fra un risultato e una spiegazione.
+- **Il totale del banco non è più droppabile:** era `.medium`, cioè sacrificabile insieme al
+  chiacchiericcio, **in un gioco che non ha chiacchiericcio**. Il totale del banco è **la metà del
+  perché** una mano è finita così: promosso a `.high`, come il risultato che spiega.
+- **Vincoli:** solo `UI` (+ stringhe); motore e driver **non toccati**; eventi ancora descrittivi (i
+  due tempi vivono nel **consumatore**, dove vive il ritmo umano — D-018); nessun
+  `UIAccessibility.post` diretto; budget del canale **non alzato**; nessun suggerimento di mossa.
+  **594 test verdi.**
+
+### ⚠️ Lezione per sessioni future — due canali che dicono la verità nello stesso istante si annullano
+Il progetto ha ormai **tre modi** di far arrivare una parola al giocatore: l'**annuncio** in coda, la
+**lettura dell'elemento su cui atterra il focus**, e il **suono**. D-055 aveva già stabilito che un
+annuncio non deve duplicare un pulsante che parla da sé; D-096 mostra la stessa regola sull'asse del
+**tempo**: due canali che dicono cose diverse **nello stesso istante** non danno al giocatore due
+informazioni, gliene danno **meno di una**, perché la seconda tronca la prima. Quando si aggiunge un
+atterraggio di focus, chiedersi **sempre** cosa altro sta parlando in quel momento — e in particolare
+ricordare che `.screenChanged` **interrompe**, mentre `.layoutChanged` no (D-092).

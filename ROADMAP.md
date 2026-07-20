@@ -643,6 +643,20 @@ Due interventi di natura diversa: uno prescrittivo, uno diagnostico che ha **rov
 il canale scarta comunque molto; se al test sul device le scoperte risultassero ancora rade, la leva
 successiva è **potare le righe di azione**, **non** alzare il budget (tarato su misure reali).
 
+### ✅ Ritmo e navigazione del blackjack dopo il test sul telefono (D-096)
+Tre difetti, una sola forma d'errore: **meccanismi giusti che scattano insieme e si annullano**.
+- **Distribuzione in DUE tempi**: la mano arriva sola e viene letta dal focus che ci atterra; la carta
+  del banco è scoperta **2,5 s dopo** e annunciata in un canale libero. La riga non porta più il
+  totale del giocatore (correzione dichiarata di D-091: duplicava un elemento già parlante).
+  **Costo misurato negativo** — righe/mano invariate a 3,88, secondi **6,14 → 5,84**.
+- **Ordine di lettura dichiarato**: banco 100 · mani 90 · stack 80 · le cinque mosse 70…66 ·
+  abbandona 5. Prima uno swipe dallo stack saltava a badge/Impostazioni/abbandona e solo poi alle
+  azioni.
+- **Il box della puntata attende che il canale sia quieto**: la causa reale del «pop-up senza aver
+  capito la mano» era che il focus landing del box posta `.screenChanged`, che **interrompe** il
+  parlato — sopravviveva solo il colpo di vittoria/sconfitta, che è audio. Il totale del banco passa
+  inoltre a `.high`: è la metà del perché una mano finisce così, non chiacchiericcio.
+
 ### 🔭 Prossimo
 Ascolto/approvazione dei campioni fonetici del blackjack; nuovo test sul telefono per validare le
 calibrazioni; produzione dei restanti file audio (blackjack, `vob_sky_*`, slot storici del mondo M2

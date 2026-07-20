@@ -593,7 +593,10 @@
 /* --- The essential announcement (D-091): your total, the dealer's up card.
    Nothing else. The cards behind the total live on the interrogable
    elements below, so the player is not read a list every single round. --- */
-"blackjack.announce.deal" = "%1$@. Banco: %2$@.";
+/* Solo la carta del banco: il totale del giocatore NON si ripete qui — il focus
+   VoiceOver atterra sull'elemento della mano, che lo dice, e un annuncio che
+   duplica un elemento parlante gli parla sopra (D-096/D-055). */
+"blackjack.announce.deal" = "Banco: %@.";
 "blackjack.announce.deal.natural" = "Blackjack. Banco: %@.";
 "blackjack.announce.handturn" = "Mano %1$d di %2$d. %3$@.";
 "blackjack.announce.hit" = "%1$@. Totale %2$@.";

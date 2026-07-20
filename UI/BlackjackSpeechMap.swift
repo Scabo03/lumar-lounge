@@ -47,8 +47,14 @@ public struct BlackjackSpeechPlan: Equatable, Sendable {
 /// Resolved data, not text: `text(for:)` is the single rendering point, so
 /// `plan(...)` stays pure and testable against cases rather than strings.
 public enum BlackjackSynthLine: Equatable, Sendable {
-    /// The one essential line: what you have, what the dealer shows.
-    case deal(total: Int, isSoft: Bool, dealerUpCard: Card, isNatural: Bool)
+    /// What the DEALER shows — spoken a beat after the deal, once the player's
+    /// own hand has been read (D-096). The player's total is not repeated here:
+    /// VoiceOver focus lands on the hand element, which says it, and an
+    /// announcement that duplicates a spoken element only talks over it (D-055).
+    case dealerShows(card: Card)
+    /// A natural is the exception: it settles the hand at once and is worth its
+    /// own line rather than waiting to be discovered on an element.
+    case dealNatural(dealerUpCard: Card)
     /// Only ever spoken when the player holds more than one hand.
     case handTurn(index: Int, count: Int, total: Int, isSoft: Bool)
     case drew(card: Card, total: Int, isSoft: Bool, didBust: Bool)
@@ -74,10 +80,10 @@ public enum BlackjackSpeechMap {
             // a sentence.
             return .silent
 
-        case let .dealt(_, total, isSoft, dealerUpCard, isNatural):
+        case let .dealt(_, _, _, dealerUpCard, isNatural):
             return BlackjackSpeechPlan(
-                synthesis: .deal(total: total, isSoft: isSoft,
-                                 dealerUpCard: dealerUpCard, isNatural: isNatural))
+                synthesis: isNatural ? .dealNatural(dealerUpCard: dealerUpCard)
+                                     : .dealerShows(card: dealerUpCard))
 
         case let .handTurnBegan(handIndex, _, total, isSoft, handCount):
             // With a single hand this would repeat what the deal line just
@@ -169,13 +175,12 @@ public enum BlackjackSpeechMap {
                             localized: Localizer = standard) -> String {
         switch line {
 
-        case let .deal(total, isSoft, dealerUpCard, isNatural):
-            let dealer = spokenRank(dealerUpCard, localized: localized)
-            if isNatural {
-                return localized("blackjack.announce.deal.natural", [dealer])
-            }
-            return localized("blackjack.announce.deal",
-                             [totalPhrase(total, isSoft, localized: localized), dealer])
+        case let .dealerShows(card):
+            return localized("blackjack.announce.deal", [spokenRank(card, localized: localized)])
+
+        case let .dealNatural(dealerUpCard):
+            return localized("blackjack.announce.deal.natural",
+                             [spokenRank(dealerUpCard, localized: localized)])
 
         case let .handTurn(index, count, total, isSoft):
             return localized("blackjack.announce.handturn",
@@ -252,9 +257,13 @@ public enum BlackjackSpeechMap {
     /// `.low`, and the lines that carry money are never droppable.
     public static func priority(for line: BlackjackSynthLine) -> AnnouncementPriority {
         switch line {
-        case .deal, .settled, .roundNet, .sessionWon, .sessionLost, .drew, .doubled:
+        case .dealerShows, .dealNatural, .settled, .roundNet,
+             .sessionWon, .sessionLost, .drew, .doubled, .dealer:
+            // `.dealer` is HIGH from D-096: the dealer's total is half the reason
+            // the hand ended the way it did, not chatter. It was `.medium`, so it
+            // could be dropped — leaving the player with a result and no cause.
             return .high
-        case .handTurn, .split, .dealer:
+        case .handTurn, .split:
             return .medium
         }
     }

@@ -138,6 +138,22 @@ public final class BlackjackTableViewModel: ObservableObject {
             state = BlackjackTableReducer.reduce(state, payload)
             await pace(payload)
 
+        case let .dealt(_, _, _, dealerUpCard, _):
+            // TWO BEATS, not one (D-096). Everything used to land at once: the
+            // hand appeared, VoiceOver focus landed on it and began reading it,
+            // and the deal announcement fired on top — so the two talked over
+            // each other and the dealer's card was the half that got lost.
+            // Now the player's hand arrives ALONE and is read in the quiet the
+            // focus landing gives it; the dealer's card is turned a beat later
+            // and announced into a channel nobody else is using.
+            state = BlackjackTableReducer.reduce(state, payload)
+            state.dealerCards = []
+            await pause(BlackjackPacing.dealerRevealDelay)
+            guard !hasLeft else { return }
+            state.dealerCards = [dealerUpCard]
+            speak(payload)
+            await pace(payload)
+
         case let .handSettled(_, _, settledOutcome, _, _, _):
             state = BlackjackTableReducer.reduce(state, payload)
             // The sting that reveals the result is SEQUENCED behind the line
@@ -218,6 +234,17 @@ public final class BlackjackTableViewModel: ObservableObject {
     // MARK: - The two human suspensions
 
     private func runBet(_ context: BlackjackBetContext) async {
+        if hasLeft { return }
+        // THE ROUND MUST BE ALLOWED TO FINISH BEING EXPLAINED (D-096).
+        // The wager box lands VoiceOver focus, and focus landing posts a
+        // notification that INTERRUPTS whatever is being spoken. Every round
+        // ended the same way: the dealer's total and the settlement line were
+        // cut off mid-sentence by the next box, leaving the player with a
+        // win/lose sting and no account of what had happened. Waiting for the
+        // spoken channel to fall quiet costs a sighted player nothing — with
+        // nothing being said the wait returns at once — and it is the whole
+        // difference between a result and an explanation.
+        await awaitSpokenChannelQuiet()
         if hasLeft { return }
         betBox = BlackjackBetBox(minimum: context.minimumBet,
                                  maximum: min(context.maximumBet, context.chips),

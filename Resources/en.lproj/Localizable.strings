@@ -564,7 +564,7 @@
 "blackjack.total.hard" = "%d";
 "blackjack.total.soft" = "soft %d";
 
-"blackjack.announce.deal" = "%1$@. Dealer: %2$@.";
+"blackjack.announce.deal" = "Dealer: %@.";
 "blackjack.announce.deal.natural" = "Blackjack. Dealer: %@.";
 "blackjack.announce.handturn" = "Hand %1$d of %2$d. %3$@.";
 "blackjack.announce.hit" = "%1$@. Total %2$@.";

@@ -166,8 +166,8 @@ final class BlackjackTableTests: XCTestCase {
     func testTheSpokenLinesDescribeStateAndNothingMore() {
         // A sweep over the real rendered lines, not just the raw strings.
         let lines: [BlackjackSynthLine] = [
-            .deal(total: 16, isSoft: false, dealerUpCard: Card(.ten, .clubs), isNatural: false),
-            .deal(total: 21, isSoft: false, dealerUpCard: Card(.ace, .spades), isNatural: true),
+            .dealerShows(card: Card(.ten, .clubs)),
+            .dealNatural(dealerUpCard: Card(.ace, .spades)),
             .drew(card: Card(.five, .hearts), total: 21, isSoft: false, didBust: false),
             .drew(card: Card(.ten, .hearts), total: 26, isSoft: false, didBust: true),
             .doubled(card: Card(.ten, .hearts), total: 21, isSoft: false, didBust: false),
@@ -201,7 +201,7 @@ final class BlackjackTableTests: XCTestCase {
         // The player is alone against the house: every line is personal, and
         // the ones carrying money are never droppable.
         let money: [BlackjackSynthLine] = [
-            .deal(total: 16, isSoft: false, dealerUpCard: Card(.ten, .clubs), isNatural: false),
+            .dealerShows(card: Card(.ten, .clubs)),
             .settled(index: 0, handCount: 1, outcome: .win, amount: 20),
             .roundNet(net: 20)
         ]

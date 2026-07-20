@@ -87,6 +87,11 @@ public enum BlackjackAudioScore {
 /// OFF. Blackjack is a FAST game and these are deliberately short: the
 /// rhythm the sighted player enjoys is the one the blind player must get too.
 enum BlackjackPacing {
+    /// The beat between the player's hand appearing and the dealer's up card
+    /// being turned (D-096). It is not decoration: it is the room the focus
+    /// landing needs to read the hand before anything else speaks.
+    static let dealerRevealDelay: Double = 2.5
+
     static func seconds(for payload: BlackjackEventPayload) -> Double {
         switch payload {
         case .sessionBegan:   return 0.5

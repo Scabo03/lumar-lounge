@@ -14,6 +14,14 @@ import GameEngine
 import GameWorld
 import Audio
 
+// THE READING ORDER IS DECLARED, NOT INHERITED (D-096).
+// Left to geometry, a swipe forward from the player's stack jumped to the top of
+// the screen — the test banner, the settings button, "leave table" — and only
+// then came the five moves, which is the opposite of what the round needs. The
+// whole screen now carries explicit sort priorities, highest read first:
+//   dealer 100 · hands 90 · stakes 80 · the five moves 70…66 · leave 5
+// so the player goes from what they hold, to what it is worth, straight to what
+// they can do about it.
 struct BlackjackTableScreen: View {
     @StateObject private var model: BlackjackTableViewModel
 
@@ -75,6 +83,7 @@ struct BlackjackTableScreen: View {
             }
             .accessibilityIdentifier("table.leave")
             .accessibilityHint(Text(verbatim: uiLocalized("table.leave.hint")))
+            .accessibilitySortPriority(5)
             Spacer()
         }
     }
@@ -109,7 +118,7 @@ private struct BlackjackDealerZoneView: View {
                                                                   holeCardHidden: state.holeCardHidden,
                                                                   hasNatural: state.dealerHasNatural,
                                                                   didBust: state.dealerBusted)))
-        .accessibilitySortPriority(3)
+        .accessibilitySortPriority(100)
     }
 
     /// While the hole card is down it is shown as a card back — the player can
@@ -142,7 +151,7 @@ private struct BlackjackHeroZoneView: View {
                 .accessibilityIdentifier("blackjack.stakes")
                 .accessibilityLabel(Text(verbatim: BlackjackReadout.stakes(chips: state.chips,
                                                                           atStake: state.totalAtStake)))
-                .accessibilitySortPriority(1)
+                .accessibilitySortPriority(80)
                 .voiceOverFocusLanding()
 
             ForEach(Array(state.hands.enumerated()), id: \.offset) { index, hand in
@@ -169,7 +178,7 @@ private struct BlackjackHeroZoneView: View {
         .accessibilityLabel(Text(verbatim: BlackjackReadout.hand(hand,
                                                                  index: index,
                                                                  handCount: state.hands.count)))
-        .accessibilitySortPriority(2)
+        .accessibilitySortPriority(90 - Double(index))
         // Where focus goes when the wager box vanishes (D-092). Every round starts
         // by pressing Confirm, and that button then ceases to exist with the cursor
         // still on it; the hand is dealt a moment later, so claiming focus as it

@@ -711,6 +711,22 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
   evento→voce è l'autorità (D-029); un `priority:` cablato al call site la scavalca in silenzio e
   rende inerte ogni futura ricalibrazione. Se una riga ha bisogno di una priorità diversa, si cambia
   nella mappa.
+- **Due canali che parlano nello stesso istante danno MENO di uno (D-096).** Ci sono tre modi di far
+  arrivare una parola: l'**annuncio** in coda, la **lettura dell'elemento su cui atterra il focus**, e
+  il **suono**. D-055 vietava già a un annuncio di duplicare un pulsante che parla da sé; la stessa
+  regola vale sull'asse del **tempo**: due canali che dicono cose **diverse** nello stesso istante non
+  danno due informazioni, la seconda **tronca** la prima. Quando si aggiunge un atterraggio di focus o
+  un annuncio, chiedersi sempre **cosa altro sta parlando in quel momento**. In particolare:
+  `.screenChanged` **interrompe** il parlato in corso, `.layoutChanged` no (D-092) — quindi una
+  modale che si apre con focus landing va aperta **solo a canale quieto**, o taglierà a metà frase
+  ciò che stava spiegando il momento precedente.
+- **L'ordine di lettura di una schermata si DICHIARA (D-096).** Lasciato alla geometria, un contenuto
+  di chrome in cima (badge, impostazioni, uscita) si infila **in mezzo** al percorso di gioco: il non
+  vedente attraversa mezza interfaccia tra il sapere cosa ha in mano e il poterci fare qualcosa. Ogni
+  schermata di gioco assegna priorità esplicite a **tutti** i suoi elementi, nell'ordine in cui il
+  giro si gioca. Le priorità vanno sui **leaf** (D-019): applicarle a un contenitore che non è esso
+  stesso un elemento non è garantito propagarsi, e collassare il contenitore per forzarlo è la
+  trappola di D-019.
 
 ## 5. Testabilità
 
