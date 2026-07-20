@@ -67,7 +67,14 @@ public final class StudTableViewModel: ObservableObject {
 
     @Published public private(set) var state: StudTableState
     @Published public private(set) var humanTurn: StudTurnInfo?
-    @Published public private(set) var raiseBox: RaiseBoxState?
+    @Published public private(set) var raiseBox: RaiseBoxState? {
+        // Every dismissal path — confirm, cancel, tap on the scrim — passes
+        // through here, so the focus hand-off is declared once (D-092).
+        didSet { if oldValue != nil && raiseBox == nil { focusReturnToken += 1 } }
+    }
+    /// Bumped when a modal box closes, so the hero zone can claim VoiceOver
+    /// focus back from the button that just ceased to exist (D-092).
+    @Published public private(set) var focusReturnToken = 0
     @Published public private(set) var outcome: GameOutcome?
     @Published public private(set) var pendingLeave = false
 
@@ -102,6 +109,9 @@ public final class StudTableViewModel: ObservableObject {
     private var shownCategory: [Int: HandCategory] = [:]
     private var shownBestFive: [Int: [Card]] = [:]
     private var potAnnounced = false
+    /// The hero's two third-street down cards, held until the up card joins them
+    /// so the hand is spoken as one whole (D-094).
+    private var pendingHeroDownCards: [Card]?
     private var raiseTurn: StudTurnInfo?
 
     /// - Parameter seed: `nil` (production) → fresh RANDOM cards every hand (D-047); a
@@ -218,6 +228,7 @@ public final class StudTableViewModel: ObservableObject {
         switch payload {
         case .handBegan:
             fastForward = false      // a new hand: narrate it fully again (D-087)
+            pendingHeroDownCards = nil
             conductor.handBegan()
             shownCategory.removeAll()
             shownBestFive.removeAll()
@@ -231,16 +242,34 @@ public final class StudTableViewModel: ObservableObject {
             speak(payload, "street")
             await pace(payload)
 
-        case let .upCardDealt(_, _, street):
+        case let .upCardDealt(seatID, card, street):
             state = StudTableReducer.reduce(state, payload)
-            speak(payload, "upcard")
+            // THIRD STREET, HERO: the two down cards were held back just above, so
+            // the hand is spoken here as ONE line of three (D-094).
+            if seatID == heroSeatID, street == .third, let down = pendingHeroDownCards {
+                pendingHeroDownCards = nil
+                say(StudSpeechPlan(synthesis: .heroCards(down + [card])), reason: "hero-cards")
+            } else {
+                speak(payload, "upcard")
+            }
             // First deal (third street) is quick; later reveals are a beat slower.
             await pace(payload, override: street == .third ? 0.35 : nil)
 
-        case let .privateDownCards(seatID, _) where seatID == heroSeatID:
+        case let .privateDownCards(seatID, cards) where seatID == heroSeatID:
             state = StudTableReducer.reduce(state, payload)
-            speak(payload, "hero-cards")
-            await pace(payload)
+            // On third street the hero's own hand is TWO down cards plus the up card
+            // that follows immediately. Speaking the pair on its own announced "le tue
+            // carte" and then listed two of three, with the third arriving as a
+            // separate sentence — the split D-089 set out to remove, reintroduced one
+            // event earlier. So the pair is HELD and spoken with the up card as one
+            // whole. The last down card of seventh street (a single) still speaks at
+            // once: there is nothing to join it to.
+            if cards.count == 2 {
+                pendingHeroDownCards = cards
+            } else {
+                speak(payload, "hero-cards")
+                await pace(payload)
+            }
 
         case .bringInPosted:
             state = StudTableReducer.reduce(state, payload)
@@ -329,13 +358,18 @@ public final class StudTableViewModel: ObservableObject {
         let plan = StudSpeechMap.plan(for: .playerActed(seatID: seatID, action: action),
                                       heroSeatID: heroSeatID, names: names)
         let synth = plan.synthesis.map(StudSpeechMap.text)
+        // The priority comes from the MAP, which is the authority (D-029). It was
+        // pinned to `.medium` here, which quietly overrode it — so the demotion of
+        // opponent chatter below the up cards (D-094) would have had no effect at
+        // the one place it is delivered.
+        let level = priority(of: plan)
         if plan.croupier != nil {
             let (lead, fbKey) = casinoAudio.croupier(plan.croupier)
             conductor.say(lead: lead, synthesis: synth,
                           fallback: fbKey.map(uiLocalized) ?? plan.croupierFallback.map(StudSpeechMap.text),
-                          priority: .medium, reason: "action-allin")
+                          priority: level, reason: "action-allin")
         } else if let synth {
-            conductor.say(lead: nil, synthesis: synth, priority: .medium, reason: "opp-action")
+            conductor.say(lead: nil, synthesis: synth, priority: level, reason: "opp-action")
         }
     }
 

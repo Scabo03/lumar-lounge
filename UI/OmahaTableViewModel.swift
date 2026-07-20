@@ -70,7 +70,14 @@ public final class OmahaTableViewModel: ObservableObject {
     /// Non-nil while it's the human's betting turn (the action buttons are active).
     @Published public private(set) var humanTurn: OmahaTurnInfo?
     /// Non-nil while the Pot-Limit raise box is open.
-    @Published public private(set) var raiseBox: RaiseBoxState?
+    @Published public private(set) var raiseBox: RaiseBoxState? {
+        // Every dismissal path — confirm, cancel, tap on the scrim — passes
+        // through here, so the focus hand-off is declared once (D-092).
+        didSet { if oldValue != nil && raiseBox == nil { focusReturnToken += 1 } }
+    }
+    /// Bumped when a modal box closes, so the hero zone can claim VoiceOver
+    /// focus back from the button that just ceased to exist (D-092).
+    @Published public private(set) var focusReturnToken = 0
     @Published public private(set) var outcome: GameOutcome?
     @Published public private(set) var pendingLeave = false
 

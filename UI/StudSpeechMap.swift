@@ -36,7 +36,11 @@ public struct StudSpeechPlan: Equatable, Sendable {
 
 /// A synthesis line for the Stud table, resolved to concrete data but not localized.
 public enum StudSynthLine: Equatable, Sendable {
-    case heroDownCards([Card])
+    /// The hero's own cards as ONE whole. On third street that is all THREE — the
+    /// two down and the up — because a hand the sighted player takes in at a glance
+    /// must not reach the blind player as two sentences, one of which calls itself
+    /// "your cards" while listing two of three (D-094, finishing what D-089 began).
+    case heroCards([Card])
     /// An up card dealt to a seat (attributed by name; `isHero` picks the "you" phrasing).
     case upCard(who: String, card: Card, isHero: Bool)
     case bringIn(who: String, amount: Int)
@@ -64,7 +68,7 @@ public enum StudSpeechMap {
             return StudSpeechPlan(croupier: SoundCatalog.voTowerNewHand)
 
         case let .privateDownCards(seatID, cards) where seatID == heroSeatID:
-            return StudSpeechPlan(synthesis: .heroDownCards(cards))
+            return StudSpeechPlan(synthesis: .heroCards(cards))
 
         case let .upCardDealt(seatID, card, _):
             return StudSpeechPlan(synthesis: .upCard(who: name(seatID), card: card, isHero: seatID == heroSeatID))
@@ -116,7 +120,7 @@ public enum StudSpeechMap {
 
     public static func text(for line: StudSynthLine) -> String {
         switch line {
-        case let .heroDownCards(cards):
+        case let .heroCards(cards):
             let key = cards.count == 1 ? "stud.announce.hero.down.one" : "stud.announce.hero.down"
             return uiLocalized(key, CardText.spoken(cards))
         case let .upCard(who, card, isHero):
@@ -176,10 +180,20 @@ public enum StudSpeechMap {
     /// (own cards, own win, prize) are high; opponents' cards/actions medium; nothing low.
     public static func priority(for line: StudSynthLine) -> AnnouncementPriority {
         switch line {
-        case .heroDownCards, .heroWon, .splitWon, .housePrize, .sessionWon, .sessionLost:
+        case .heroCards, .heroWon, .splitWon, .housePrize, .sessionWon, .sessionLost:
             return .high
-        case .upCard, .bringIn, .opponentAction, .shown, .otherWon, .streetName:
+        case .upCard, .bringIn, .shown, .otherWon, .streetName:
             return .medium
+        case .opponentAction:
+            // LOW, and deliberately below the up cards (D-094). Both used to be
+            // medium, so a saturated channel evicted them alike — and since the
+            // chatter is both more numerous and longer (measured: 7.00 lines and
+            // 15.96 s per hand against 5.82 and 11.06), it was crowding out the
+            // one thing Seven-Card Stud is actually played on. An opponent's call
+            // is routine, on screen, and re-derivable from the pot; the card that
+            // just landed in front of them is not. No line was added and no budget
+            // was raised: only the order in which the channel gives way.
+            return .low
         }
     }
 }

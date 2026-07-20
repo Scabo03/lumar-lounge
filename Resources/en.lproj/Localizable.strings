@@ -525,7 +525,7 @@
 "stud.hero.nocards.a11y" = "You have no cards this hand.";
 
 "stud.announce.handstart" = "New hand.";
-"stud.announce.hero.down" = "Your hole cards: %@.";
+"stud.announce.hero.down" = "Your cards: %@.";
 "stud.announce.hero.down.one" = "Your last hole card: %@.";
 "stud.announce.upcard" = "%1$@ gets %2$@ face up.";
 "stud.announce.upcard.hero" = "You get %@ face up.";

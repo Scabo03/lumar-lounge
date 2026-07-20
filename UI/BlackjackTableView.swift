@@ -170,6 +170,14 @@ private struct BlackjackHeroZoneView: View {
                                                                  index: index,
                                                                  handCount: state.hands.count)))
         .accessibilitySortPriority(2)
+        // Where focus goes when the wager box vanishes (D-092). Every round starts
+        // by pressing Confirm, and that button then ceases to exist with the cursor
+        // still on it; the hand is dealt a moment later, so claiming focus as it
+        // appears puts the player on the one element they need — total first, cards
+        // after — with no swipe at all between deciding the wager and reading the
+        // hand. Only the FIRST hand claims: a split must not yank the cursor away
+        // from a hand still being played.
+        .voiceOverFocusClaim(index == 0)
     }
 
     private func caption(_ hand: BlackjackHandPresentation) -> String {

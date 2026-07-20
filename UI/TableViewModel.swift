@@ -64,7 +64,14 @@ public final class TableViewModel: ObservableObject {
     /// Non-nil while it's the human's turn (the action buttons are then active).
     @Published public private(set) var humanTurn: HumanTurnInfo?
     /// Non-nil while the Raise box is open.
-    @Published public private(set) var raiseBox: RaiseBoxState?
+    @Published public private(set) var raiseBox: RaiseBoxState? {
+        // Every dismissal path — confirm, cancel, tap on the scrim — passes
+        // through here, so the focus hand-off is declared once (D-092).
+        didSet { if oldValue != nil && raiseBox == nil { focusReturnToken += 1 } }
+    }
+    /// Bumped when a modal box closes, so the hero zone can claim VoiceOver
+    /// focus back from the button that just ceased to exist (D-092).
+    @Published public private(set) var focusReturnToken = 0
     /// Set once the session ends.
     @Published public private(set) var outcome: GameOutcome?
 

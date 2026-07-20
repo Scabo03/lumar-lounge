@@ -51,7 +51,7 @@ struct TableScreen: View {
 
                     ActionBarView(model: model)
 
-                    HeroZoneView(state: model.state)
+                    HeroZoneView(focusReturnToken: model.focusReturnToken, state: model.state)
                         .frame(height: geometry.size.height * 0.28)
                 }
                 .padding(.horizontal, 12)

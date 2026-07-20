@@ -75,7 +75,14 @@ public final class MachiavelliTableViewModel: ObservableObject {
     /// `MachiavelliWorkspace` is a UI implementation detail, consumed only by the view.)
     @Published private(set) var workspace: MachiavelliWorkspace?
     /// The composition box, non-nil while "Piazza" is open.
-    @Published public private(set) var box: MachiavelliBoxState?
+    @Published public private(set) var box: MachiavelliBoxState? {
+        // Every dismissal path — confirm, cancel, tap on the scrim — passes
+        // through here, so the focus hand-off is declared once (D-092).
+        didSet { if oldValue != nil && box == nil { focusReturnToken += 1 } }
+    }
+    /// Bumped when a modal box closes, so the hero zone can claim VoiceOver
+    /// focus back from the button that just ceased to exist (D-092).
+    @Published public private(set) var focusReturnToken = 0
     @Published public private(set) var outcome: GameOutcome?
     @Published public private(set) var pendingLeave = false
 

@@ -77,7 +77,14 @@ public final class DrawTableViewModel: ObservableObject {
     /// Non-nil while it's the human's betting turn.
     @Published public private(set) var bettingTurn: DrawBettingTurn?
     /// Non-nil while the human's draw box is open.
-    @Published public private(set) var drawBox: DrawBoxState?
+    @Published public private(set) var drawBox: DrawBoxState? {
+        // Every dismissal path — confirm, cancel, tap on the scrim — passes
+        // through here, so the focus hand-off is declared once (D-092).
+        didSet { if oldValue != nil && drawBox == nil { focusReturnToken += 1 } }
+    }
+    /// Bumped when a modal box closes, so the hero zone can claim VoiceOver
+    /// focus back from the button that just ceased to exist (D-092).
+    @Published public private(set) var focusReturnToken = 0
     /// Set once the session ends (win/lose overlay).
     @Published public private(set) var outcome: GameOutcome?
     @Published public private(set) var pendingLeave = false

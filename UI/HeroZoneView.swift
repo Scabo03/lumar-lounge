@@ -9,6 +9,9 @@ import SwiftUI
 import GameEngine
 
 struct HeroZoneView: View {
+    /// Bumped by the view model when a modal box closes, so this zone can take
+    /// VoiceOver focus back from the vanished button (D-092).
+    var focusReturnToken: Int = 0
     let state: TableState
 
     private var heroSeat: SeatPresentation? {
@@ -53,6 +56,10 @@ struct HeroZoneView: View {
             .accessibilityElement(children: .ignore)
             .accessibilityIdentifier("hero.cards")
             .accessibilityLabel(Text(verbatim: uiLocalized("hero.cards.a11y", CardText.spoken(hole))))
+            // Focus comes home here when a modal box closes (D-092): the
+            // button the player pressed no longer exists, and this zone was
+            // never removed from the tree, so nothing else would re-fire.
+            .voiceOverFocusClaim(onChangeOf: focusReturnToken)
         } else {
             // No cards (between hands, or mucked after a fold).
             Text(verbatim: uiLocalized("hero.nocards"))

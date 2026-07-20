@@ -185,6 +185,17 @@ riceve.** Nessun file audio prodotto: il croupier tace quasi sempre per scelta, 
 altri avventori è solo effetto ambientale con fallback al silenzio. **Campioni fonetici dei termini
 nuovi generati e in attesa dell'ascolto** in `~/Desktop/lumar-phonetics/blackjack/`. 574 test verdi.
 
+**Sessione focus + canale parlato (D-092/D-093/D-094):** il focus VoiceOver non resta più **appeso
+al nulla** quando un box modale si chiude — difetto che era in **tutti e sei i tavoli** (il contenuto
+sotto un box non viene mai rimosso dall'albero, solo nascosto, quindi l'atterraggio su `onAppear`
+non poteva ripartire), sanato con un hand-off dichiarato nel `didSet` della proprietà del box. Allo
+Stud la mano di **terza strada** si legge finalmente come **una riga di tre carte** (diceva «le tue
+coperte» elencandone due su tre). L'arricchimento delle scoperte avversarie **non è stato
+implementato perché esiste già**: misurato **5,82 righe/mano**; il giocatore non le sentiva perché il
+canale è saturo — **18,35 righe e 37,44 s parlati per mano** contro un budget di 6 s — e le scoperte
+avevano la **stessa priorità** del chiacchiericcio, che è più numeroso e più lungo. Corretto
+l'**ordine di cedimento** a costo zero, senza alzare il budget. 586 test verdi.
+
 **Prossimo passo** (vedi [`ROADMAP.md`](ROADMAP.md)): **ascolto e approvazione dei campioni fonetici
 del blackjack** (hit/stand/double/split/surrender: inglese o italiano — oggi sono cablate le parole
 italiane, device-safe per costruzione); **produzione dei file audio del ClockTower**
@@ -2927,3 +2938,123 @@ ambientali (`fx_bj_presence_*`), categoria `.botVoice` → **fallback al silenzi
 mai sopra un risultato. Poiché **nessun NPC parla**, un solo set serve tutti i casinò. Il colpo di
 vittoria/sconfitta passa da `SpeechConductor.say(trailing:)` (D-085), quindi **non può anticipare**
 il risultato. Catalogo completo in [`Blackjack_audio_catalog.md`](Blackjack_audio_catalog.md).
+
+### D-092 — Un elemento che scompare deve dichiarare dove va il focus (il difetto era in TUTTI e sei i tavoli)
+Il sintomo era al Blackjack: premuto **Conferma** nel box della puntata, il pulsante cessa di
+esistere e il focus VoiceOver **resta appeso al nulla**, costringendo a rifocalizzare a mano —
+e lì pesa il doppio, perché **ogni singola mano comincia così** e le mani si susseguono a raffica.
+- **La causa reale, verificata nel codice (e diversa da quella che l'atterraggio del focus già
+  copre).** `voiceOverFocusLanding()` (D-057) vive su `onAppear`: copre l'**apparizione** di una
+  schermata o di un box, ed è tutto ciò che può coprire. Ma il box non è una schermata nuova — è un
+  overlay, e il contenuto sotto **non viene mai rimosso dall'albero**: è solo
+  `.accessibilityHidden(model.betBox != nil)`. Alla chiusura, quindi, **non appare nulla e non
+  riparte nulla**: nessun `onAppear`, nessun re-scan, e il cursore resta dove il pulsante era. Non
+  era il caso "cambio schermata" (che funziona), era il caso "elemento svanito **dentro** la stessa
+  schermata" — che nessun meccanismo copriva. D-057 lo aveva peraltro già dichiarato come *limite
+  noto* ("al dismiss di una modale il focus non viene ancora riportato esplicitamente sul tavolo");
+  questa voce lo paga.
+- **Il difetto esisteva altrove: SÌ, in tutti e sei i tavoli** — Texas, Omaha, Stud, Draw,
+  Machiavelli e Blackjack usano la stessa forma (overlay condizionale sopra contenuto
+  `accessibilityHidden`), e **nessuno** ripristinava il focus. Peggio al Blackjack solo per
+  frequenza. I percorsi di **annulla** e di **tap sullo sfondo** (Texas/Omaha/Stud) erano colpiti
+  allo stesso modo, e il tap sullo sfondo è il caso peggiore: l'elemento toccato è una decorazione
+  nascosta. **Non** colpiti: l'overlay di fine partita (naviga via, la schermata di destinazione
+  monta e atterra da sé) e il foglio Impostazioni (una `.sheet` vera, dove UIKit riporta il focus
+  sul controllo presentante).
+- **Il meccanismo, in due forme perché le destinazioni hanno due forme.**
+  `voiceOverFocusClaim(onChangeOf:)` per una destinazione **già presente** (i cinque tavoli: la zona
+  eroe non se ne va mai) — il view model **incrementa un token** alla chiusura del box, e il token
+  è bumpato nel **`didSet` della proprietà del box**, così **ogni** percorso di chiusura — conferma,
+  annulla, tap sullo sfondo, e qualunque percorso aggiunto domani — è coperto **per costruzione**,
+  con una sola riga per view model. E `voiceOverFocusClaim(_:)` per una destinazione **appena
+  inserita**: al Blackjack la mano non esiste ancora quando il box si chiude (le carte arrivano
+  subito dopo), quindi è la mano stessa a reclamare il focus mentre appare. Reclama **solo la prima**
+  mano: una divisione non deve strappare il cursore da una mano ancora in gioco.
+- **Perché la destinazione è la MANO e non altro** (richiesta esplicita, e ha una ragione di ritmo):
+  mentre l'annuncio della carta scoperta del banco scorre, il focus è **già arrivato**, così quando
+  la sintesi finisce il giocatore è già sull'elemento che gli serve — e quell'elemento legge **il
+  totale prima delle carte** (D-091). **Zero swipe** tra la decisione di puntata e l'informazione per
+  decidere.
+- **Si posta `.layoutChanged`, non `.screenChanged`** (nuovo `AnnouncementQueue.postLayoutChanged`):
+  la schermata **non** è cambiata, ne è cambiata una parte, e un re-scan completo ri-annuncerebbe
+  l'intero tavolo **a ogni mano**. Il posting resta **in un solo file** (regola D-032, guardiano
+  statico verde).
+- **Vincoli:** solo `UI`; nessun motore toccato; nessun `UIAccessibility.post` diretto; sottoalbero
+  d'accessibilità stabile (i modificatori non aggiungono né rimuovono sottoviste). Principio
+  permanente in CONVENTIONS §4.
+
+### D-093 — Una tabella di stringhe sostituibile per l'intero modulo UI (il seme della misura)
+D-091 aveva misurato il carico del blackjack **sbagliato** — 8,36 s/mano invece di 6,14 — perché
+sotto `swift test` non c'è bundle e `uiLocalized` restituisce **la chiave**: si stava misurando la
+lunghezza degli identificatori, non dell'italiano. Il rimedio di allora fu una cucitura di
+localizzazione **su una sola funzione** (`BlackjackSpeechMap.text`). Non basta: la stessa misura
+sullo Stud attraversa `StudSpeechMap`, `CardText.spoken` e `SpeechMap.handDescription`, e infilare
+un parametro localizer in ognuna sarebbe stato un refactoring invasivo per una necessità di test.
+Introdotto invece `UIStrings.override`: una tabella **sostituibile una volta sola** che
+`uiLocalized` consulta per prima. La misura inietta il vero `it.lproj` letto da disco e **l'intero
+modulo rende italiano reale**, senza cuciture da propagare. Non impostata nell'app, dove il bundle
+è la verità. **Regola (CONVENTIONS §5):** una misura di ciò che il giocatore **sente** si fa sul
+testo reso davvero, mai su quello che il test riesce a risolvere.
+
+### D-094 — Stud: la mano di terza strada era spezzata; l'arricchimento NON serviva perché ESISTE già, e il canale è saturo
+Due domande sullo Stud, una confermata e corretta, l'altra rovesciata dalla misura.
+- **PRIMA PARTE — confermata e corretta: la terza carta.** Il sospetto era che all'apertura venissero
+  annunciate solo le due coperte. **Verificato: le tre carte erano tutte annunciate, ma in DUE righe**
+  — `privateDownCards` diceva *«Le tue **coperte**: X, Y.»* e la scoperta arrivava subito dopo come
+  frase separata *«Ricevi Z scoperta.»* Quindi la riga che presenta la mano ne elencava **due su
+  tre**, e la terza non suonava come parte della mano. È **esattamente la spaccatura che D-089 aveva
+  tolto**, sopravvissuta **un evento più a monte**: D-089 aveva unificato l'*elemento* interrogabile
+  (`stud.hero.cards.a11y` = «Le tue carte») ma non l'*annuncio*. **Correzione:** il view model
+  **trattiene** le due coperte e le pronuncia **insieme alla scoperta** come **una riga di tre**
+  (`StudSynthLine.heroCards`, rinominata da `heroDownCards` perché ora è la mano, non le coperte);
+  la stringa passa da «Le tue coperte» a «Le tue carte». L'ultima coperta di **settima** strada
+  conserva la sua riga: non c'è nulla a cui unirla. La distinzione coperte/scoperte resta
+  **interrogabile** su `hero.board` (D-089/D-083): spostata, non soppressa.
+- **SECONDA PARTE — la diagnosi ha rovesciato la premessa: l'arricchimento È GIÀ IMPLEMENTATO.**
+  `StudSpeechMap` pianifica `upCardDealt` **per ogni posto a ogni strada**, terza compresa, e il
+  view model lo pronuncia. **Misurato: 5,82 righe/mano di carte scoperte avversarie, 11,06 s/mano** —
+  se si fermassero alla terza strada sarebbero ~2. Non c'era niente da aggiungere.
+- **Il carico dello Stud, misurato** (40 mani reali al ClockTower, rese dal vero `it.lproj` via
+  D-093): **18,35 righe/mano** e **37,44 secondi parlati/mano**, contro le **3,88 righe e 6,14 s**
+  del Blackjack. Composizione, che è il dato che ha deciso tutto:
+
+  | | righe/mano | s/mano |
+  |---|---|---|
+  | **azioni avversarie** | **7,00** | **15,96** |
+  | **carte scoperte avversarie** | **5,82** | **11,06** |
+  | piatto | 2,00 | 3,50 |
+  | scoperta dell'eroe | 1,12 | 2,51 |
+  | obbligata | 1,00 | 1,97 |
+  | mani allo showdown | 0,94 | 1,39 |
+  | carte dell'eroe | 0,47 | 1,04 |
+
+  E il momento peggiore: una **raffica di showdown a tre vale 8,36 s contro un budget di canale di
+  6,0 s** — il payoff **da solo** sfora già.
+- **Costo dell'arricchimento proposto, nelle due forme, se fosse mancato:** forma **completa** (una
+  riga per avversario a ogni strada) ≈ **+8 righe e +15 s/mano**, cioè **+44% righe e +40 secondi**
+  su un canale già oltre budget; forma **economica** (una riga sola per strada che copre tutti gli
+  avversari, solo la carta nuova) ≈ **+4 righe e +7,5 s/mano**, ancora **+22%**. Entrambe
+  insostenibili — ma la questione è accademica, perché **l'informazione c'è già**.
+- **Perché il giocatore non la sentiva, e cosa ho fatto invece.** Con 37,44 s di parlato per mano
+  contro un budget di 6 s, il canale **scarta** (D-085) — e scarta la priorità più bassa fra le
+  righe in attesa. Le carte scoperte erano `.medium`, **esattamente come le azioni avversarie**,
+  che sono **più numerose e più lunghe** (7,00 righe / 15,96 s contro 5,82 / 11,06): il
+  chiacchiericcio stava **evincendo la cosa su cui lo Stud si gioca**. Correzione a **costo zero**:
+  le azioni avversarie scendono a `.low`, le carte scoperte restano `.medium`. **Nessuna riga
+  aggiunta, nessun secondo aggiunto, budget del canale intatto a 6,0 s** (test che lo pinna):
+  cambia solo **l'ordine in cui il canale cede**. Ciò che il giocatore perde sotto pressione è
+  l'informazione che può meno usare — una chiamata è di routine, visibile a schermo e ri-derivabile
+  dal piatto — e ciò che tiene è la carta appena scesa, che non lo è.
+- **Un buco trovato strada facendo, senza cui il cambio sarebbe stato inerte:** `speakAction` nel
+  view model passava `priority: .medium` **cablato**, scavalcando in silenzio la mappa che è
+  l'autorità (D-029) — e le azioni avversarie sono consegnate **solo** da lì. La demozione non
+  avrebbe avuto **alcun effetto**. Ora la priorità viene dalla mappa. Principio in CONVENTIONS §4.
+- **Nota onesta sul residuo:** anche con l'ordine corretto, un canale a 37,44 s/mano contro 6 s
+  **scarta molto**; la priorità decide *cosa*, non *quanto*. Se le carte scoperte dovessero ancora
+  risultare rade al test sul device, la leva successiva è **potare** (accorciare le righe di azione,
+  o pronunciarle solo quando cambiano il piatto), **non** alzare il budget, che è tarato su misure
+  reali sul telefono. Il tabellone di ogni avversario resta comunque **interrogabile a comando**
+  (D-078/D-083): l'annuncio automatico è un guadagno di ritmo, non l'unica via all'informazione.
+- **Vincoli:** motori intatti; eventi descrittivi (la coalescenza della terza strada vive nel
+  **consumatore**, dove vive il ritmo umano — D-018); nessun `UIAccessibility.post` diretto;
+  budget del canale **non alzato**; nessun suggerimento di mossa aggiunto.

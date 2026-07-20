@@ -145,6 +145,17 @@ public final class AnnouncementQueue {
         #endif
     }
 
+    /// Tells VoiceOver that part of the CURRENT screen changed (D-092). This is the
+    /// quiet sibling of `postScreenChanged`: it is what a modal DISMISSAL needs, where
+    /// the screen did not change — an element vanished out from under the cursor. A
+    /// `.screenChanged` here would re-announce the whole table every single hand.
+    /// Posting still lives only in this file (the single-point rule, D-032).
+    public static func postLayoutChanged() {
+        #if canImport(UIKit)
+        UIAccessibility.post(notification: .layoutChanged, argument: nil)
+        #endif
+    }
+
     // MARK: - Croupier coordination (one spoken channel)
 
     /// The croupier is about to play an mp3: hold new announcements and wait for any

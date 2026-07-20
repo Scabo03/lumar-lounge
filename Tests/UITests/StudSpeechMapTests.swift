@@ -30,7 +30,7 @@ final class StudSpeechMapTests: XCTestCase {
     func testHeroDownCardsAreHeroOnly() {
         let hero = StudSpeechMap.plan(for: .privateDownCards(seatID: 0, cards: [c(.ace, .spades)]),
                                       heroSeatID: 0, names: names)
-        if case .heroDownCards? = hero.synthesis {} else { XCTFail("the hero hears their own down cards") }
+        if case .heroCards? = hero.synthesis {} else { XCTFail("the hero hears their own down cards") }
         // A different seat's private cards are not the hero's business → silent for them.
         let other = StudSpeechMap.plan(for: .privateDownCards(seatID: 1, cards: [c(.ace, .spades)]),
                                        heroSeatID: 0, names: names)

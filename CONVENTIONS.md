@@ -688,6 +688,29 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
   l'anello di posti che ciclano. Resta invece lo scheletro provato — value type, `apply` che valida e
   muta, **tutta** la progressione in un solo punto. Riusare per abitudine un'astrazione il cui
   soggetto non esiste è il modo più rapido di portarsi dietro complessità senza valore.
+- **Un elemento che SCOMPARE per effetto di un'azione deve dichiarare dove va il focus (D-092).**
+  L'atterraggio del focus (`voiceOverFocusLanding()`, D-057) copre l'**apparizione**, ed è tutto ciò
+  che può coprire: vive su `onAppear`. Ma tutti i tavoli presentano i loro box **sopra** un contenuto
+  che non viene mai rimosso dall'albero — è solo `accessibilityHidden` — quindi alla **chiusura** del
+  box non appare nulla, non riparte nulla, e il cursore resta su un pulsante che non esiste più. Il
+  vedente non se ne accorge (guarda altrove); il non vedente è **bloccato nel vuoto** e deve
+  rifocalizzare a mano. Regola: ogni percorso di chiusura dichiara la destinazione, e la dichiara
+  nel `didSet` della proprietà del box, così un percorso aggiunto domani (annulla, tap sullo sfondo)
+  non può dimenticarsene. La destinazione è l'elemento che **serve subito dopo**, non il primo della
+  schermata. Si posta `.layoutChanged`, **non** `.screenChanged`: la schermata non è cambiata, ne è
+  cambiata una parte — un re-scan completo ri-annuncerebbe il tavolo a ogni mano.
+- **Il canale parlato ha un budget: aggiungere annunci a un canale saturo non aggiunge informazione,
+  la SCAMBIA (D-094).** Oltre il budget (D-085) il canale scarta per priorità, quindi una riga in più
+  ne fa cadere un'altra. Perciò, prima di arricchire la narrazione di un tavolo, **misurare il carico
+  attuale** in righe e secondi parlati per mano — e misurarlo **reso davvero** (D-093). Se il canale
+  è già oltre budget, la leva giusta non è il budget (tarato su misure reali sul device) né una nuova
+  riga, ma l'**ordine di cedimento**: dare priorità più bassa a ciò che è rumoroso, ripetitivo,
+  visibile a schermo e ri-derivabile, e più alta a ciò su cui il gioco si decide. È l'unico
+  intervento a **costo zero**: nessuna riga aggiunta, nessun secondo in più.
+- **La priorità di una riga la decide la MAPPA, non il punto di consegna (D-094).** La mappa
+  evento→voce è l'autorità (D-029); un `priority:` cablato al call site la scavalca in silenzio e
+  rende inerte ogni futura ricalibrazione. Se una riga ha bisogno di una priorità diversa, si cambia
+  nella mappa.
 
 ## 5. Testabilità
 

@@ -49,7 +49,7 @@ struct StudTableScreen: View {
 
                     StudActionBarView(model: model)
 
-                    StudHeroZoneView(state: model.state)
+                    StudHeroZoneView(focusReturnToken: model.focusReturnToken, state: model.state)
                         .frame(height: geometry.size.height * 0.24)
                 }
                 .padding(.horizontal, 12)
@@ -295,6 +295,9 @@ struct StudOpponentBadgesView: View {
 // MARK: - Bottom band: the human's own cards (down + up) + stack
 
 struct StudHeroZoneView: View {
+    /// Bumped by the view model when a modal box closes, so this zone can take
+    /// VoiceOver focus back from the vanished button (D-092).
+    var focusReturnToken: Int = 0
     let state: StudTableState
 
     private var heroSeat: StudSeatPresentation? {
@@ -344,6 +347,10 @@ struct StudHeroZoneView: View {
                     .accessibilityLabel(Text(verbatim: uiLocalized("stud.hero.cards.a11y",
                                                                    CardText.spoken(down + up))))
                     .accessibilitySortPriority(2)
+                    // Focus comes home here when a modal box closes (D-092): the
+                    // button the player pressed no longer exists, and this zone was
+                    // never removed from the tree, so nothing else would re-fire.
+                    .voiceOverFocusClaim(onChangeOf: focusReturnToken)
 
                 // The up/down split stays AVAILABLE, just no longer in the way: its own
                 // element, reached on demand, mirroring the opponents' board (D-083).

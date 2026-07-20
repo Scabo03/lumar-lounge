@@ -12,20 +12,38 @@
 import Foundation
 import GameEngine
 
+/// A replaceable string table for the whole UI module (D-093).
+///
+/// Under `swift test` there is no app bundle, so `NSLocalizedString` hands back the
+/// KEY. That is harmless for logic tests, but it silently corrupts any measurement of
+/// what the player HEARS: the numbers become the length of identifiers, not of
+/// Italian. D-091 was measured wrong once for exactly this reason and had to be redone.
+/// Rather than thread a localizer parameter through every speech map, card renderer
+/// and hand describer, a measurement injects the shipped `it.lproj` here once and the
+/// entire module renders real text. Unset in the app, where the bundle is the truth.
+public enum UIStrings {
+    public static var override: [String: String]?
+
+    static func lookup(_ key: String) -> String {
+        if let table = override { return table[key] ?? key }
+        return NSLocalizedString(key, bundle: .main, comment: "")
+    }
+}
+
 /// Looks up a localized string by key from the main bundle.
 func uiLocalized(_ key: String) -> String {
-    NSLocalizedString(key, bundle: .main, comment: "")
+    UIStrings.lookup(key)
 }
 
 /// Looks up and formats a localized string with arguments.
 func uiLocalized(_ key: String, _ args: CVarArg...) -> String {
-    String(format: NSLocalizedString(key, bundle: .main, comment: ""), arguments: args)
+    String(format: UIStrings.lookup(key), arguments: args)
 }
 
 /// Array-argument form, for call sites that build their arguments dynamically
 /// (a variadic cannot be forwarded). Same lookup as `uiLocalized`.
 func uiLocalizedList(_ key: String, _ args: [CVarArg]) -> String {
-    String(format: NSLocalizedString(key, bundle: .main, comment: ""), arguments: args)
+    String(format: UIStrings.lookup(key), arguments: args)
 }
 
 /// Formats cards for display and for spoken (VoiceOver) output.

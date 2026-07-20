@@ -41,7 +41,7 @@ struct DrawTableScreen: View {
 
                     DrawActionBarView(model: model)
 
-                    DrawHeroZoneView(state: model.state)
+                    DrawHeroZoneView(focusReturnToken: model.focusReturnToken, state: model.state)
                         .frame(height: geometry.size.height * 0.30)
                 }
                 .padding(.horizontal, 12)
@@ -281,6 +281,9 @@ struct DrawOpponentBadgesView: View {
 // MARK: - Bottom band: the human's five cards + stack
 
 struct DrawHeroZoneView: View {
+    /// Bumped by the view model when a modal box closes, so this zone can take
+    /// VoiceOver focus back from the vanished button (D-092).
+    var focusReturnToken: Int = 0
     let state: DrawTableState
 
     private var heroSeat: DrawSeatPresentation? {
@@ -321,6 +324,10 @@ struct DrawHeroZoneView: View {
             .accessibilityElement(children: .ignore)
             .accessibilityIdentifier("hero.cards")
             .accessibilityLabel(Text(verbatim: uiLocalized("hero.cards.a11y", CardText.spoken(hole))))
+            // Focus comes home here when a modal box closes (D-092): the
+            // button the player pressed no longer exists, and this zone was
+            // never removed from the tree, so nothing else would re-fire.
+            .voiceOverFocusClaim(onChangeOf: focusReturnToken)
         } else {
             Text(verbatim: uiLocalized("hero.nocards"))
                 .font(.subheadline).foregroundStyle(TablePalette.secondaryText)

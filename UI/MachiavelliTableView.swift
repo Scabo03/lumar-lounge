@@ -340,6 +340,10 @@ struct MachiavelliHandZone: View {
                 .accessibilityIdentifier("machiavelli.hand.header")
                 .accessibilityLabel(Text(verbatim: uiLocalized("machiavelli.hand.header.a11y", handEntries.count)))
                 .voiceOverFocusLanding()
+                // …and comes home here when the composition box closes (D-092): the
+                // Confirm the player pressed no longer exists, and the table under it
+                // was only accessibilityHidden, so nothing else would re-fire.
+                .voiceOverFocusClaim(onChangeOf: model.focusReturnToken)
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 44), spacing: 5)], alignment: .leading, spacing: 5) {
                     ForEach(Array(handEntries.enumerated()), id: \.offset) { _, entry in

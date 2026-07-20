@@ -546,7 +546,10 @@
 "stud.hero.nocards.a11y" = "Non hai carte in questa mano.";
 
 "stud.announce.handstart" = "Nuova mano.";
-"stud.announce.hero.down" = "Le tue coperte: %@.";
+/* Third street: ALL THREE of the hero's cards, spoken as one whole (D-094).
+   The old wording said "coperte" and listed two of three — the split D-089
+   set out to remove, surviving one event earlier. */
+"stud.announce.hero.down" = "Le tue carte: %@.";
 "stud.announce.hero.down.one" = "La tua ultima coperta: %@.";
 "stud.announce.upcard" = "%1$@ riceve %2$@ scoperta.";
 "stud.announce.upcard.hero" = "Ricevi %@ scoperta.";

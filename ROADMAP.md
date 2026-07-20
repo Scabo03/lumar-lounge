@@ -611,6 +611,38 @@ niente bot, nessuna nuova dimensione di `Personality`). Il primo gioco contro **
 - **Calibrazione delle poste dopo il test reale**: le bande 20–200 e 100–1000 sono scelte per
   proporzione con la casa, **non misurate** su una sessione giocata.
 
+### ✅ Focus che resta appeso + diagnosi del canale parlato dello Stud (D-092/D-093/D-094)
+Due interventi di natura diversa: uno prescrittivo, uno diagnostico che ha **rovesciato la premessa**.
+- **Focus appeso (D-092) — il difetto era in TUTTI e sei i tavoli.** Alla chiusura di un box modale
+  il cursore VoiceOver restava sul pulsante appena premuto, ormai inesistente: l'atterraggio del
+  focus (D-057) vive su `onAppear`, e il contenuto sotto un box **non viene mai rimosso dall'albero**
+  (è solo `accessibilityHidden`), quindi non riappare e non riparte nulla. Al Blackjack pesava il
+  doppio perché **ogni mano comincia così**. Correzione: hand-off dichiarato nel **`didSet`** della
+  proprietà del box (copre conferma, annulla e tap sullo sfondo per costruzione) + due forme di
+  `voiceOverFocusClaim` — a token per una destinazione già presente (i cinque tavoli), ad apparizione
+  per una appena inserita (la mano del blackjack, **solo la prima**: una divisione non strappa il
+  cursore). Si posta `.layoutChanged`, non `.screenChanged`.
+- **Stud, terza strada (D-094) — sospetto confermato e corretto.** Le tre carte erano tutte
+  annunciate ma in **due righe**, e la prima diceva «Le tue **coperte**» elencandone due su tre: la
+  spaccatura che D-089 aveva tolto, sopravvissuta un evento più a monte. Ora **una riga di tre**; la
+  distinzione coperte/scoperte resta su `hero.board`.
+- **Stud, arricchimento delle scoperte avversarie — NON implementato, perché ESISTE GIÀ.** La mappa
+  pianifica `upCardDealt` per ogni posto a ogni strada. **Misurato: 5,82 righe/mano e 11,06 s/mano**
+  di carte scoperte avversarie. Carico totale dello Stud: **18,35 righe e 37,44 s parlati per mano**
+  (contro 3,88 / 6,14 del Blackjack); showdown a tre = **8,36 s contro un budget di canale di 6,0 s**.
+  Il giocatore non le sentiva perché il canale **scarta**, e le scoperte erano `.medium` **come** le
+  azioni avversarie, che sono più numerose e più lunghe (7,00 righe / 15,96 s). Correzione a **costo
+  zero**: azioni avversarie → `.low`. **Nessuna riga aggiunta, budget intatto a 6,0 s** (test che lo
+  pinna). Trovato e chiuso anche un `priority: .medium` **cablato** in `speakAction` che scavalcava
+  la mappa e avrebbe reso la demozione inerte.
+- **Seme di localizzazione (D-093):** `UIStrings.override` rende l'**intero modulo UI** in italiano
+  vero sotto `swift test`, così una misura di ciò che il giocatore sente non misura più la lunghezza
+  delle chiavi (la trappola di D-091).
+
+**Residuo dichiarato:** la priorità decide *cosa* si scarta, non *quanto*. A 37,44 s/mano contro 6 s
+il canale scarta comunque molto; se al test sul device le scoperte risultassero ancora rade, la leva
+successiva è **potare le righe di azione**, **non** alzare il budget (tarato su misure reali).
+
 ### 🔭 Prossimo
 Ascolto/approvazione dei campioni fonetici del blackjack; nuovo test sul telefono per validare le
 calibrazioni; produzione dei restanti file audio (blackjack, `vob_sky_*`, slot storici del mondo M2

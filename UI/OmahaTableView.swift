@@ -51,7 +51,7 @@ struct OmahaTableScreen: View {
 
                     OmahaActionBarView(model: model)
 
-                    OmahaHeroZoneView(state: model.state)
+                    OmahaHeroZoneView(focusReturnToken: model.focusReturnToken, state: model.state)
                         .frame(height: geometry.size.height * 0.30)
                 }
                 .padding(.horizontal, 12)
@@ -261,6 +261,9 @@ struct OmahaOpponentBadgesView: View {
 // MARK: - Bottom band: the human's four hole cards + stack
 
 struct OmahaHeroZoneView: View {
+    /// Bumped by the view model when a modal box closes, so this zone can take
+    /// VoiceOver focus back from the vanished button (D-092).
+    var focusReturnToken: Int = 0
     let state: OmahaTableState
 
     private var heroSeat: OmahaSeatPresentation? {
@@ -302,6 +305,10 @@ struct OmahaHeroZoneView: View {
             .accessibilityIdentifier("hero.cards")
             // Grouped BY SUIT so the player hears suitedness without drowning (D-066).
             .accessibilityLabel(Text(verbatim: uiLocalized("omaha.hero.cards.a11y", OmahaSpeechMap.omahaHoleSpoken(hole))))
+            // Focus comes home here when a modal box closes (D-092): the
+            // button the player pressed no longer exists, and this zone was
+            // never removed from the tree, so nothing else would re-fire.
+            .voiceOverFocusClaim(onChangeOf: focusReturnToken)
         } else {
             Text(verbatim: uiLocalized("hero.nocards"))
                 .font(.subheadline).foregroundStyle(TablePalette.secondaryText)
