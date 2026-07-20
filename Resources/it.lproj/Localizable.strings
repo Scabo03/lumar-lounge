@@ -641,14 +641,19 @@
    VoiceOver labels are real ITALIAN words, correct by construction and
    awaiting the user's ear verdict before any English rendering is wired
    (D-090, method of D-060). --- */
+/* Le label VoiceOver dei cinque movimenti — RESE VERIFICATE ALL'ORECCHIO su Alice
+   dall'utente (D-095, metodo D-060). Scelta MISTA e deliberata: Hit e Surrender
+   nell'equivalente ITALIANO ("carta", "resa"), Stand/Double/Split nella parola
+   INGLESE piana. Tutte grafie piane di parole reali, quindi device-safe per
+   costruzione: nessun grafema inventato, nessun IPA. Non toccare senza ri-ascoltare. */
 "blackjack.action.hit" = "Hit";
 "blackjack.action.hit.a11y" = "carta";
 "blackjack.action.stand" = "Stand";
-"blackjack.action.stand.a11y" = "stai";
+"blackjack.action.stand.a11y" = "Stand";
 "blackjack.action.double" = "Double";
-"blackjack.action.double.a11y" = "raddoppia";
+"blackjack.action.double.a11y" = "Double";
 "blackjack.action.split" = "Split";
-"blackjack.action.split.a11y" = "dividi";
+"blackjack.action.split.a11y" = "Split";
 "blackjack.action.surrender" = "Surrender";
 "blackjack.action.surrender.a11y" = "resa";
 

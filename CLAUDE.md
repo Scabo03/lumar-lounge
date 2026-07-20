@@ -3058,3 +3058,35 @@ Due domande sullo Stud, una confermata e corretta, l'altra rovesciata dalla misu
 - **Vincoli:** motori intatti; eventi descrittivi (la coalescenza della terza strada vive nel
   **consumatore**, dove vive il ritmo umano — D-018); nessun `UIAccessibility.post` diretto;
   budget del canale **non alzato**; nessun suggerimento di mossa aggiunto.
+
+### D-095 — Blackjack: le rese fonetiche dei cinque movimenti, ascoltate e cablate (verdetto MISTO)
+Chiusura del residuo dichiarato in D-090: i 16 campioni Alice it-IT in
+`~/Desktop/lumar-phonetics/blackjack/` sono stati **ascoltati e approvati** dall'utente. Il verdetto
+non è stato "tutto inglese" né "tutto italiano" ma **misto**, e la scelta è per parola, non per
+principio:
+- **Hit → «carta»** e **Surrender → «resa»** (equivalenti **italiani**, `hit_02` / `surrender_02`);
+- **Stand → «Stand»**, **Double → «Double»**, **Split → «Split»** (parola **inglese** piana,
+  `stand_01` / `double_01` / `split_01`);
+- **il termine «blackjack» → parola inglese piana** (`blackjack_01`), che era **già** ciò che le
+  righe parlate dicevano (`blackjack.announce.deal.natural`, `…dealer.natural`) → nessun cambio.
+**Ogni resa è una grafia PIANA di una parola reale** — nella lingua che la voce parla, o in inglese
+letto da Alice — quindi **device-safe per costruzione** (D-060): nessun grafema inventato, nessun
+IPA, nessuna dipendenza dal percorso SwiftUI→VoiceOver mai verificato end-to-end.
+- **Verifica di byte-identità (passo 4 del metodo D-060), fatta e superata su tutte e sei le rese:**
+  rigenerata la stringa **così com'è spedita** e confrontata col campione approvato →
+  md5 **identici** (`carta` = `a8e2f55e…`, `resa` = `d9c9bf05…`, `Stand` = `207a8ca0…`,
+  `Double` = `5ac01ee2…`, `Split` = `7a3fbb8f…`, `blackjack` = `4ec1387b…`).
+- **Fatto misurato utile per il futuro:** la **maiuscola non cambia il suono** — "Blackjack" e
+  "blackjack" producono audio **byte-identico** su Alice, così come Stand/stand, Double/double,
+  Split/split. Quindi una resa approvata su una parola capitalizzata **vale anche** per le sue
+  occorrenze minuscole dentro una frase, senza doverla ri-ascoltare.
+- **Confine rispettato (D-073):** cambiano **solo** le label `.a11y` dei pulsanti. La **narrazione**
+  resta ai verbi italiani ("Raddoppi.", "Dividi. Ora hai %d mani.") — è la stessa doppia lingua già
+  nel progetto: la voce racconta in italiano, il pulsante dice il termine del gioco. La tabella
+  `en.lproj` non è toccata (parole inglesi per una voce inglese).
+- **Guardiano** (`PhoneticsTests.testEarVerifiedBlackjackMoveRenderings`): pinna le cinque rese udite
+  e **vieta il ritorno** delle tre italiane scartate ("stai", "raddoppia", "dividi"), coerente col
+  perno di D-060 — **si asserisce solo ciò che un umano ha udito**. Lo strumento per rigenerare i
+  campioni è ricostruito nello scratchpad (`render1.swift`); **nota operativa nuova**: su riga di
+  comando macOS il processo deve **pompare il run loop**, non bloccarsi su un semaforo, altrimenti
+  la callback di `write` non scatta mai e non esce audio.

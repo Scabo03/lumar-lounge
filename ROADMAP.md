@@ -601,10 +601,10 @@ niente bot, nessuna nuova dimensione di `Personality`). Il primo gioco contro **
   confisca la posta viva senza casi speciali. Testato con `DEBUG_FREE_PLAY` **spento**.
 
 **Residui aperti:**
-- **Ascolto dei campioni fonetici** dei termini nuovi (hit/stand/double/split/surrender) in
-  `~/Desktop/lumar-phonetics/blackjack/`: 16 candidati inglesi/italiani/grafemici. Oggi sono cablate
-  le **parole italiane** (device-safe per costruzione); se l'utente preferisce l'inglese cambiano
-  **solo** le stringhe `.a11y`.
+- ~~Ascolto dei campioni fonetici dei termini nuovi~~ → **fatto (D-095)**: verdetto **misto** —
+  Hit e Surrender in **italiano** («carta», «resa»), Stand/Double/Split e il termine «blackjack» in
+  **inglese** piano. Tutte grafie piane di parole reali (device-safe); byte-identità coi campioni
+  approvati verificata su tutte e sei; guardiano in `PhoneticsTests`.
 - **File audio del blackjack: nessuno prodotto.** Due voci croupier (`vo_it_bj_shuffle`,
   `vo_it_sky_bj_shuffle`) e tre effetti di presenza (`fx_bj_presence_*`). Catalogo in
   [`Blackjack_audio_catalog.md`](Blackjack_audio_catalog.md).

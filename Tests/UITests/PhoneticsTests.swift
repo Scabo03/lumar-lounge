@@ -49,6 +49,38 @@ final class PhoneticsTests: XCTestCase {
         }
     }
 
+    /// The five blackjack moves — EAR-VERIFIED on Alice by the user (D-095, method
+    /// D-060). The verdict was MIXED, and deliberately so: Hit and Surrender in the
+    /// ITALIAN equivalent, Stand/Double/Split in the plain ENGLISH word. Every one is
+    /// a plain spelling of a real word — no invented grapheme, no IPA — so they are
+    /// device-safe by construction. Each was confirmed byte-identical to the approved
+    /// sample by re-rendering the string AS SHIPPED (step 4 of the method).
+    func testEarVerifiedBlackjackMoveRenderings() throws {
+        let s = try italianStrings()
+        XCTAssertEqual(s["blackjack.action.hit.a11y"], "carta",
+                       "Hit — ear-verified Italian (sample hit_02)")
+        XCTAssertEqual(s["blackjack.action.surrender.a11y"], "resa",
+                       "Surrender — ear-verified Italian (sample surrender_02)")
+        XCTAssertEqual(s["blackjack.action.stand.a11y"], "Stand",
+                       "Stand — ear-verified English (sample stand_01)")
+        XCTAssertEqual(s["blackjack.action.double.a11y"], "Double",
+                       "Double — ear-verified English (sample double_01)")
+        XCTAssertEqual(s["blackjack.action.split.a11y"], "Split",
+                       "Split — ear-verified English (sample split_01)")
+
+        // The Italian words that were NOT chosen must not creep back onto these labels.
+        XCTAssertNotEqual(s["blackjack.action.stand.a11y"], "stai")
+        XCTAssertNotEqual(s["blackjack.action.double.a11y"], "raddoppia")
+        XCTAssertNotEqual(s["blackjack.action.split.a11y"], "dividi")
+
+        // The word "blackjack" itself is the approved English rendering (sample
+        // blackjack_01); capitalisation does not change what Alice says, verified.
+        for key in ["blackjack.announce.deal.natural", "blackjack.announce.dealer.natural"] {
+            XCTAssertTrue((s[key] ?? "").lowercased().contains("blackjack"),
+                          "\(key) must keep the ear-verified word")
+        }
+    }
+
     /// Casino/table names — EAR-VERIFIED on Alice by the user (D-060/D-066):
     ///   • Skypool → "Skai pul" (sample 04; the plain "Skypool" was read wrong).
     ///   • Marble  → the plain word "Marble" (sample 01, the best-sounding).
