@@ -24,15 +24,20 @@ final class BlackjackRhythmTests: XCTestCase {
 
     // MARK: - The deal is two beats, not one
 
-    /// The player's hand and the dealer's card must not arrive together: focus
-    /// lands on the hand and starts reading it, so anything announced at the
-    /// same instant is spoken over.
-    func testTheDealerRevealWaitsLongEnoughToBeHeardSeparately() {
-        XCTAssertGreaterThanOrEqual(BlackjackPacing.dealerRevealDelay, 1.5,
-                                    "The hand needs room to be read before the dealer speaks.")
-        // …but it is a beat, not a wait: blackjack's whole character is speed.
-        XCTAssertLessThanOrEqual(BlackjackPacing.dealerRevealDelay, 4.0,
-                                 "A beat, not a pause the player has to sit through.")
+    /// The dealer's card waits for the hand's focus-landing read to FINISH, not
+    /// for a fixed guess (D-097): the delay is the estimated length of that read,
+    /// so it scales with the hand and never cuts it off.
+    @MainActor
+    func testTheDealerRevealWaitsForTheWholeHandToBeRead() {
+        let short = BlackjackPacing.dealerRevealDelay(
+            afterReading: "La tua mano: diciassette. Carte: asso, sei.")
+        XCTAssertGreaterThan(short, 2.0,
+                             "Long enough for the hand's total and cards to be read first.")
+
+        // A longer hand line takes longer to clear — the wait tracks the content.
+        let long = BlackjackPacing.dealerRevealDelay(
+            afterReading: "Mano 1 di 2: venti. Carte: dieci di picche, dieci di cuori, asso.")
+        XCTAssertGreaterThan(long, short, "The beat scales with the hand being read.")
     }
 
     /// The two halves are disjoint — no word is said twice.
@@ -94,9 +99,12 @@ final class BlackjackRhythmTests: XCTestCase {
                                encoding: .utf8)
         let runBet = try XCTUnwrap(model.range(of: "private func runBet"))
         let assign = try XCTUnwrap(model.range(of: "betBox = BlackjackBetBox"))
-        let wait = try XCTUnwrap(model.range(of: "await awaitSpokenChannelQuiet()", range: runBet.lowerBound..<assign.lowerBound),
-                                 "the box must wait for the spoken channel before it opens")
-        XCTAssertLessThan(wait.upperBound, assign.lowerBound)
+        let window = runBet.lowerBound..<assign.lowerBound
+        // A floor beat, then a wait for the channel to be quiet — both before the box.
+        XCTAssertNotNil(model.range(of: "betBoxLeadIn", range: window),
+                        "a floor beat so a just-settled round is in flight")
+        XCTAssertNotNil(model.range(of: "await awaitSpokenChannelQuiet()", range: window),
+                        "then the box waits for the spoken channel to fall quiet")
     }
 
     /// And what it waits for is a real account of the hand: the dealer's total

@@ -3146,3 +3146,31 @@ annuncio non deve duplicare un pulsante che parla da sé; D-096 mostra la stessa
 informazioni, gliene danno **meno di una**, perché la seconda tronca la prima. Quando si aggiunge un
 atterraggio di focus, chiedersi **sempre** cosa altro sta parlando in quel momento — e in particolare
 ricordare che `.screenChanged` **interrompe**, mentre `.layoutChanged` no (D-092).
+
+### D-097 — Blackjack: il ritmo del giro rifinito su misura dopo il secondo ascolto (raffina D-096)
+D-096 aveva le direzioni giuste ma due valori sbagliati, entrambi **fissi dove servivano
+adattivi**. Dal secondo test:
+- **Il ritardo della carta del banco ora insegue la LETTURA della mano, non un cronometro.** Con
+  D-096 la mano arrivava sola, il focus ci atterrava e VoiceOver iniziava a leggere «la tua mano:
+  diciassette, carte…», ma dopo **2,5 s fissi** la carta del banco veniva annunciata **sopra** —
+  spesso a metà lettura, così il giocatore doveva **ri-agganciare** la mano per sentire l'importo. Il
+  problema: 2,5 s è un numero, la lettura della mano è **variabile** (due carte o una divisione di
+  dieci). Ora il ritardo è **stimato dalla riga stessa** (`dealerRevealDelay(afterReading:)` =
+  latenza d'avvio del focus + `speakTime` del testo della mano), quindi scala col contenuto e **non
+  taglia mai** la lettura. La stima di `speakTime` è conservativa (sovrastima, D-085), quindi è
+  sicura per costruzione.
+- **A fine mano, un pavimento garantito prima del box della puntata.** D-096 attendeva il canale
+  quieto, ma su una **corsa veloce** di eventi la liquidazione poteva non essere ancora **partita**
+  quando l'attesa la trovava «quieta» (una corsa: annuncio accodato ma non ancora in riproduzione),
+  così il box si apriva e la interrompeva. Ora, prima dell'attesa-quiete, un **pavimento di 1,8 s**
+  (`betBoxLeadIn`, il «paio di secondi» chiesto) dà alla liquidazione il tempo di **entrare in
+  riproduzione ed essere udita**; poi l'attesa-quiete garantisce che il box non apra finché non è
+  **finita**. Pavimento **poi** quiete: il primo assicura che parta, la seconda che non venga tagliata.
+- **Le pause valgono SOLO se qualcuno ascolta.** Entrambi i beat sono racchiusi in `isListening`
+  (`mode.isEnabled || announcements.isVoiceOverRunning`): un giocatore **pienamente vedente** vede la
+  mano e il banco in un colpo d'occhio e **non deve** subire pause pensate per l'orecchio. Il
+  blackjack resta veloce per chi guarda; rallenta quel tanto che serve solo per chi ascolta — «nessuno
+  perde niente» applicato al ritmo, in entrambe le direzioni.
+- **Vincoli:** solo `UI`; motore/driver non toccati; nessun `UIAccessibility.post` diretto; budget del
+  canale non alzato; nessun suggerimento di mossa. I valori (0,5 s di latenza, 1,8 s di pavimento)
+  **restano da confermare all'orecchio sul device** — sono stime, come il ritardo di D-096 lo era.

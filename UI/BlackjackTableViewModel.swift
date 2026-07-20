@@ -139,16 +139,20 @@ public final class BlackjackTableViewModel: ObservableObject {
             await pace(payload)
 
         case let .dealt(_, _, _, dealerUpCard, _):
-            // TWO BEATS, not one (D-096). Everything used to land at once: the
-            // hand appeared, VoiceOver focus landed on it and began reading it,
-            // and the deal announcement fired on top — so the two talked over
-            // each other and the dealer's card was the half that got lost.
-            // Now the player's hand arrives ALONE and is read in the quiet the
-            // focus landing gives it; the dealer's card is turned a beat later
-            // and announced into a channel nobody else is using.
+            // TWO BEATS, not one (D-096/D-097). Everything used to land at once:
+            // the hand appeared, VoiceOver focus landed on it and began reading
+            // total and cards, and the deal announcement fired on top — so the
+            // two talked over each other and the player had to swipe back to the
+            // hand to hear the amount. Now the hand arrives ALONE and is read in
+            // full; the dealer's card is turned only once that read is expected
+            // to have finished (estimated from the hand line, D-097), into a
+            // channel nobody else is using.
             state = BlackjackTableReducer.reduce(state, payload)
             state.dealerCards = []
-            await pause(BlackjackPacing.dealerRevealDelay)
+            if isListening, let hand = state.hands.first {
+                let read = BlackjackReadout.hand(hand, index: 0, handCount: state.hands.count)
+                await pause(BlackjackPacing.dealerRevealDelay(afterReading: read))
+            }
             guard !hasLeft else { return }
             state.dealerCards = [dealerUpCard]
             speak(payload)
@@ -226,6 +230,14 @@ public final class BlackjackTableViewModel: ObservableObject {
             label: "blackjack")
     }
 
+    /// Whether anyone is actually hearing the spoken channel — iOS VoiceOver is
+    /// running, or the app's own VoiceOver mode is on. The accessibility beats
+    /// (D-097) apply only then: a fully sighted player sees the hand and the
+    /// dealer at once and must not be made to sit through pauses meant for the ear.
+    private var isListening: Bool {
+        mode.isEnabled || announcements.isVoiceOverRunning
+    }
+
     private func pause(_ seconds: Double) async {
         let effective = fastMode ? 0.01 : seconds
         try? await Task.sleep(nanoseconds: UInt64(effective * 1_000_000_000))
@@ -235,16 +247,19 @@ public final class BlackjackTableViewModel: ObservableObject {
 
     private func runBet(_ context: BlackjackBetContext) async {
         if hasLeft { return }
-        // THE ROUND MUST BE ALLOWED TO FINISH BEING EXPLAINED (D-096).
+        // THE ROUND MUST BE ALLOWED TO FINISH BEING EXPLAINED (D-096/D-097).
         // The wager box lands VoiceOver focus, and focus landing posts a
         // notification that INTERRUPTS whatever is being spoken. Every round
         // ended the same way: the dealer's total and the settlement line were
-        // cut off mid-sentence by the next box, leaving the player with a
-        // win/lose sting and no account of what had happened. Waiting for the
-        // spoken channel to fall quiet costs a sighted player nothing — with
-        // nothing being said the wait returns at once — and it is the whole
-        // difference between a result and an explanation.
-        await awaitSpokenChannelQuiet()
+        // cut off by the next box, leaving the player with a win/lose sting and
+        // no account of what had happened. So, only while someone is listening:
+        // a floor beat first, so a just-enqueued settlement is actually in
+        // flight and being heard, THEN wait for the whole channel to fall quiet
+        // so the box never opens over it. Both cost a sighted player nothing.
+        if isListening {
+            await pause(BlackjackPacing.betBoxLeadIn)
+            await awaitSpokenChannelQuiet()
+        }
         if hasLeft { return }
         betBox = BlackjackBetBox(minimum: context.minimumBet,
                                  maximum: min(context.maximumBet, context.chips),

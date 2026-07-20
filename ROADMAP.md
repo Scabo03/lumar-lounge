@@ -657,6 +657,14 @@ Tre difetti, una sola forma d'errore: **meccanismi giusti che scattano insieme e
   parlato — sopravviveva solo il colpo di vittoria/sconfitta, che è audio. Il totale del banco passa
   inoltre a `.high`: è la metà del perché una mano finisce così, non chiacchiericcio.
 
+### ✅ Rifinitura del ritmo del blackjack, secondo ascolto (D-097)
+Raffina D-096: due valori fissi resi adattivi. Il ritardo della carta del banco ora **insegue la
+lettura della mano** (`dealerRevealDelay(afterReading:)` = latenza + `speakTime` del testo), così
+non taglia più «la tua mano…» a metà. A fine mano un **pavimento di 1,8 s** prima del box (il «paio
+di secondi» chiesto) garantisce che la liquidazione sia in riproduzione, poi l'attesa-quiete la
+lascia finire. Entrambi i beat solo se `isListening` (VoiceOver iOS o modalità app): il vedente non
+subisce pause pensate per l'orecchio. Valori da confermare sul device.
+
 ### 🔭 Prossimo
 Ascolto/approvazione dei campioni fonetici del blackjack; nuovo test sul telefono per validare le
 calibrazioni; produzione dei restanti file audio (blackjack, `vob_sky_*`, slot storici del mondo M2
