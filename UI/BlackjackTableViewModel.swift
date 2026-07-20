@@ -29,12 +29,21 @@ public final class BlackjackTableViewModel: ObservableObject {
 
     private let driver: BlackjackSessionDriver
     private let human = HumanBlackjackActionProvider()
-    private let announcements = AnnouncementQueue()
+    // Internal (not private) so a measurement can observe the spoken channel — the
+    // one thing that cannot be checked any other way (D-098).
+    let announcements = AnnouncementQueue()
     private let gate = HandGate()
     private let fastMode: Bool
     private let audio: AudioServicing
     private let audioDirector: BlackjackAudioDirector
-    private let conductor: SpeechConductor
+    let conductor: SpeechConductor
+
+    /// Estimated seconds of speech the whole spoken channel still owes, right now.
+    /// A measurement samples this at the instant the wager box opens: if it is not
+    /// ~zero, the box is interrupting the round's own explanation (D-098).
+    var spokenChannelRemaining: TimeInterval {
+        conductor.channelRemaining + announcements.estimatedRemaining
+    }
     private let mode: AppVoiceOverMode
     private let casinoAudio: CasinoAudio
     private let onLeave: (Int) -> Void
@@ -46,6 +55,9 @@ public final class BlackjackTableViewModel: ObservableObject {
     private var leaveRequested = false
     private var hasLeft = false
     private var lastBet: Int?
+    /// Whether the dealer's total has been said this round, so the combined
+    /// end-of-hand line names it once even across a split (D-098).
+    private var dealerClauseSaid = false
 
     public init(seed: UInt64? = nil,
                 fastMode: Bool = false,
@@ -135,6 +147,7 @@ public final class BlackjackTableViewModel: ObservableObject {
         switch payload {
         case .roundBegan:
             conductor.handBegan()
+            dealerClauseSaid = false
             state = BlackjackTableReducer.reduce(state, payload)
             await pace(payload)
 
@@ -150,7 +163,10 @@ public final class BlackjackTableViewModel: ObservableObject {
             state = BlackjackTableReducer.reduce(state, payload)
             state.dealerCards = []
             if isListening, let hand = state.hands.first {
-                let read = BlackjackReadout.hand(hand, index: 0, handCount: state.hands.count)
+                // The focus-landing read is the TOTAL only (D-098) — short — so the
+                // wait is short and the dealer follows promptly, without ever
+                // cutting the read off partway through the cards.
+                let read = BlackjackReadout.total(hand, index: 0, handCount: state.hands.count)
                 await pause(BlackjackPacing.dealerRevealDelay(afterReading: read))
             }
             guard !hasLeft else { return }
@@ -158,12 +174,28 @@ public final class BlackjackTableViewModel: ObservableObject {
             speak(payload)
             await pace(payload)
 
-        case let .handSettled(_, _, settledOutcome, _, _, _):
+        case let .handSettled(index, handCount, settledOutcome, _, bet, net):
             state = BlackjackTableReducer.reduce(state, payload)
-            // The sting that reveals the result is SEQUENCED behind the line
-            // that explains it, never fired in parallel — otherwise it spoils
-            // the outcome before the player is told (D-085).
-            speak(payload, trailing: sting(for: settledOutcome))
+            // ONE atomic end-of-hand line: WHY (the dealer) and WHAT (your
+            // result), built together so nothing can split them and the whole
+            // rapid account is heard as a unit (D-098). The dealer clause is said
+            // once per round; a split's later hands add only their result.
+            let cause = dealerClauseSaid ? nil : BlackjackSpeechMap.dealerClauseText(
+                revealed: !state.holeCardHidden,
+                total: state.dealerTotal,
+                isSoft: BlackjackValue.total(state.dealerCards).isSoft,
+                busted: state.dealerBusted,
+                natural: state.dealerHasNatural)
+            dealerClauseSaid = true
+            let result = BlackjackSpeechMap.text(for: .settled(
+                index: index, handCount: handCount, outcome: settledOutcome,
+                amount: BlackjackSpeechMap.settlementAmount(settledOutcome, bet: bet, net: net)))
+            let line = [cause, result].compactMap { $0 }.joined(separator: " ")
+            // The sting that reveals the result is SEQUENCED behind the line that
+            // explains it, never in parallel, so it cannot spoil the outcome (D-085).
+            conductor.say(lead: nil, synthesis: line,
+                          trailing: sting(for: settledOutcome),
+                          priority: .high, reason: "bj-settle")
             await pace(payload)
 
         case .roundEnded:
@@ -235,8 +267,12 @@ public final class BlackjackTableViewModel: ObservableObject {
     /// (D-097) apply only then: a fully sighted player sees the hand and the
     /// dealer at once and must not be made to sit through pauses meant for the ear.
     private var isListening: Bool {
-        mode.isEnabled || announcements.isVoiceOverRunning
+        forceListeningForTests || mode.isEnabled || announcements.isVoiceOverRunning
     }
+
+    /// A measurement can force the listening path on, since no VoiceOver runs under
+    /// test and the end-of-round waiting must still be exercised (D-098).
+    var forceListeningForTests = false
 
     private func pause(_ seconds: Double) async {
         let effective = fastMode ? 0.01 : seconds

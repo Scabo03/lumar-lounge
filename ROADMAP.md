@@ -665,6 +665,15 @@ di secondi» chiesto) garantisce che la liquidazione sia in riproduzione, poi l'
 lascia finire. Entrambi i beat solo se `isListening` (VoiceOver iOS o modalità app): il vedente non
 subisce pause pensate per l'orecchio. Valori da confermare sul device.
 
+### ✅ Blackjack: mano importo+carte, navigazione, fine-mano in una riga (D-098)
+- **Mano in due elementi**: totale (lettura automatica corta, bersaglio del focus) + carte (a uno
+  swipe). La lettura automatica non viene più tagliata dall'annuncio del banco.
+- **Navigazione**: banco 100 · totale 90 · carte 85 · mosse 70…66 · fiches 40 · abbandona 5. Dalla
+  mano dritti alle azioni, la riga delle fiches non sta più in mezzo.
+- **Fine-mano misurato**: il box **non** interrompe (campionato: 0,0 s dovuti all'apertura). Il
+  problema erano **due momenti distanti**; ora **una riga atomica** «Il banco 19. Perdi 20.»
+  (causa+effetto insieme), `dealerPlayed` muto, detta una volta per mano.
+
 ### 🔭 Prossimo
 Ascolto/approvazione dei campioni fonetici del blackjack; nuovo test sul telefono per validare le
 calibrazioni; produzione dei restanti file audio (blackjack, `vob_sky_*`, slot storici del mondo M2

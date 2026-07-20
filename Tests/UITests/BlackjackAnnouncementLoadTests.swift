@@ -190,15 +190,17 @@ final class BlackjackAnnouncementLoadTests: XCTestCase {
         XCTAssertTrue(text.lowercased().contains("blackjack"), "A natural announces itself: \(text)")
     }
 
-    /// The dealer's total is the REASON a hand ended as it did, so it must never
-    /// be the line the channel gives up (D-096). It was `.medium`, droppable
-    /// alongside chatter — in a game that has no chatter.
-    func testTheDealersTotalIsNeverDroppable() {
-        let dealer = BlackjackSpeechMap.priority(for: .dealer(cards: [Card(.ten, .clubs),
-                                                                      Card(.nine, .hearts)],
-                                                              total: 19, isSoft: false,
-                                                              didBust: false, hasNatural: false))
-        XCTAssertEqual(dealer, .high, "The cause of the result is as protected as the result.")
+    /// The dealer's total — the REASON a hand ended as it did — now rides on the
+    /// settlement line (D-098), which is high and never dropped. So the cause is
+    /// as protected as the result because it IS part of the result line.
+    func testTheDealersCauseRidesOnTheUndroppableSettlement() {
+        // The dealer event no longer speaks on its own.
+        XCTAssertEqual(BlackjackSpeechMap.plan(for: .dealerPlayed(
+            cards: [Card(.ten, .clubs), Card(.nine, .hearts)], total: 19,
+            isSoft: false, didBust: false, hasNatural: false, drew: true)), .silent)
+        // The settlement it folds into is high.
+        XCTAssertEqual(BlackjackSpeechMap.priority(for: .settled(
+            index: 0, handCount: 1, outcome: .lose, amount: 20)), .high)
     }
 
     func testASingleHandIsNotToldWhoseTurnItIs() {

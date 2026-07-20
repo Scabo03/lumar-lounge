@@ -56,6 +56,27 @@ enum BlackjackReadout {
         return localized("blackjack.hero.hand.a11y", [total, cards])
     }
 
+    /// The player's TOTAL alone — the automatic read on the deal (D-098). Short,
+    /// so the focus landing reads it in full before the dealer speaks, instead of
+    /// being cut off partway through the cards.
+    static func total(_ hand: BlackjackHandPresentation,
+                      index: Int,
+                      handCount: Int,
+                      localized: Localizer = standard) -> String {
+        let total = totalPhrase(hand.total, hand.isSoft, localized: localized)
+        if handCount > 1 {
+            return localized("blackjack.hero.total.multi.a11y", [index + 1, handCount, total])
+        }
+        return localized("blackjack.hero.total.a11y", [total])
+    }
+
+    /// The cards behind the total — read on demand, one swipe from the total, for
+    /// a player who wants to study the hand rather than just its number (D-098).
+    static func handCards(_ hand: BlackjackHandPresentation,
+                          localized: Localizer = standard) -> String {
+        localized("blackjack.hero.handcards.a11y", [spoken(hand.cards, localized)])
+    }
+
     /// The dealer: while the hole card is down there is exactly one card to
     /// report, and saying so plainly is the whole of it — a face-down card is
     /// face down by the structure of the game and does not need announcing

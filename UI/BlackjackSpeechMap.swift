@@ -98,10 +98,13 @@ public enum BlackjackSpeechMap {
         case let .playerActed(_, action, _):
             return plan(for: action)
 
-        case let .dealerPlayed(cards, total, isSoft, didBust, hasNatural, _):
-            return BlackjackSpeechPlan(
-                synthesis: .dealer(cards: cards, total: total, isSoft: isSoft,
-                                   didBust: didBust, hasNatural: hasNatural))
+        case .dealerPlayed:
+            // The dealer's play is now folded into the SETTLEMENT line, so the
+            // "why" and the "what" are one rapid, unbreakable announcement rather
+            // than two moments seconds apart, the second of which the player had
+            // forgotten by the time the result landed (D-098). The flip is still a
+            // sound; the dealer's total is still on the interrogable element.
+            return .silent
 
         case let .handSettled(handIndex, handCount, outcome, _, bet, net):
             return BlackjackSpeechPlan(
@@ -141,6 +144,12 @@ public enum BlackjackSpeechMap {
 
     /// The figure a settlement line quotes: what the player gains, keeps back
     /// or loses. Always the REAL number for that hand (D-087).
+    /// Public so the view model can render the settlement line itself when it
+    /// combines the dealer cause with the result (D-098).
+    public static func settlementAmount(_ outcome: BlackjackOutcome, bet: Int, net: Int) -> Int {
+        amount(outcome, bet: bet, net: net)
+    }
+
     private static func amount(_ outcome: BlackjackOutcome, bet: Int, net: Int) -> Int {
         switch outcome {
         case .natural, .win:   return net           // what it earned
@@ -227,6 +236,19 @@ public enum BlackjackSpeechMap {
         case .sessionWon:  return localized("blackjack.session.won", [])
         case .sessionLost: return localized("blackjack.session.lost", [])
         }
+    }
+
+    /// The dealer half of the end-of-hand explanation: what the dealer made, or
+    /// that it went bust or had a natural (D-098). `nil` when the dealer never
+    /// revealed — a player who busted already heard why, at the bust.
+    public static func dealerClauseText(revealed: Bool, total: Int, isSoft: Bool,
+                                        busted: Bool, natural: Bool,
+                                        localized: Localizer = standard) -> String? {
+        guard revealed else { return nil }
+        if natural { return localized("blackjack.announce.dealer.natural", []) }
+        if busted  { return localized("blackjack.announce.dealer.bust", [total]) }
+        return localized("blackjack.announce.dealer",
+                         [totalPhrase(total, isSoft, localized: localized)])
     }
 
     private static func settlementText(_ outcome: BlackjackOutcome,

@@ -71,8 +71,10 @@ final class BlackjackRhythmTests: XCTestCase {
                              encoding: .utf8)
 
         XCTAssertTrue(view.contains(".accessibilitySortPriority(100)"), "dealer leads")
-        XCTAssertTrue(view.contains(".accessibilitySortPriority(90 - Double(index))"), "hands next")
-        XCTAssertTrue(view.contains(".accessibilitySortPriority(80)"), "then the stack")
+        XCTAssertTrue(view.contains(".accessibilitySortPriority(90 - Double(index) * 2)"), "hand total next")
+        XCTAssertTrue(view.contains(".accessibilitySortPriority(85 - Double(index) * 2)"), "then its cards")
+        XCTAssertTrue(view.contains(".accessibilitySortPriority(40)"),
+                      "the stakes line sits AFTER the moves, not between hand and moves")
         XCTAssertTrue(view.contains(".accessibilitySortPriority(5)"), "leaving the table comes last")
 
         // Every move carries an explicit place, all of them between the stack
@@ -82,9 +84,9 @@ final class BlackjackRhythmTests: XCTestCase {
         for (move, priority) in [("action.hit", 70), ("action.stand", 69), ("action.double", 68),
                                  ("action.split", 67), ("action.surrender", 66)] {
             XCTAssertTrue(bar.contains("identifier: \"\(move)\", sortPriority: \(priority)"),
-                          "\(move) must sit between the stack (80) and leaving (5)")
-            XCTAssertLessThan(priority, 80, "the moves come after the stack")
-            XCTAssertGreaterThan(priority, 5, "…and before leaving the table")
+                          "\(move) must sit between the hand and the stakes line")
+            XCTAssertLessThan(priority, 85, "the moves come right after the hand")
+            XCTAssertGreaterThan(priority, 40, "…and before the fiches line")
         }
     }
 
@@ -107,27 +109,46 @@ final class BlackjackRhythmTests: XCTestCase {
                         "then the box waits for the spoken channel to fall quiet")
     }
 
-    /// And what it waits for is a real account of the hand: the dealer's total
-    /// (the cause) and the settlement (the effect), neither droppable.
-    func testTheEndOfARoundExplainsBothTheCauseAndTheResult() {
+    /// The end-of-hand account is ONE line: the dealer cause and the result, built
+    /// together so nothing can split them (D-098). Both parts are present, and the
+    /// settlement it is delivered on is high, so it is never dropped.
+    func testTheEndOfARoundExplainsBothTheCauseAndTheResultInOneLine() {
         italian {
-            let dealer = BlackjackSpeechMap.plan(for: .dealerPlayed(cards: [Card(.ten, .clubs),
-                                                                            Card(.nine, .hearts)],
-                                                                     total: 19, isSoft: false,
-                                                                     didBust: false, hasNatural: false,
-                                                                     drew: true))
-            let settled = BlackjackSpeechMap.plan(for: .handSettled(handIndex: 0, handCount: 1,
-                                                                     outcome: .lose, total: 18,
-                                                                     bet: 20, net: -20))
-            let cause = BlackjackSpeechMap.text(for: dealer.synthesis!)
-            let effect = BlackjackSpeechMap.text(for: settled.synthesis!)
+            let cause = BlackjackSpeechMap.dealerClauseText(
+                revealed: true, total: 19, isSoft: false, busted: false, natural: false)
+            let result = BlackjackSpeechMap.text(for: .settled(
+                index: 0, handCount: 1, outcome: .lose, amount: 20))
+            let line = [cause, result].compactMap { $0 }.joined(separator: " ")
 
-            XCTAssertTrue(cause.contains("19"), "the player is told what beat them: \(cause)")
-            XCTAssertTrue(effect.contains("20"), "…and what it cost: \(effect)")
+            XCTAssertTrue(line.contains("19"), "the player is told what beat them: \(line)")
+            XCTAssertTrue(line.contains("20"), "…and what it cost, in the same breath: \(line)")
 
-            // Neither may be sacrificed when the channel is under pressure.
-            XCTAssertEqual(BlackjackSpeechMap.priority(for: dealer.synthesis!), .high)
-            XCTAssertEqual(BlackjackSpeechMap.priority(for: settled.synthesis!), .high)
+            // The settlement it rides on is never sacrificed under channel pressure.
+            XCTAssertEqual(BlackjackSpeechMap.priority(for: .settled(
+                index: 0, handCount: 1, outcome: .lose, amount: 20)), .high)
+        }
+    }
+
+    /// The AUTOMATIC read on the deal is the TOTAL alone — short, so it is never
+    /// cut off — with the cards on a sibling element for a player who studies the
+    /// hand (D-098). Total and cards are disjoint: neither repeats the other.
+    @MainActor
+    func testTheHandSplitsIntoTotalAndCardsSoTheAutoReadIsShort() {
+        italian {
+            let hand = BlackjackHandPresentation(cards: [Card(.ace, .spades), Card(.six, .hearts)],
+                                                 bet: 20)
+            let total = BlackjackReadout.total(hand, index: 0, handCount: 1)
+            let cards = BlackjackReadout.handCards(hand)
+
+            XCTAssertTrue(total.contains("17"), "the total element carries the amount: \(total)")
+            XCTAssertFalse(total.lowercased().contains("asso"),
+                           "the total element does NOT read the cards: \(total)")
+            XCTAssertTrue(cards.lowercased().contains("asso"),
+                          "the cards live on their own element: \(cards)")
+            // Short enough that the dealer reveal, which waits on it, follows promptly.
+            XCTAssertLessThan(AnnouncementQueue.speakTime(total),
+                              AnnouncementQueue.speakTime(BlackjackReadout.hand(hand, index: 0, handCount: 1)),
+                              "the total-only read is shorter than total+cards")
         }
     }
 }

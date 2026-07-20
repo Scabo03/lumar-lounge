@@ -624,6 +624,12 @@
 /* --- The detail, ON DEMAND (D-083): total first, cards after. --- */
 "blackjack.hero.hand.a11y" = "La tua mano: %1$@. Carte: %2$@.";
 "blackjack.hero.hand.multi.a11y" = "Mano %1$d di %2$d: %3$@. Carte: %4$@.";
+/* The hand is split into two accessible elements (D-098): the TOTAL is the focus
+   target and the automatic read — short, so it is never cut off — and the CARDS
+   sit next to it, read on demand by a player studying the hand. */
+"blackjack.hero.total.a11y" = "La tua mano: %@.";
+"blackjack.hero.total.multi.a11y" = "Mano %1$d di %2$d: %3$@.";
+"blackjack.hero.handcards.a11y" = "Carte: %@.";
 "blackjack.dealer.a11y" = "Il banco mostra %@.";
 "blackjack.dealer.full.a11y" = "Il banco: %1$@. Carte: %2$@.";
 "blackjack.dealer.bust.a11y" = "Il banco sballa con %1$d. Carte: %2$@.";

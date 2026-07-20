@@ -3174,3 +3174,38 @@ adattivi**. Dal secondo test:
 - **Vincoli:** solo `UI`; motore/driver non toccati; nessun `UIAccessibility.post` diretto; budget del
   canale non alzato; nessun suggerimento di mossa. I valori (0,5 s di latenza, 1,8 s di pavimento)
   **restano da confermare all'orecchio sul device** — sono stime, come il ritardo di D-096 lo era.
+
+### D-098 — Blackjack: mano letta come importo+carte separati, navigazione dritta alle azioni, fine-mano in una riga sola (misurato)
+Tre rifiniture dal terzo ascolto, la terza **misurata prima di intervenire** come chiesto.
+- **La lettura d'atterraggio era ancora troppo lunga e veniva tagliata.** Con D-097 il focus
+  atterrava sulla mano e VoiceOver leggeva l'intero elemento («la tua mano: 17, carte asso, sei»),
+  ma appena arrivava alle **carte** partiva l'annuncio del banco e lo troncava — così l'utente
+  doveva ri-agganciare la mano per l'importo. Fix: la mano è **due elementi accessibili distinti**
+  (come lo Stud D-089 e il banco D-083) — il **totale** (bersaglio del focus, lettura automatica
+  **corta**: «la tua mano: 17») e le **carte** su un elemento fratello, a **uno swipe**, per chi
+  vuole studiare la strategia. La lettura automatica è ora solo il numero, che non può essere
+  tagliato; le carte restano disponibili a richiesta, e il ritardo del banco è stimato dal
+  testo **del solo totale**, quindi molto più corto.
+- **Navigazione dritta alle azioni.** L'ordine dichiarato di D-096 metteva la riga delle **fiches**
+  (stack) tra la mano e le azioni: uno swipe dalla mano passava per lo stato delle fiches prima di
+  arrivare alle mosse. Riordinato: **banco 100 · totale mano 90 · carte mano 85 · le cinque mosse
+  70…66 · fiches 40 · abbandona 5**. Dalla mano si va **diritti** alle azioni; le fiches, che si
+  consultano di rado, stanno dopo (restano comunque il bersaglio del focus all'ingresso al tavolo,
+  che l'atterraggio garantisce a prescindere dall'ordine).
+- **Fine-mano: MISURATO, poi corretto.** Ho strumentato una misura che **campiona il canale parlato
+  nell'istante in cui si apre il box** della puntata (`BlackjackEndOfRoundTests`, driver reale, 4
+  mani): risultato **0,0 s dovuti in ogni mano** — cioè la logica di D-097 (pavimento + attesa-quiete)
+  **funziona**, il box **non** interrompe. Quindi il problema non era il taglio del box ma che
+  l'ombra della spiegazione erano **due momenti distanti**: il totale del banco a `dealerPlayed`, il
+  risultato a `handSettled`, secondi dopo — e il primo era dimenticato quando arrivava il secondo.
+  Fix: **una sola riga atomica** a fine mano che porta **causa e effetto insieme** («Il banco 19.
+  Perdi 20.»), costruita nel view model dal `dealerClauseText` + la riga di liquidazione, così nulla
+  può separarle; `dealerPlayed` diventa **muto** (il giro di carte resta un suono, il totale resta
+  sull'elemento interrogabile). La clausola del banco è detta **una volta per mano** (anche con una
+  divisione, le mani successive aggiungono solo il proprio esito). Rapida, HIGH, indroppabile.
+- **Metodo (ribadito):** la misura ha **escluso** l'ipotesi «il box interrompe» con un numero, e ha
+  puntato al difetto vero (due momenti invece di uno). È la lezione D-091: misurare prima di
+  intervenire, sul comportamento reale, non sull'ipotesi.
+- **Vincoli:** solo `UI` (+ stringhe); motore/driver non toccati; sottoalbero d'accessibilità
+  stabile (i due elementi della mano sono foglie fisse, la selezione non li ristruttura); nessun
+  `UIAccessibility.post` diretto; budget del canale non alzato; nessun suggerimento di mossa.

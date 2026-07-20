@@ -19,9 +19,10 @@ import Audio
 // the screen — the test banner, the settings button, "leave table" — and only
 // then came the five moves, which is the opposite of what the round needs. The
 // whole screen now carries explicit sort priorities, highest read first:
-//   dealer 100 · hands 90 · stakes 80 · the five moves 70…66 · leave 5
-// so the player goes from what they hold, to what it is worth, straight to what
-// they can do about it.
+//   dealer 100 · hand total 90 · hand cards 85 · the five moves 70…66 ·
+//   stakes 40 · leave 5
+// so the player goes from what they hold straight to what they can do about it,
+// and the fiches line no longer sits between the hand and the moves (D-098).
 struct BlackjackTableScreen: View {
     @StateObject private var model: BlackjackTableViewModel
 
@@ -144,6 +145,14 @@ private struct BlackjackHeroZoneView: View {
 
     var body: some View {
         VStack(spacing: 6) {
+            ForEach(Array(state.hands.enumerated()), id: \.offset) { index, hand in
+                handView(hand, index: index)
+            }
+
+            // The stakes read sits AFTER the hand and the moves (priority 40), so a
+            // swipe from the hand reaches the actions directly instead of detouring
+            // through the fiches line (D-098). It still catches focus on TABLE ENTRY,
+            // which the focus-landing modifier does regardless of sort order.
             Text(verbatim: BlackjackReadout.stakes(chips: state.chips, atStake: state.totalAtStake))
                 .font(.subheadline)
                 .foregroundColor(TablePalette.secondaryText)
@@ -151,42 +160,45 @@ private struct BlackjackHeroZoneView: View {
                 .accessibilityIdentifier("blackjack.stakes")
                 .accessibilityLabel(Text(verbatim: BlackjackReadout.stakes(chips: state.chips,
                                                                           atStake: state.totalAtStake)))
-                .accessibilitySortPriority(80)
+                .accessibilitySortPriority(40)
                 .voiceOverFocusLanding()
-
-            ForEach(Array(state.hands.enumerated()), id: \.offset) { index, hand in
-                handView(hand, index: index)
-            }
         }
         .frame(maxWidth: .infinity)
     }
 
+    /// The hand is TWO accessible elements (D-098): the TOTAL — the focus target
+    /// and the short automatic read — and the CARDS behind it, one swipe away for a
+    /// player studying the hand. Splitting them keeps the auto-read to the number,
+    /// which is what the player needs to decide and what never gets cut off.
     private func handView(_ hand: BlackjackHandPresentation, index: Int) -> some View {
         VStack(spacing: 3) {
             FittedCardRow(faces: hand.cards.map { .up($0) })
                 .frame(minHeight: 46)
+                .accessibilityElement(children: .ignore)
+                .accessibilityIdentifier(state.hasSplit ? "blackjack.hand.\(index).cards" : "blackjack.hand.cards")
+                .accessibilityLabel(Text(verbatim: BlackjackReadout.handCards(hand)))
+                .accessibilitySortPriority(85 - Double(index) * 2)
 
             Text(verbatim: caption(hand))
                 .font(.headline)
                 .foregroundColor(state.activeHandIndex == index
                                  ? TablePalette.accent : TablePalette.primaryText)
-                .accessibilityHidden(true)
+                .accessibilityElement(children: .ignore)
+                .accessibilityIdentifier(state.hasSplit ? "blackjack.hand.\(index)" : "blackjack.hand")
+                .accessibilityLabel(Text(verbatim: BlackjackReadout.total(hand,
+                                                                          index: index,
+                                                                          handCount: state.hands.count)))
+                .accessibilitySortPriority(90 - Double(index) * 2)
+                // Where focus goes when the wager box vanishes (D-092). Every round
+                // starts by pressing Confirm, which then ceases to exist with the
+                // cursor on it; the hand is dealt a moment later, so claiming focus
+                // as the TOTAL appears puts the player on the amount at once — no
+                // swipe between deciding the wager and hearing the hand. Only the
+                // FIRST hand claims: a split must not yank the cursor off a hand
+                // still being played.
+                .voiceOverFocusClaim(index == 0)
         }
         .padding(.vertical, 2)
-        .accessibilityElement(children: .ignore)
-        .accessibilityIdentifier(state.hasSplit ? "blackjack.hand.\(index)" : "blackjack.hand")
-        .accessibilityLabel(Text(verbatim: BlackjackReadout.hand(hand,
-                                                                 index: index,
-                                                                 handCount: state.hands.count)))
-        .accessibilitySortPriority(90 - Double(index))
-        // Where focus goes when the wager box vanishes (D-092). Every round starts
-        // by pressing Confirm, and that button then ceases to exist with the cursor
-        // still on it; the hand is dealt a moment later, so claiming focus as it
-        // appears puts the player on the one element they need — total first, cards
-        // after — with no swipe at all between deciding the wager and reading the
-        // hand. Only the FIRST hand claims: a split must not yank the cursor away
-        // from a hand still being played.
-        .voiceOverFocusClaim(index == 0)
     }
 
     private func caption(_ hand: BlackjackHandPresentation) -> String {
