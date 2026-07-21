@@ -185,6 +185,18 @@ riceve.** Nessun file audio prodotto: il croupier tace quasi sempre per scelta, 
 altri avventori è solo effetto ambientale con fallback al silenzio. **Campioni fonetici dei termini
 nuovi generati e in attesa dell'ascolto** in `~/Desktop/lumar-phonetics/blackjack/`. 574 test verdi.
 
+**Sessione Roulette — motore (D-101/D-102):** aperto il **settimo motore**, la **Roulette** europea a
+zero singolo, in `GameEngine/Roulette/` — il più diverso di tutti: **niente carte, nessun tipo
+condiviso**, solo la scommessa su un esito casuale. Regole della casa fissate (quote standard,
+**regola dello zero a restituzione integrale** delle esterne semplici → il giro chiude pulito, nessuno
+stato che sopravvive). `RouletteBetSlip` (GameWorld) è la **fonte unica** su cui agiranno tabella e
+fascia-registro (due interfacce, uno stato, come box↔trascinamento nel Machiavelli). `RouletteSessionDriver`
+(una sospensione: componi→conferma), determinismo dato seed, chip conservati con free-play OFF. Regole
+tavoli Riverwood (10/500, 1000) e Skypool (50/2500, 5000). Annuncio compatto misurato **1,00 riga/giro,
+~4,18 s/giro**, descrittivo mai consultivo. **Solo motore+slip+driver+annuncio+catalogo+campioni:
+nessuna UI, nessun cablaggio ai casinò, nessun TestFlight** (dichiarato; i **tavoli giocabili** sono il
+mattone successivo). Riverwood/Skypool/ClockTower invariati. 634 test verdi.
+
 **Sessione focus + canale parlato (D-092/D-093/D-094):** il focus VoiceOver non resta più **appeso
 al nulla** quando un box modale si chiude — difetto che era in **tutti e sei i tavoli** (il contenuto
 sotto un box non viene mai rimosso dall'albero, solo nascosto, quindi l'atterraggio su `onAppear`
@@ -3271,3 +3283,80 @@ Rifinitura del ritmo e della lettura del blackjack dopo un altro ascolto.
   d'accessibilità stabile (le foglie totale/carte/banco restano fisse, cambia la label); nessun
   `UIAccessibility.post` diretto; budget del canale non alzato; nessun suggerimento di mossa. I due
   valori di delay (2,0 e 3,5 s) restano **da confermare all'orecchio sul device**.
+
+### D-101 — Roulette: sesto… settimo motore, un animale nuovo (solo motore)
+Apertura del motore della **Roulette**, destinato a Riverwood e Skypool. Sessione di **solo
+motore + slip + driver + regole + speech map + catalogo audio + campioni fonetici**: **nessuna
+UI SwiftUI, nessun cablaggio ai casinò, nessun TestFlight** (dichiarato, come per Omaha D-062/063
+e Machiavelli D-070). Vive in `GameEngine/Roulette/`, **parallelo e indipendente** (nessun import
+incrociato). **Non condivide nemmeno i tipi di carta**: non ci sono carte. Non è poker, non è
+Blackjack: c'è solo la **scommessa su un esito casuale**. Niente `Pot`, niente valutazione di mani,
+niente avversario né banco che gioca; niente bot, niente nuove dimensioni di `Personality`.
+- **Regole della casa FISSATE (imposte, dichiarate perché una sessione futura non le riscopra):**
+  ruota **europea a zero singolo** (0…36, un solo zero, nessun doppio zero — la variante più
+  favorevole al giocatore). **Quote standard:** pieno 35:1, cavallo 17:1, terzina 11:1, quartina
+  8:1, sestina 5:1, colonna e dozzina 2:1, esterne semplici (rosso/nero, pari/dispari, manque/passe)
+  alla pari.
+- **LA REGOLA DELLO ZERO (imposta, D-101):** quando esce lo zero, le esterne **semplici**
+  (rosso/nero, pari/dispari, le due metà) **non si perdono ma si restituiscono per INTERO**. Non è
+  l'en prison (che imprigiona la puntata per il giro dopo) né la partage (metà): è la **restituzione
+  integrale immediata**, la forma più favorevole. Conseguenza architetturale importante: lo zero
+  chiude il giro **pulito**, **nessuno stato di puntata sopravvive** al giro successivo (niente da
+  trasportare — il driver e la futura UI ci contano). Le interne che **includono** lo zero (pieno
+  sullo zero, cavallo 0-1…) **vincono normalmente**. `column`/`dozen` NON sono esterne semplici:
+  perdono contro lo zero come ogni altra puntata che non lo copre.
+- **La geometria del tappeto è nel motore, pura e testata** (`RouletteTable`): colori (18 rossi
+  europei), colonne, dozzine, terzine, quartine (validate: solo colonne 1–2, righe 1–11), sestine.
+  È la fonte n.1 di bug della roulette, quindi dichiarata una volta e pinnata.
+- **`RouletteBet` è identità = KIND + numeri coperti**, derivati dalla geometria: è ciò che permetterà
+  a tabella e fascia-registro di agire sulla **stessa** puntata (D-102). Porta anche il `frequencyRank`
+  (0 rosso/nero/pari/dispari · 1 le metà · 2 dozzine/colonne · 3 interne multiple · 4 numeri singoli):
+  il principio CONVENTIONS §4 "prima ciò che serve più spesso" **applicato all'intera tabella**.
+- **`RouletteWheel`** seedabile (determinismo dato seed, casuale in produzione, D-047); `RouletteResolver`
+  puro (per-puntata: vinta/persa/restituita-sullo-zero; totali). **Solo `GameEngine`, solo Foundation.**
+
+### D-102 — Roulette: slip unico condiviso, driver di sessione, regole tavoli, annuncio compatto (solo motore)
+Il livello GameWorld/annuncio della Roulette, ancora **senza UI SwiftUI**.
+- **LO STATO UNICO DELLE PUNTATE, condiviso da tabella e fascia (`RouletteBetSlip`, GameWorld).** È
+  il vincolo architetturale centrale del mattone: le due zone del tavolo — la **tabella di selezione**
+  (tocca per piazzare, swipe per regolare) e la **fascia-registro** (lista compatta delle puntate
+  attive, ogni simbolino a sua volta operabile) — sono **due interfacce su UN solo stato**, mai due
+  implementazioni. Lo slip è una mappa `puntata → fiches`; **entrambe le zone tengono lo stesso slip
+  e chiamano gli stessi metodi**, quindi non possono divergere per costruzione. È la stessa disciplina
+  per cui nel Machiavelli box e trascinamento interrogano **un solo predicato** (D-070). Operazioni:
+  `place` (tocco = minimo), `increase`/`decrease` (swipe = passo del minimo, giù a zero **rimuove**),
+  `setAmount` (clamp al multiplo del minimo, ≤0 rimuove), `remove`, `clear`, `totalStaked`,
+  `orderedBets` (per frequenza). **Test chiave:** regolare la stessa puntata "dalla tabella" o "dal
+  simbolino" produce **lo stesso identico slip** (stessa API → stesso risultato).
+- **`RouletteSessionDriver`** (GameWorld): sorella dei driver, flusso `RouletteSessionEvent`/`RouletteEventHub`
+  proprio (riusa solo `EventAudience`/`EventViewer`), **una sola sospensione umana** (comporre lo slip →
+  conferma), eventi **descrittivi non prescrittivi** (bet piazzate, ruota girata, giro risolto),
+  **audience pubblica** (non ci sono carte private), produttore ignaro del ritmo umano (D-018),
+  **seed persistente per sessione** come il Blackjack (D-090/D-047), difesa contro provider scorretti
+  (`affordable`: clamp + drop cheapest-first se lo slip supera il portafoglio — impossibile dalla UI
+  reale). Cliente puro del motore; **chip conservati** (invariante testato, `DEBUG_FREE_PLAY` OFF).
+- **Regole dei due tavoli (`RouletteTableRules`):** **Riverwood** min 10 / max 500 / buy-in 1000
+  (in linea coi suoi tavoli); **Skypool** min 50 / max 2500 / buy-in 5000 (~5×, come gli altri suoi
+  tavoli). Solo poste e limiti differenziano i tavoli (niente bot).
+- **Annuncio compatto (`RouletteSpeechMap`, UI, puro).** La Roulette è rapida: l'esito è **UNA riga**
+  (numero, colore, quali puntate hanno pagato, totale vinto) — la disciplina del Blackjack (D-091). Il
+  dettaglio (ogni puntata e le sue fiches) vive sulla fascia interrogabile, non imposto a ogni giro.
+  **Misurato sulle stringhe italiane vere** (D-093): **1,00 riga/giro, ~4,18 s parlati/giro** — sotto
+  i ~6 s del Blackjack. Molti vincitori sono **contati, non elencati** (resta rapido). **Descrive, non
+  consiglia** (D-091, guardiano che scandisce ogni stringa `roulette.*`). All'uscita dello zero
+  l'annuncio **spiega la restituzione** ("le puntate esterne semplici ti sono restituite"), così il
+  giocatore capisce perché non ha perso.
+- **Fonetica (D-060):** parole italiane cablate direttamente (rosso/nero/pari/dispari/pieno/cavallo/
+  terzina/quartina/sestina/dozzina/colonna). I due termini **francesi** delle metà — **manque/passe** —
+  hanno pronuncia dubbia: **campioni generati** (`~/Desktop/lumar-phonetics/roulette/`), cablati
+  **provvisoriamente** in grafia piana e marcati **NON verificati** nel guardiano finché l'utente non
+  approva.
+- **Audio:** catalogo `Roulette_audio_catalog.md` con gli slot dichiarati (ruota/pallina/esito/fiches
+  effetti; croupier informativo→sintesi; presenza ambientale→silenzio; anti-pattern D-051 evitato).
+  **Nessun file prodotto.**
+- **Residuo dichiarato (esplicito):** mancano **UI** (la tabella di selezione con navigazione per
+  frequenza, la fascia-registro coi simbolini operabili, il pulsante Conferma oltre il bordo, il box
+  ruota che gira, focus-landing, stabilità del sottoalbero durante aggiunta/rimozione puntate), il
+  **cablaggio ai casinò** (`CasinoGame.roulette` + tavoli a Riverwood/Skypool + test ClockTower-senza-
+  Roulette), e l'**audio director/conductor**. Riverwood/Skypool/ClockTower **invariati** (motore
+  aggiunto, nulla cablato). **Niente TestFlight** (niente di giocabile). Vedi `ROADMAP.md`.

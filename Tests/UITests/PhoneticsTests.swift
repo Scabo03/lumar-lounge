@@ -167,6 +167,10 @@ final class PhoneticsTests: XCTestCase {
             "seat.a11y.folded": "fould",     // narration (untouched this turn) — pending its own check
             "announce.opp.fold": "foulda",   // narration — pending
             "draw.action.bet.a11y": "bett",
+            // Roulette's French terms (D-102): provisional plain spellings, awaiting the
+            // user's ear on the samples in ~/Desktop/lumar-phonetics/roulette/ (D-060).
+            "roulette.bet.low": "manque",
+            "roulette.bet.high": "passe",
         ]
         for (key, token) in current {
             let value = try XCTUnwrap(s[key], "missing string for \(key)")

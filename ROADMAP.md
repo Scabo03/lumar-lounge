@@ -693,8 +693,31 @@ Testato con `DEBUG_FREE_PLAY` OFF.
   totale dritti alle azioni (regola ferma); carte e fiches dopo le mosse.
 Valori di delay da confermare sul device.
 
+### 🧱 Roulette — motore + slip + driver + regole + annuncio (D-101/D-102), NON giocabile
+Settimo motore in `GameEngine/Roulette/`, indipendente (nessuna carta condivisa). Ruota europea a
+zero singolo, quote standard, **regola dello zero a restituzione integrale** delle esterne semplici
+(chiude il giro pulito, nessuno stato che sopravvive). `RouletteBetSlip` in GameWorld è la **fonte
+unica** su cui agiranno tabella e fascia-registro. `RouletteSessionDriver` (una sospensione: componi
+→ conferma), determinismo dato seed, chip conservati con `DEBUG_FREE_PLAY` OFF. Regole tavoli
+Riverwood (10/500, buy-in 1000) e Skypool (50/2500, buy-in 5000). Annuncio compatto misurato:
+**1,00 riga/giro, ~4,18 s/giro**, descrittivo mai consultivo. **Nessun bot.**
+
+**Residui aperti (con la sessione dei tavoli UI):**
+- **UI dei due tavoli** giocabili: tabella di selezione con **navigazione per frequenza** (rosso/nero/
+  pari/dispari → metà → dozzine/colonne → interne multiple → numeri singoli), tocco=puntata minima,
+  swipe verticale per regolare (gesto del box Machiavelli), stato di ogni puntata leggibile ovunque;
+  **fascia-registro** in basso a sinistra coi simbolini operabili (regola/azzera) sullo stesso slip;
+  **Conferma** in basso a destra oltre il bordo, che dichiara il totale rischiato; box **ruota che
+  gira**; focus-landing; stabilità del sottoalbero durante aggiunta/rimozione puntate.
+- **Cablaggio ai casinò**: `CasinoGame.roulette` + tavolo a **Riverwood** e **Skypool**, con **test
+  esplicito ClockTower-senza-Roulette**.
+- **Audio director/conductor** + produzione file (`Roulette_audio_catalog.md`): ruota, pallina, esito,
+  fiches, croupier `vo_it_roulette_*` / `vo_it_sky_roulette_*`, presenza condivisa `fx_roulette_presence_*`.
+- **Ascolto fonetico manque/passe** (`~/Desktop/lumar-phonetics/roulette/`) prima del cablaggio definitivo.
+
 ### 🔭 Prossimo
 Ascolto/approvazione dei campioni fonetici del blackjack;
+**i tavoli di Roulette giocabili** (UI + cablaggio casinò + audio, sopra);
 **calibrazione della curva di trattenimento D-099 dopo il test reale** (le ancore 25/50/90/100% e il
 pavimento 50% sono scelte di design, non ancora provate sul campo); nuovo test sul telefono per validare le
 calibrazioni; produzione dei restanti file audio (blackjack, `vob_sky_*`, slot storici del mondo M2

@@ -251,6 +251,12 @@ giocabile** (mancano UI/audio/casinò): qui c'è solo l'orchestrazione.
   dal giocatore: non un rake, un **incentivo** che ricompensa il gioco più difficile. Vive
   nel driver (`housePrize`/`prizeRecipientID`), **non nel motore**. Testato col **movimento
   reale dei gettoni, `DEBUG_FREE_PLAY` OFF** (il premio arriva al saldo persistente).
+- **`RouletteBetSlip` (D-102)** — la **fonte unica** delle puntate che il giocatore compone: una
+  mappa `puntata → fiches` operata identicamente dalla tabella e dalla fascia-registro (due interfacce,
+  uno stato). Pura, testabile: `place`/`increase`/`decrease`/`setAmount`/`remove`/`clear`/`totalStaked`.
+- **`RouletteSessionDriver` (D-102)** — bet → spin → settle → pay, una sospensione umana (componi →
+  conferma), seed persistente per sessione (come il Blackjack), chip conservati. Regole tavoli
+  `RouletteTableRules` (Riverwood 10/500, Skypool 50/2500). **Nessun bot.**
 - **`EarlyLeaveRetention` (economia, D-099)** — quanto tiene un giocatore di **poker** che si
   alza **prima** della fine naturale: una **frazione** dello stack in base al `lead` (stack ÷
   avversari vivi), con pavimento 50% se ha eliminato ≥1 avversario. Pura, casino-agnostica,

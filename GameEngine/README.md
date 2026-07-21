@@ -198,6 +198,15 @@ additiva `machiavelliMalusAversion` (default 0 = pre-punteggio): il bot **scaric
 **trattiene meno** quando un avversario è vicino a chiudere — così il paziente non resta con
 l'asso in mano.
 
+### Roulette (D-101) — `Roulette/`
+
+Il **settimo motore**, il più diverso di tutti: **niente carte**. Non condivide nemmeno i tipi
+fondazionali — non c'è nulla da condividere. Solo la scommessa su un esito casuale. `RouletteTable`
+(geometria e colori europei, puri e testati), `RouletteBet` (identità = kind + numeri coperti, con
+odds e `frequencyRank`), `RouletteWheel` (spin seedabile), `RouletteResolver` (risoluzione pura con
+la **regola dello zero a restituzione integrale** delle esterne semplici). Niente bot, niente
+`Personality`. Lo stato delle puntate (`RouletteBetSlip`) e il driver vivono in GameWorld.
+
 ## Cosa NON contiene (per scelta architetturale)
 
 Niente **giocatori**, **tavoli**, **partite** o **stato di gioco** in corso.

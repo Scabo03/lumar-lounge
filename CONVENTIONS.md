@@ -728,6 +728,16 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
   stesso un elemento non è garantito propagarsi, e collassare il contenitore per forzarlo è la
   trappola di D-019.
 
+- **Una vista compatta di uno stato sparso è un pattern riusabile (D-102).** Quando lo stato di gioco
+  è **disperso** su molti elementi (le puntate sparse sul tappeto della roulette, le combinazioni sul
+  tavolo del Machiavelli), il non vedente non può ricostruirlo riscorrendo tutti gli elementi. La
+  soluzione ricorrente è una **fascia/registro corto** che raccoglie ogni pezzo in un unico posto
+  interrogabile: i **knob** di bordo tavolo nel Machiavelli, la **fascia-registro** delle puntate nella
+  Roulette. Ogni elemento della vista compatta è **pienamente operabile** (non di sola lettura): lo si
+  legge, lo si regola, lo si cancella lì, con lo stesso gesto dell'elemento originale. Vincolo che ne
+  discende: la vista compatta e l'origine agiscono su **un solo stato** (una sola fonte di verità, mai
+  due implementazioni) — come le due interfacce del Machiavelli interrogano un solo predicato (D-070).
+
 ## 5. Testabilità
 
 - La logica pura (`GameEngine`, e in prospettiva `GameWorld`) deve essere

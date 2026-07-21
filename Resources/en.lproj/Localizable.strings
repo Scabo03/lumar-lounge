@@ -631,3 +631,33 @@
 
 "blackjack.croupier.shuffle" = "Fresh deck.";
 "skypool.croupier.bj.shuffle" = "New cards. Starting over.";
+
+/* Roulette (D-102) */
+"roulette.color.red" = "red";
+"roulette.color.black" = "black";
+"roulette.color.green" = "green";
+"roulette.outcome.number" = "%1$d, %2$@.";
+"roulette.outcome.zero" = "Zero.";
+"roulette.outcome.won" = "You win %d fiches.";
+"roulette.outcome.lost" = "You lose %d fiches.";
+"roulette.outcome.even" = "You break even.";
+"roulette.outcome.paid.one" = "%@ pays.";
+"roulette.outcome.paid.some" = "%@ pay.";
+"roulette.outcome.paid.many" = "%d of your bets pay.";
+"roulette.zero.refund" = "Your simple even-money bets are returned.";
+"roulette.bet.red" = "red";
+"roulette.bet.black" = "black";
+"roulette.bet.even" = "even";
+"roulette.bet.odd" = "odd";
+"roulette.bet.low" = "manque";
+"roulette.bet.high" = "passe";
+"roulette.bet.dozen" = "%@ dozen";
+"roulette.bet.column" = "%@ column";
+"roulette.bet.straight" = "straight up %d";
+"roulette.bet.split" = "split %1$d and %2$d";
+"roulette.bet.street" = "street";
+"roulette.bet.corner" = "corner";
+"roulette.bet.sixline" = "six line";
+"roulette.ordinal.1" = "first";
+"roulette.ordinal.2" = "second";
+"roulette.ordinal.3" = "third";

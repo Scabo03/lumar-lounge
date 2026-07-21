@@ -680,3 +680,38 @@
 /* --- The croupier's one wired line (D-090): rare, and it explains a real pause. --- */
 "blackjack.croupier.shuffle" = "Mazzo nuovo.";
 "skypool.croupier.bj.shuffle" = "Carte nuove. Si ricomincia.";
+
+/* ------------------------------------------------------------------ */
+/* Roulette (D-102). The outcome announcement is ONE compact line: the number,
+   its colour, which of your bets paid, and the total won — rapid like blackjack
+   (D-091). It DESCRIBES the result, never advises a bet (D-091 inviolate). */
+"roulette.color.red" = "rosso";
+"roulette.color.black" = "nero";
+"roulette.color.green" = "verde";
+"roulette.outcome.number" = "Esce il %1$d, %2$@.";
+"roulette.outcome.zero" = "Esce lo zero.";
+"roulette.outcome.won" = "Vinci %d fiches.";
+"roulette.outcome.lost" = "Perdi %d fiches.";
+"roulette.outcome.even" = "Chiudi in pari.";
+"roulette.outcome.paid.one" = "Paga %@.";
+"roulette.outcome.paid.some" = "Pagano %@.";
+"roulette.outcome.paid.many" = "%d delle tue puntate pagano.";
+"roulette.zero.refund" = "Le puntate esterne semplici ti sono restituite.";
+/* Bet names, for "which of your bets paid" and for the register band symbols.
+   manque / passe are FRENCH — EAR-CHECK before final cabling (D-060). */
+"roulette.bet.red" = "rosso";
+"roulette.bet.black" = "nero";
+"roulette.bet.even" = "pari";
+"roulette.bet.odd" = "dispari";
+"roulette.bet.low" = "manque";
+"roulette.bet.high" = "passe";
+"roulette.bet.dozen" = "%@ dozzina";
+"roulette.bet.column" = "%@ colonna";
+"roulette.bet.straight" = "pieno sul %d";
+"roulette.bet.split" = "cavallo %1$d e %2$d";
+"roulette.bet.street" = "terzina";
+"roulette.bet.corner" = "quartina";
+"roulette.bet.sixline" = "sestina";
+"roulette.ordinal.1" = "prima";
+"roulette.ordinal.2" = "seconda";
+"roulette.ordinal.3" = "terza";
