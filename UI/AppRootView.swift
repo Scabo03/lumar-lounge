@@ -82,6 +82,9 @@ public struct AppRootView: View {
         case let .blackjack(rules):
             BlackjackTableScreen(rules: rules, audio: audio, mode: voMode, returnLabel: returnLabel,
                                  casinoAudio: palette, onLeave: onLeave)
+        case let .roulette(rules):
+            RouletteTableScreen(rules: rules, audio: audio, mode: voMode, returnLabel: returnLabel,
+                                casinoAudio: palette, onLeave: onLeave)
         }
     }
 

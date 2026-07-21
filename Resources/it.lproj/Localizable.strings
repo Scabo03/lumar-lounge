@@ -715,3 +715,38 @@
 "roulette.ordinal.1" = "prima";
 "roulette.ordinal.2" = "seconda";
 "roulette.ordinal.3" = "terza";
+
+/* Roulette table UI (D-103) */
+"roulette.no.more.bets" = "Non si accettano più puntate.";
+"roulette.session.broke" = "Fiches esaurite. La sessione è finita.";
+"roulette.bet.value.a11y" = "%1$@, %2$d fiches.";
+"roulette.bet.value.none.a11y" = "%1$@, nessuna puntata.";
+/* Central status element (focus anchor + interrogable total) */
+"roulette.status.betting" = "Fai le tue puntate. In gioco: %d fiches.";
+"roulette.status.betting.none" = "Fai le tue puntate. Nessuna puntata ancora.";
+"roulette.status.spinning" = "La ruota gira.";
+"roulette.status.title" = "Tavolo";
+/* Cell / band a11y */
+"roulette.cell.a11y" = "%1$@, %2$d fiches.";
+"roulette.cell.a11y.empty" = "%1$@, nessuna puntata.";
+"roulette.cell.hint" = "Tocca due volte per puntare, scorri su e giù per regolare.";
+"roulette.symbol.hint" = "Scorri su e giù per regolare, giù a zero per rimuovere.";
+"roulette.register.title" = "Le tue puntate";
+"roulette.register.total.a11y" = "In gioco: %d fiches.";
+"roulette.register.empty" = "Nessuna puntata.";
+"roulette.register.empty.a11y" = "Non hai ancora puntato.";
+"roulette.confirm" = "Gira";
+"roulette.confirm.a11y" = "Gira la ruota. Rischi %d fiches.";
+"roulette.confirm.a11y.none" = "Fai almeno una puntata per girare.";
+"roulette.leave" = "Alzati";
+"roulette.leave.hint" = "Lascia il tavolo e incassa le fiches.";
+/* Group headers (visual + a11y section markers) */
+"roulette.group.simple" = "Rosso, nero, pari, dispari";
+"roulette.group.halves" = "Le metà";
+"roulette.group.dozcol" = "Dozzine e colonne";
+"roulette.group.inside" = "Puntate multiple";
+"roulette.group.numbers" = "Numeri";
+"roulette.felt.result.a11y" = "Uscito: %1$@. %2$@";
+"table.roulette.title" = "Roulette";
+"table.roulette.riverwood" = "La Ruota del Saloon";
+"table.roulette.skypool" = "La Ruota di Vetro";

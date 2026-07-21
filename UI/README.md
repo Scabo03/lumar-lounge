@@ -321,3 +321,12 @@ mezza-resa.
 
 Il colpo di vittoria/sconfitta passa da `SpeechConductor.say(trailing:)` (D-085),
 quindi **non può anticipare** la riga che spiega com'è andata.
+
+## Roulette (D-103)
+La UI dei due tavoli di Roulette (Riverwood/Skypool). Tre zone su un solo
+`RouletteBetSlip` (GameWorld): `RouletteBettingSurface` (celle ordinate per
+frequenza, adjustable), `RouletteRegisterBand` (simbolini operabili sullo stesso
+slip), `RouletteConfirmButton` (al bordo, dichiara il totale). Elemento "feltro"
+centrale come ancora del focus + totale interrogabile. Attesa della ruota gestita
+col fallback (croupier sintesi + attesa `duration(wheel) ?? spinFloor`),
+predisposta per l'mp3 vero senza teardown. `RouletteSpeechMap` per l'esito compatto.

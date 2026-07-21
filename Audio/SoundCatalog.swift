@@ -239,6 +239,19 @@ public enum SoundCatalog {
     public static let fxVictoryFinal = SoundID("fx_victory_final")
     public static let fxDefeatFinal = SoundID("fx_defeat_final")
 
+    // Roulette (D-103): none delivered — the wheel/ball/outcome/chip effects and the two
+    // croupier voices all fall back (informative → synthesis, ambient → silence).
+    public static let fxRouletteWheelSpin = SoundID("fx_roulette_wheel_spin")   // fills the spin wait
+    public static let fxRouletteBall = SoundID("fx_roulette_ball")
+    public static let fxRouletteWin = SoundID("fx_roulette_win")
+    public static let fxRouletteLose = SoundID("fx_roulette_lose")
+    public static let fxRouletteChipPlace = SoundID("fx_roulette_chip_place")
+    public static let fxRouletteChipRemove = SoundID("fx_roulette_chip_remove")
+    public static let fxRoulettePresenceMurmur = SoundID("fx_roulette_presence_murmur")
+    public static let fxRoulettePresenceChips = SoundID("fx_roulette_presence_chips")
+    public static let voRouletteNoMoreBets = SoundID("vo_it_roulette_rien_ne_va_plus")
+    public static let voSkyRouletteNoMoreBets = SoundID("vo_it_sky_roulette_rien_ne_va_plus")
+
     /// Every sound with its category — used to preload and to report which files
     /// are missing from the bundle at startup.
     public static let all: [(id: SoundID, category: SoundCategory)] = [
@@ -287,5 +300,10 @@ public enum SoundCatalog {
         (vobSkyAggressorBluffGiveaway, .botVoice),
         (fxWinHand, .effect), (fxLoseHand, .effect), (fxHandNeutral, .effect), (fxAllInDramatic, .effect),
         (fxBustPlayer, .effect), (fxBustHero, .effect), (fxVictoryFinal, .effect), (fxDefeatFinal, .effect),
+        (fxRouletteWheelSpin, .table), (fxRouletteBall, .table),
+        (fxRouletteWin, .effect), (fxRouletteLose, .effect),
+        (fxRouletteChipPlace, .ui), (fxRouletteChipRemove, .ui),
+        (fxRoulettePresenceMurmur, .botVoice), (fxRoulettePresenceChips, .botVoice),
+        (voRouletteNoMoreBets, .croupier), (voSkyRouletteNoMoreBets, .croupier),
     ]
 }

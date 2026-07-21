@@ -713,6 +713,15 @@ Riverwood (10/500, buy-in 1000) e Skypool (50/2500, buy-in 5000). Annuncio compa
   esplicito ClockTower-senza-Roulette**.
 - **Audio director/conductor** + produzione file (`Roulette_audio_catalog.md`): ruota, pallina, esito,
   fiches, croupier `vo_it_roulette_*` / `vo_it_sky_roulette_*`, presenza condivisa `fx_roulette_presence_*`.
+- ~~UI dei due tavoli, cablaggio ai casinò~~ → **fatto (D-103)**: Roulette **giocabile** a Riverwood e
+  Skypool. Tabella per frequenza, fascia-registro operabile sullo stesso slip, Conferma al bordo,
+  attesa della ruota gestita col fallback (predisposta per l'mp3 vero). ClockTower senza Roulette (test).
+
+**Residui aperti (produzione audio):**
+- **File mp3 della Roulette da produrre e cablare** (`Roulette_audio_catalog.md`): ruota
+  (`fx_roulette_wheel_spin` — quando c'è, governa l'attesa della ruota), pallina, esito, fiches,
+  croupier `vo_it_roulette_*` / `vo_it_sky_roulette_*`, presenza condivisa `fx_roulette_presence_*`.
+  Finché mancano, tutto gira su sintesi/silenzio via fallback (nessun cambio di logica al cablaggio).
 - **Ascolto fonetico manque/passe** (`~/Desktop/lumar-phonetics/roulette/`) prima del cablaggio definitivo.
 
 ### 🔭 Prossimo

@@ -185,6 +185,17 @@ riceve.** Nessun file audio prodotto: il croupier tace quasi sempre per scelta, 
 altri avventori è solo effetto ambientale con fallback al silenzio. **Campioni fonetici dei termini
 nuovi generati e in attesa dell'ascolto** in `~/Desktop/lumar-phonetics/blackjack/`. 574 test verdi.
 
+**Sessione Roulette — GIOCABILE (D-103):** i due tavoli di **Roulette** sono ora **giocabili** a
+Riverwood (min 10/max 500, buy-in 1000) e Skypool (min 50/max 2500, buy-in 5000). Tre zone su **un
+solo `RouletteBetSlip`** (tabella di selezione ordinata per **frequenza**, fascia-registro coi
+simbolini **operabili** — swipe adjustable, giù-a-zero rimuove, sullo stesso slip — Conferma al bordo
+per il pollice). **Attesa della ruota senza mp3** gestita pulita: croupier "rien ne va plus" (sintesi
+fallback) + attesa `duration(wheel) ?? spinFloor`, così l'mp3 vero **prende il posto del riempimento
+senza teardown** (solo dati). Focus-landing all'ingresso e a ogni transizione di fase (D-092),
+sottoalbero stabile (celle a insieme fisso; rimozione simbolino → focus al totale). **ClockTower senza
+Roulette** (test). **Nessun mp3 prodotto** (fallback sintesi/silenzio). Riverwood/Skypool/ClockTower
+invariati. Motore Roulette non toccato.
+
 **Sessione Roulette — motore (D-101/D-102):** aperto il **settimo motore**, la **Roulette** europea a
 zero singolo, in `GameEngine/Roulette/` — il più diverso di tutti: **niente carte, nessun tipo
 condiviso**, solo la scommessa su un esito casuale. Regole della casa fissate (quote standard,
@@ -3360,3 +3371,63 @@ Il livello GameWorld/annuncio della Roulette, ancora **senza UI SwiftUI**.
   **cablaggio ai casinò** (`CasinoGame.roulette` + tavoli a Riverwood/Skypool + test ClockTower-senza-
   Roulette), e l'**audio director/conductor**. Riverwood/Skypool/ClockTower **invariati** (motore
   aggiunto, nulla cablato). **Niente TestFlight** (niente di giocabile). Vedi `ROADMAP.md`.
+
+### D-103 — Roulette GIOCABILE a Riverwood e Skypool: tabella per frequenza, fascia-registro operabile, attesa della ruota senza mp3
+La UI dei due tavoli di Roulette, giocabili end-to-end. La sessione precedente aveva lasciato
+motore + slip + driver + annuncio (D-101/D-102); qui si costruisce solo il livello `UI` e il
+cablaggio ai casinò. Il motore **non è toccato**.
+- **Le tre zone, sullo STESSO slip (D-102).** La **tabella di selezione** (`RouletteBettingSurface`):
+  ogni puntata offerta è una **cella** presa da `RouletteBoard` (catalogo completo generato dalla
+  geometria: 37 pieni, tutte le colonne/dozzine, cavalli/terzine/quartine/sestine, le esterne). La
+  **fascia-registro** (`RouletteRegisterBand`): il totale interrogabile + un simbolino per puntata
+  attiva. Il **Conferma** in basso a destra al bordo. **Tabella e fascia chiamano gli STESSI metodi**
+  del view model (`placeMinimum`/`increase`/`decrease`/`remove`) che inoltrano all'**unico**
+  `RouletteBetSlip`: nessuna logica di puntata duplicata (test: regolare la stessa puntata dall'una o
+  dall'altra dà lo stesso slip). Due interfacce, uno stato — la disciplina box↔trascinamento del
+  Machiavelli (D-070).
+- **Navigazione per FREQUENZA, non per geometria (D-101).** Le celle portano `accessibilitySortPriority`
+  derivata dal `frequencyRank` del modello: il non vedente incontra prima rosso/nero/pari/dispari, poi
+  le metà, poi dozzine/colonne, poi le multiple, infine i numeri singoli. Visivo e navigazione
+  **disaccoppiati** (la lezione D-096).
+- **Stato leggibile e regolabile in entrambe le zone.** Ogni cella e ogni simbolino è un elemento
+  **adjustable**: `accessibilityValue` = le fiches sopra ("rosso, 50 fiches"), **swipe su/giù** = più/
+  meno una minima, **doppio-tap** = piazza la minima, **swipe giù a zero** = rimuove. Lo stato è così
+  leggibile mentre si attraversa l'elemento, come il vedente vede le fiches sul tappeto.
+- **Stabilità del sottoalbero (D-052), curata.** Le celle della tabella sono un **insieme FISSO** (ogni
+  puntata ha sempre la sua cella; cambia solo il valore), quindi comporre non ristruttura mai la griglia
+  e VoiceOver non ri-atterra durante la composizione continua. I simbolini della fascia compaiono/
+  scompaiono con le puntate (`ForEach` a identità stabile); quando quello **sotto il cursore** viene
+  rimosso, il focus passa al **totale della fascia** (`voiceOverFocusClaim(onChangeOf: slip.bets.count)`,
+  D-092). Ogni singolo elemento commuta col colore/valore, mai con inserimento condizionale di
+  sottoviste.
+- **L'ATTESA DELLA RUOTA SENZA MP3 (il punto delicato, D-103).** Tra Conferma ed esito la ruota "gira".
+  Senza il file audio, quel vuoto rischia il silenzio disorientante (la stessa lezione del pensiero del
+  bot al Machiavelli). Gestito così, **predisposto per l'mp3 vero senza smontare nulla**:
+  1. A `roundBegan` il croupier dice **"Non si accettano più puntate"** (`voRouletteNoMoreBets`,
+     informativa → **fallback a sintesi** quando l'mp3 manca, D-030): riempie l'orecchio subito dopo
+     la conferma.
+  2. A `wheelSpun` si riproduce `fxRouletteWheelSpin` (oggi **silenzioso**, `.table` → fallback al
+     silenzio) e si attende `audio.duration(of: wheel) ?? spinFloor` — cioè **la durata dell'mp3 se
+     c'è, un pavimento corto (1,6 s) se non c'è**. Così l'attesa è **breve quando l'audio manca**
+     (spec) e diventa esattamente la durata del suono della ruota **quando l'mp3 verrà cablato**, che
+     **prende il posto del riempimento senza sovrapposizioni né teardown** (solo dati: si deposita il
+     file, `isAvailable`/`duration` lo rilevano).
+  3. L'esito (numero, colore, quali puntate pagano, totale) è **una riga HIGH** (mai droppata), col
+     colpo win/lose **sequenziato dopo** (`say(trailing:)`, D-085): nessun suono anticipa il risultato.
+- **Atterraggio del focus (D-092).** Un unico elemento "feltro/stato" centrale (stabile, label che
+  cambia) è l'ancora: atterra all'ingresso (`voiceOverFocusLanding`) e **riprende il focus a ogni
+  transizione di fase** (`voiceOverFocusClaim(onChangeOf: focusToken)`), bumpato dopo la conferma e
+  dopo l'esito — così il cursore non resta appeso al pulsante Conferma scomparso né a nulla. È anche
+  il totale interrogabile durante la puntata.
+- **Cablaggio ai casinò (per dati, D-065/D-067).** `CasinoGame.roulette` + un tavolo a **Riverwood**
+  (min 10 / max 500 / buy-in 1000) e **Skypool** (min 50 / max 2500 / buy-in 5000); `AppRootView`
+  costruisce `RouletteTableScreen` con la palette del casinò ospitante. Il **ClockTower NON riceve la
+  Roulette** (test esplicito). Riverwood/Skypool/ClockTower **invariati** nei tavoli esistenti (test
+  `prefix`/`count` verdi).
+- **Audio: nessun mp3 prodotto** — tutto gira su sintesi/silenzio via fallback (slot in `SoundCatalog`
+  + catalogo `Roulette_audio_catalog.md`). Termini francesi **manque/passe**: campioni già generati
+  (D-102), cablati provvisori, marcati **non verificati** nel guardiano finché l'utente non approva.
+- **Vincoli rispettati:** motore chiuso; slip in GameWorld interrogato dalla UI, non duplicato;
+  eventi descrittivi; produttore ignaro del ritmo umano; nessun `UIAccessibility.post` diretto (tutto
+  via coda); `CheckedContinuation` con abbandono gestito; cache dallo stato corrente; focus-landing su
+  schermata e transizioni. **Nessun bot, nessun suggerimento di puntata.** Test verdi.

@@ -237,8 +237,9 @@ final class BlackjackTableTests: XCTestCase {
     }
 
     func testBlackjackSitsAtBothHousesInTheirOwnEconomies() throws {
-        let riverwood = try XCTUnwrap(Casinos.riverwood.tables.last)
-        let skypool = try XCTUnwrap(Casinos.skypool.tables.last)
+        // Reference the blackjack tables by ID (roulette was appended after them, D-103).
+        let riverwood = try XCTUnwrap(Casinos.riverwood.tables.first { $0.id == "riverwood.table.blackjack" })
+        let skypool = try XCTUnwrap(Casinos.skypool.tables.first { $0.id == "skypool.table.blackjack" })
         XCTAssertEqual(riverwood.id, "riverwood.table.blackjack")
         XCTAssertEqual(skypool.id, "skypool.table.blackjack")
         XCTAssertEqual(riverwood.buyIn, 1000)

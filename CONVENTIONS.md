@@ -728,6 +728,13 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
   stesso un elemento non è garantito propagarsi, e collassare il contenitore per forzarlo è la
   trappola di D-019.
 
+- **CONFERMATO in D-103, la fascia-registro come vista compatta e OPERABILE di uno stato di scommessa
+  sparso:** la Roulette la usa esattamente come i knob del Machiavelli — un posto unico e corto dove
+  leggere, regolare e cancellare ogni puntata (swipe adjustable, giù-a-zero rimuove), sullo **stesso**
+  slip della tabella. Regola aggiuntiva emersa: la **tabella** (superficie di composizione continua) ha
+  celle a **insieme fisso** (stabilità del sottoalbero garantita per costruzione); la **fascia** cambia
+  con le puntate, quindi la rimozione dell'elemento sotto il cursore **dichiara** dove va il focus
+  (D-092). Superficie stabile per la composizione, hand-off del focus per la vista compatta.
 - **Una vista compatta di uno stato sparso è un pattern riusabile (D-102).** Quando lo stato di gioco
   è **disperso** su molti elementi (le puntate sparse sul tappeto della roulette, le combinazioni sul
   tavolo del Machiavelli), il non vedente non può ricostruirlo riscorrendo tutti gli elementi. La

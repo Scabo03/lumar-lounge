@@ -29,6 +29,7 @@ public enum CasinoGame: Equatable, Sendable {
     case machiavelli(MachiavelliTableRules)
     case stud(StudTableRules)
     case blackjack(BlackjackTableRules)
+    case roulette(RouletteTableRules)
 
     /// The buy-in required to sit — the sole economic barrier to a table (D-065). For
     /// Machiavelli it is a refundable entry threshold (prestige, not money — D-072).
@@ -40,6 +41,7 @@ public enum CasinoGame: Equatable, Sendable {
         case let .machiavelli(rules): return rules.buyIn
         case let .stud(rules): return rules.buyIn
         case let .blackjack(rules): return rules.buyIn
+        case let .roulette(rules): return rules.buyIn
         }
     }
 }
@@ -124,6 +126,9 @@ public enum Casinos {
             CasinoTable(id: "riverwood.table.blackjack",
                         titleKey: "table.blackjack.title", subtitleKey: "table.blackjack.riverwood",
                         game: .blackjack(.riverwood)),
+            CasinoTable(id: "riverwood.table.roulette",
+                        titleKey: "table.roulette.title", subtitleKey: "table.roulette.riverwood",
+                        game: .roulette(.riverwood)),
         ])
 
     /// The Skypool: a modern, urban, marble-and-water city casino (D-065/D-066). Its
@@ -151,6 +156,9 @@ public enum Casinos {
             CasinoTable(id: "skypool.table.blackjack",
                         titleKey: "table.blackjack.title", subtitleKey: "table.blackjack.skypool",
                         game: .blackjack(.skypool)),
+            CasinoTable(id: "skypool.table.roulette",
+                        titleKey: "table.roulette.title", subtitleKey: "table.roulette.skypool",
+                        game: .roulette(.skypool)),
         ])
 
     /// The ClockTower: a small, exclusive, ACADEMIC casino in an ancient tower, tied to

@@ -661,3 +661,35 @@
 "roulette.ordinal.1" = "first";
 "roulette.ordinal.2" = "second";
 "roulette.ordinal.3" = "third";
+
+/* Roulette table UI (D-103) */
+"roulette.no.more.bets" = "No more bets.";
+"roulette.session.broke" = "Out of fiches. The session is over.";
+"roulette.bet.value.a11y" = "%1$@, %2$d fiches.";
+"roulette.bet.value.none.a11y" = "%1$@, no bet.";
+"roulette.status.betting" = "Place your bets. At stake: %d fiches.";
+"roulette.status.betting.none" = "Place your bets. Nothing staked yet.";
+"roulette.status.spinning" = "The wheel is spinning.";
+"roulette.status.title" = "Table";
+"roulette.cell.a11y" = "%1$@, %2$d fiches.";
+"roulette.cell.a11y.empty" = "%1$@, no bet.";
+"roulette.cell.hint" = "Double-tap to bet, swipe up or down to adjust.";
+"roulette.symbol.hint" = "Swipe up or down to adjust, down to zero to remove.";
+"roulette.register.title" = "Your bets";
+"roulette.register.total.a11y" = "At stake: %d fiches.";
+"roulette.register.empty" = "No bets.";
+"roulette.register.empty.a11y" = "You have not bet yet.";
+"roulette.confirm" = "Spin";
+"roulette.confirm.a11y" = "Spin the wheel. You risk %d fiches.";
+"roulette.confirm.a11y.none" = "Place a bet to spin.";
+"roulette.leave" = "Stand up";
+"roulette.leave.hint" = "Leave the table and cash out.";
+"roulette.group.simple" = "Red, black, even, odd";
+"roulette.group.halves" = "The halves";
+"roulette.group.dozcol" = "Dozens and columns";
+"roulette.group.inside" = "Multi-number bets";
+"roulette.group.numbers" = "Numbers";
+"roulette.felt.result.a11y" = "Result: %1$@. %2$@";
+"table.roulette.title" = "Roulette";
+"table.roulette.riverwood" = "The Saloon Wheel";
+"table.roulette.skypool" = "The Glass Wheel";
