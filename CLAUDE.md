@@ -3244,3 +3244,30 @@ run" indolore. Il **Machiavelli** ha già la sua regola (`MachiavelliRefund`, D-
 - **Testato col movimento REALE dei gettoni, `DEBUG_FREE_PLAY` OFF** (come D-050/D-079): abbandono in
   pari → metà a casa; dominio (>2×) → tutto a casa; Blackjack → tutto a casa; più le ancore della curva
   e la monotonìa. **Principio permanente in CONVENTIONS §8.**
+
+### D-100 — Blackjack: numeri ingigantiti, navigazione con la regola ferma, delay più generosi (dal terzo test)
+Rifinitura del ritmo e della lettura del blackjack dopo un altro ascolto.
+- **La causa della REGRESSIONE del banco-che-interrompe (D-098 l'aveva reintrodotta).** D-097 stimava
+  il ritardo del banco dal testo **totale+carte** (~3,9 s) e funzionava; D-098 ha spostato il bersaglio
+  del focus sul **solo totale** (lettura più corta, giusto) ma ha continuato a stimare il ritardo da
+  quel testo più corto → il ritardo è **sceso a ~2,7 s** e il banco è tornato a partire **a metà
+  lettura**. Fix: alzato `focusReadLead` **0,5 → 2,0 s**. Sul device la lettura **inizia** varie
+  centinaia di ms dopo l'atterraggio del focus, quindi il beat deve coprire **la latenza d'avvio E la
+  lettura**, non solo la lettura. Ora il ritardo del banco è ~3,8 s: la lettura del totale finisce
+  prima, con margine.
+- **Delay del pop-up della puntata più generoso.** `betBoxLeadIn` **1,8 → 3,5 s** (il «uno o due
+  secondi in più» chiesto): la riga atomica di fine mano (D-098) ha il tempo di essere **capita**
+  prima che arrivi il box; l'attesa-quiete resta dopo, così il box non apre mai sopra la spiegazione.
+- **Numeri ingigantiti.** Il totale della mano del giocatore (e di ogni mano in caso di divisione) e
+  il totale del banco passano da `.headline` a un numero **grande** (rounded, 46–50 pt, monospacedDigit,
+  `minimumScaleFactor` per non sbordare). L'esito («Perdi 20») è ora una **riga propria più piccola**
+  sotto il numero, così la cifra resta enorme e leggibile a colpo d'occhio (ipovedenti).
+- **Navigazione con la regola ferma (l'unico vincolo dato).** Nuovo ordine: **banco 100 · TOTALE mano
+  90 · le cinque mosse 70…66 · CARTE mano 50 · fiches 40 · abbandona 5**. Dal **totale** uno swipe va
+  **dritto alle azioni**; le **carte** (per chi vuole studiare la mano) e le fiches stanno **dopo** le
+  mosse, raggiungibili ma mai in mezzo alla decisione. (D-098 le teneva a 85, cioè **tra** totale e
+  mosse — corretto.)
+- **Vincoli:** solo `UI` (+ nessun cambio stringhe); motore/driver non toccati; sottoalbero
+  d'accessibilità stabile (le foglie totale/carte/banco restano fisse, cambia la label); nessun
+  `UIAccessibility.post` diretto; budget del canale non alzato; nessun suggerimento di mossa. I due
+  valori di delay (2,0 e 3,5 s) restano **da confermare all'orecchio sul device**.

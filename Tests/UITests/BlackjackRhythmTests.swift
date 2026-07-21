@@ -38,6 +38,18 @@ final class BlackjackRhythmTests: XCTestCase {
         let long = BlackjackPacing.dealerRevealDelay(
             afterReading: "Mano 1 di 2: venti. Carte: dieci di picche, dieci di cuori, asso.")
         XCTAssertGreaterThan(long, short, "The beat scales with the hand being read.")
+
+        // The lead must cover the device's read-start latency, not just the read (D-100):
+        // even the short total-only line clears with margin.
+        XCTAssertGreaterThan(BlackjackPacing.dealerRevealDelay(afterReading: "La tua mano: 17."), 2.5,
+                             "the dealer must not fire while the total is still being read")
+    }
+
+    /// The wait before the next wager box was raised (D-100): the end-of-hand line
+    /// needs room to be understood before the pop-up arrives.
+    func testTheWagerBoxLeadInLeavesRoomToUnderstandTheRound() {
+        XCTAssertGreaterThanOrEqual(BlackjackPacing.betBoxLeadIn, 3.0,
+                                    "a couple of seconds more than before, so the round lands")
     }
 
     /// The two halves are disjoint — no word is said twice.
@@ -71,22 +83,22 @@ final class BlackjackRhythmTests: XCTestCase {
                              encoding: .utf8)
 
         XCTAssertTrue(view.contains(".accessibilitySortPriority(100)"), "dealer leads")
-        XCTAssertTrue(view.contains(".accessibilitySortPriority(90 - Double(index) * 2)"), "hand total next")
-        XCTAssertTrue(view.contains(".accessibilitySortPriority(85 - Double(index) * 2)"), "then its cards")
-        XCTAssertTrue(view.contains(".accessibilitySortPriority(40)"),
-                      "the stakes line sits AFTER the moves, not between hand and moves")
+        XCTAssertTrue(view.contains(".accessibilitySortPriority(90 - Double(index) * 2)"), "hand TOTAL next")
+        XCTAssertTrue(view.contains(".accessibilitySortPriority(50 - Double(index) * 2)"),
+                      "the cards sit AFTER the moves (below 66)")
+        XCTAssertTrue(view.contains(".accessibilitySortPriority(40)"), "then the stakes line")
         XCTAssertTrue(view.contains(".accessibilitySortPriority(5)"), "leaving the table comes last")
 
-        // Every move carries an explicit place, all of them between the stack
-        // and the leave button.
+        // THE FIRM RULE (D-100): from the total, a swipe goes straight to the moves —
+        // every move sits between the total (90) and the cards (50).
         XCTAssertTrue(bar.contains(".accessibilitySortPriority(sortPriority)"),
                       "the moves declare their place rather than inheriting it")
         for (move, priority) in [("action.hit", 70), ("action.stand", 69), ("action.double", 68),
                                  ("action.split", 67), ("action.surrender", 66)] {
             XCTAssertTrue(bar.contains("identifier: \"\(move)\", sortPriority: \(priority)"),
-                          "\(move) must sit between the hand and the stakes line")
-            XCTAssertLessThan(priority, 85, "the moves come right after the hand")
-            XCTAssertGreaterThan(priority, 40, "…and before the fiches line")
+                          "\(move) must sit between the total and the cards")
+            XCTAssertLessThan(priority, 90, "the moves come right after the total…")
+            XCTAssertGreaterThan(priority, 50, "…and before the cards and the fiches line")
         }
     }
 

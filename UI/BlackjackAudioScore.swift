@@ -87,9 +87,12 @@ public enum BlackjackAudioScore {
 /// OFF. Blackjack is a FAST game and these are deliberately short: the
 /// rhythm the sighted player enjoys is the one the blind player must get too.
 enum BlackjackPacing {
-    /// VoiceOver's start latency after focus lands on the hand — the beat before
-    /// it actually begins reading, which the dealer reveal must clear too (D-097).
-    static let focusReadLead: Double = 0.5
+    /// VoiceOver's start latency after focus lands on the hand — the beat before it
+    /// actually begins reading, which the dealer reveal must clear too (D-097). Raised
+    /// generously in D-100: on the device the read STARTS several hundred ms to a
+    /// second after focus lands, so a small lead let the dealer announcement fire
+    /// mid-read again. The wait must cover the latency AND the read.
+    static let focusReadLead: Double = 2.0
 
     /// The dealer's card is held back until the hand's focus-landing read is
     /// expected to have FINISHED, not for a fixed guess (D-097). Focus lands on
@@ -102,10 +105,12 @@ enum BlackjackPacing {
         focusReadLead + AnnouncementQueue.speakTime(handLine)
     }
 
-    /// A floor beat before the next wager box opens, so a round that just settled
-    /// is actually in flight and heard before the box's focus landing interrupts
-    /// it (D-097). The box then also waits for the channel to fall fully quiet.
-    static let betBoxLeadIn: Double = 1.8
+    /// A floor beat before the next wager box opens, so a round that just settled is
+    /// actually in flight and heard before the box's focus landing interrupts it
+    /// (D-097). Raised to give the end-of-hand line room to be understood before the
+    /// pop-up arrives (D-100) — the reported "arrives before I've grasped what
+    /// happened". The box then ALSO waits for the channel to fall fully quiet.
+    static let betBoxLeadIn: Double = 3.5
 
     static func seconds(for payload: BlackjackEventPayload) -> Double {
         switch payload {

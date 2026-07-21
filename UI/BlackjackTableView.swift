@@ -14,15 +14,16 @@ import GameEngine
 import GameWorld
 import Audio
 
-// THE READING ORDER IS DECLARED, NOT INHERITED (D-096).
+// THE READING ORDER IS DECLARED, NOT INHERITED (D-096/D-100).
 // Left to geometry, a swipe forward from the player's stack jumped to the top of
-// the screen — the test banner, the settings button, "leave table" — and only
-// then came the five moves, which is the opposite of what the round needs. The
-// whole screen now carries explicit sort priorities, highest read first:
-//   dealer 100 · hand total 90 · hand cards 85 · the five moves 70…66 ·
+// the screen — the test banner, the settings button, "leave table" — and only then
+// came the five moves. The whole screen carries explicit sort priorities, highest
+// read first:
+//   dealer 100 · hand TOTAL 90 · the five moves 70…66 · hand CARDS 50 ·
 //   stakes 40 · leave 5
-// so the player goes from what they hold straight to what they can do about it,
-// and the fiches line no longer sits between the hand and the moves (D-098).
+// The one firm rule (D-100): from the hand's TOTAL, a swipe goes STRAIGHT to the
+// moves. The cards behind the total, and the fiches line, come AFTER the moves —
+// reachable for a player who wants them, never in the way of deciding.
 struct BlackjackTableScreen: View {
     @StateObject private var model: BlackjackTableViewModel
 
@@ -105,8 +106,12 @@ private struct BlackjackDealerZoneView: View {
             FittedCardRow(faces: dealerFaces)
                 .frame(minHeight: 46)
 
+            // The dealer's total, LARGE (D-100): it is half of what every decision
+            // turns on, so it reads at a glance rather than as fine print.
             Text(verbatim: dealerCaption)
-                .font(.headline)
+                .font(.system(size: 46, weight: .heavy, design: .rounded).monospacedDigit())
+                .minimumScaleFactor(0.5)
+                .lineLimit(1)
                 .foregroundColor(TablePalette.primaryText)
                 .accessibilityHidden(true)
         }
@@ -171,16 +176,15 @@ private struct BlackjackHeroZoneView: View {
     /// player studying the hand. Splitting them keeps the auto-read to the number,
     /// which is what the player needs to decide and what never gets cut off.
     private func handView(_ hand: BlackjackHandPresentation, index: Int) -> some View {
-        VStack(spacing: 3) {
-            FittedCardRow(faces: hand.cards.map { .up($0) })
-                .frame(minHeight: 46)
-                .accessibilityElement(children: .ignore)
-                .accessibilityIdentifier(state.hasSplit ? "blackjack.hand.\(index).cards" : "blackjack.hand.cards")
-                .accessibilityLabel(Text(verbatim: BlackjackReadout.handCards(hand)))
-                .accessibilitySortPriority(85 - Double(index) * 2)
-
-            Text(verbatim: caption(hand))
-                .font(.headline)
+        VStack(spacing: 1) {
+            // THE TOTAL, LARGE — the focus target and the number the player decides on
+            // (D-100). It reads first (sort 90) and a swipe from it goes STRAIGHT to the
+            // action buttons; the cards it is made of sit BELOW the moves (sort 50), for
+            // a player who wants to study the hand rather than just its number.
+            Text(verbatim: totalText(hand))
+                .font(.system(size: 50, weight: .heavy, design: .rounded).monospacedDigit())
+                .minimumScaleFactor(0.5)
+                .lineLimit(1)
                 .foregroundColor(state.activeHandIndex == index
                                  ? TablePalette.accent : TablePalette.primaryText)
                 .accessibilityElement(children: .ignore)
@@ -189,24 +193,33 @@ private struct BlackjackHeroZoneView: View {
                                                                           index: index,
                                                                           handCount: state.hands.count)))
                 .accessibilitySortPriority(90 - Double(index) * 2)
-                // Where focus goes when the wager box vanishes (D-092). Every round
-                // starts by pressing Confirm, which then ceases to exist with the
-                // cursor on it; the hand is dealt a moment later, so claiming focus
-                // as the TOTAL appears puts the player on the amount at once — no
-                // swipe between deciding the wager and hearing the hand. Only the
-                // FIRST hand claims: a split must not yank the cursor off a hand
-                // still being played.
+                // Where focus goes when the wager box vanishes (D-092): straight to the
+                // total. Only the FIRST hand claims — a split must not yank the cursor
+                // off a hand still being played.
                 .voiceOverFocusClaim(index == 0)
+
+            if let outcome = hand.outcome {
+                Text(verbatim: BlackjackTableView.outcomeCaption(outcome))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(TablePalette.secondaryText)
+                    .accessibilityHidden(true)
+            }
+
+            FittedCardRow(faces: hand.cards.map { .up($0) })
+                .frame(minHeight: 40)
+                .accessibilityElement(children: .ignore)
+                .accessibilityIdentifier(state.hasSplit ? "blackjack.hand.\(index).cards" : "blackjack.hand.cards")
+                .accessibilityLabel(Text(verbatim: BlackjackReadout.handCards(hand)))
+                .accessibilitySortPriority(50 - Double(index) * 2)
         }
         .padding(.vertical, 2)
     }
 
-    private func caption(_ hand: BlackjackHandPresentation) -> String {
-        let total = hand.isSoft
-            ? uiLocalized("blackjack.total.soft", hand.total)
-            : uiLocalized("blackjack.total.hard", hand.total)
-        guard let outcome = hand.outcome else { return total }
-        return "\(total) · \(BlackjackTableView.outcomeCaption(outcome))"
+    /// The visible total, WITHOUT the outcome — the outcome is its own line so the
+    /// number can be large (D-100).
+    private func totalText(_ hand: BlackjackHandPresentation) -> String {
+        hand.isSoft ? uiLocalized("blackjack.total.soft", hand.total)
+                    : uiLocalized("blackjack.total.hard", hand.total)
     }
 }
 

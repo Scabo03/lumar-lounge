@@ -682,6 +682,17 @@ avversario. Applicata solo in `requestLeave()` di Texas/Draw/Omaha/Stud; la fine
 **Blackjack tiene tutto** (nessuna fine da bustare, D-090). Machiavelli non toccato (rimborso D-075).
 Testato con `DEBUG_FREE_PLAY` OFF.
 
+### ✅ Blackjack: numeri grandi, navigazione, delay più generosi (D-100)
+- **Regressione banco-interrompe corretta**: D-098 aveva accorciato il ritardo (stima dal solo
+  totale); `focusReadLead` 0,5 → **2,0 s** per coprire la latenza d'avvio della lettura sul device.
+- **Pop-up puntata** `betBoxLeadIn` 1,8 → **3,5 s** (il «uno-due secondi in più»): la riga di fine
+  mano si capisce prima che arrivi il box.
+- **Numeri ingigantiti** (totale giocatore, mani divise, banco): grande rounded 46–50 pt, esito su
+  riga piccola sotto.
+- **Navigazione**: banco 100 · TOTALE 90 · mosse 70…66 · CARTE 50 · fiches 40 · abbandona 5. Dal
+  totale dritti alle azioni (regola ferma); carte e fiches dopo le mosse.
+Valori di delay da confermare sul device.
+
 ### 🔭 Prossimo
 Ascolto/approvazione dei campioni fonetici del blackjack;
 **calibrazione della curva di trattenimento D-099 dopo il test reale** (le ancore 25/50/90/100% e il
