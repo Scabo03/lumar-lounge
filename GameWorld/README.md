@@ -251,6 +251,11 @@ giocabile** (mancano UI/audio/casinò): qui c'è solo l'orchestrazione.
   dal giocatore: non un rake, un **incentivo** che ricompensa il gioco più difficile. Vive
   nel driver (`housePrize`/`prizeRecipientID`), **non nel motore**. Testato col **movimento
   reale dei gettoni, `DEBUG_FREE_PLAY` OFF** (il premio arriva al saldo persistente).
+- **`EarlyLeaveRetention` (economia, D-099)** — quanto tiene un giocatore di **poker** che si
+  alza **prima** della fine naturale: una **frazione** dello stack in base al `lead` (stack ÷
+  avversari vivi), con pavimento 50% se ha eliminato ≥1 avversario. Pura, casino-agnostica,
+  usata solo in `requestLeave()` dei tavoli di poker. Il **Blackjack tiene tutto** (D-090); il
+  **Machiavelli** ha il suo rimborso (D-075).
 
 ---
 

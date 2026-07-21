@@ -76,6 +76,41 @@ final class AbandonTableTests: XCTestCase {
         XCTAssertEqual(account.chips, 4700, "the 300 in the pot must NOT come back")
     }
 
+    /// Poker (D-099): leaving early keeps only PART of the stack, scaled by how well the
+    /// player was doing. Here they are dead even with the one opponent → half comes home.
+    func testLeavingAPokerTableEarlyKeepsOnlyPartOfTheStack() {
+        let account = PlayerAccount(store: InMemoryChipsStore(chips: 5000), freePlay: false)
+        XCTAssertTrue(account.buyIn(1000))          // 4000 left in the wallet
+
+        // Even with the last opponent, no elimination: retention is half.
+        let kept = EarlyLeaveRetention.retained(heroStack: 1000, aliveOpponentStacks: [1000],
+                                                eliminatedCount: 0)
+        account.cashOut(kept)
+        XCTAssertEqual(account.chips, 4500, "half the stack is forfeit for quitting even")
+    }
+
+    /// …but dominance keeps everything, so a player who genuinely won the table home does
+    /// not lose a chip by standing up.
+    func testDominatingThePokerTableKeepsTheWholeStackOnLeaving() {
+        let account = PlayerAccount(store: InMemoryChipsStore(chips: 5000), freePlay: false)
+        XCTAssertTrue(account.buyIn(1000))
+        let kept = EarlyLeaveRetention.retained(heroStack: 2600, aliveOpponentStacks: [700, 500],
+                                                eliminatedCount: 1)
+        account.cashOut(kept)
+        XCTAssertEqual(account.chips, 4000 + 2600, "a dominant stack (>2× the field) comes home whole")
+    }
+
+    /// Blackjack is the OPPOSITE (D-090/D-099): there is no bust-the-table end, so leaving
+    /// is the normal way to stop and the WHOLE stack comes home, unpenalised. The retention
+    /// rule is a poker rule and must never touch it.
+    func testLeavingBlackjackKeepsTheWholeStack() {
+        let account = PlayerAccount(store: InMemoryChipsStore(chips: 5000), freePlay: false)
+        XCTAssertTrue(account.buyIn(1000))
+        // Blackjack's requestLeave cashes out state.chips directly — the full stack.
+        account.cashOut(1000)
+        XCTAssertEqual(account.chips, 5000, "blackjack keeps everything on leaving")
+    }
+
     /// Machiavelli: the buy-in IS the stake, and the refund is earned by playing the hand
     /// out (D-075). Walking away forfeits it entirely — the faithful analogue of losing
     /// the chips already in the pot, and non-gameable.

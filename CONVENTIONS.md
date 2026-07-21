@@ -773,6 +773,17 @@ accessibilità e localizzazione. Vedi [`ROADMAP.md`](ROADMAP.md).
 
 ## 8. Economia di sessione
 
+- **Abbandonare un tavolo di POKER in anticipo forfeita parte dello stack; il BLACKJACK no (D-099).**
+  Un tavolo di poker ha una fine naturale — bustare tutti gli avversari vince la partita — quindi
+  alzarsi prima è lasciare una partita non finita e costa: si tiene una **frazione** dello stack in
+  base a **quanto bene** si stava andando (rapporto tra il proprio stack e quello degli avversari vivi;
+  pavimento del 50% se se n'è eliminato almeno uno; 100% se si domina ≥2×). Il Blackjack **non** ha una
+  fine del genere (si gioca contro il banco finché si vuole), quindi alzarsi è il modo normale di
+  smettere e si tiene **tutto**. La regola vive in GameWorld (`EarlyLeaveRetention`), è pura e
+  **casino-agnostica** (una frazione, non un valore assoluto → le poste dei casinò non cambiano nulla),
+  e si applica **solo** all'abbandono volontario (`requestLeave`), mai alla fine naturale. Il
+  Machiavelli ha la sua regola propria (rimborso, D-075) e non usa questa.
+
 - **Un'iniezione economica DENTRO una sessione di poker non è mai neutra (principio
   permanente, D-079).** Aggiungere fiches a un giocatore *durante* la partita — un premio,
   un bonus, un rimborso in-play — cambia il suo **stack**, e lo stack è una **leva

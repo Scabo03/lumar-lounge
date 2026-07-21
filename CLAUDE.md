@@ -3209,3 +3209,38 @@ Tre rifiniture dal terzo ascolto, la terza **misurata prima di intervenire** com
 - **Vincoli:** solo `UI` (+ stringhe); motore/driver non toccati; sottoalbero d'accessibilità
   stabile (i due elementi della mano sono foglie fisse, la selezione non li ristruttura); nessun
   `UIAccessibility.post` diretto; budget del canale non alzato; nessun suggerimento di mossa.
+
+### D-099 — Trattenimento delle fiches all'abbandono anticipato di un tavolo di poker (Blackjack invariato)
+Verificato lo stato prima di implementare: **Blackjack** già incassa l'**intero** stack all'abbandono
+(`onLeave(state.chips)`) — giusto, perché non ha una fine naturale (non c'è il bust di tutti gli
+avversari a chiudere la partita: si gioca contro il banco finché si vuole, D-090). I **tavoli di
+poker** invece incassavano anch'essi l'intero stack, il che rende l'abbandono anticipato un "hit and
+run" indolore. Il **Machiavelli** ha già la sua regola (`MachiavelliRefund`, D-075) e **non è toccato**.
+- **La regola (D-099):** lasciare un tavolo di poker **prima della fine naturale** (bustare tutti gli
+  avversari = vincere il tavolo) è abbandonare una partita non finita, quindi si **forfeita parte
+  dello stack**, in misura di **quanto bene** si stava andando. Vive in GameWorld accanto al premio
+  della Casa e al rimborso Machiavelli (economia di sessione, non motore): `EarlyLeaveRetention`,
+  **pura e testabile**.
+- **La curva (ancore dalla richiesta), su `lead = stack ÷ somma degli stack avversari VIVI`:**
+  - `lead ≥ 2.0` → **100%** (stack ≥ doppio di **tutti** gli avversari rimasti → si tiene tutto);
+  - `lead = 1.3` → **90%** (30% avanti);
+  - `lead = 1.0` (pari) → **50%**;
+  - `lead ≤ 0.5` → **25%** (nettamente dietro: andarsene è fuggire);
+  - lineare tra le ancore.
+  Più un **pavimento**: aver **eliminato almeno un avversario** garantisce **almeno il 50%**, qualunque
+  cosa dica poi il rapporto (`max(fraction, 0.50)` se `eliminatedCount ≥ 1`).
+- **Casino-agnostica per costruzione:** la trattenuta è una **frazione** guidata dal **rapporto** tra
+  gli stack, quindi le poste diverse dei tre casinò **non** richiedono casi speciali — un vantaggio 2×
+  è 2× a qualunque buy-in (test dedicato: stesso `lead` → stessa frazione a poste Riverwood e Skypool).
+- **Dove si applica:** **solo** in `requestLeave()` dei quattro tavoli di poker (Texas/Draw/Omaha/Stud),
+  che ora calcolano lo stack vivo dell'eroe, gli stack degli avversari **non bustati** e il numero di
+  **eliminati** dallo `state`, e passano la trattenuta a `onLeave`. La **fine naturale** (overlay
+  vittoria/bust → `returnToCasino`) resta **piena**: chi vince il tavolo o busta non subisce la
+  trattenuta (e a fine naturale la formula darebbe comunque 100% su vittoria — nessun avversario vivo —
+  e 0 su bust — stack 0). Il **Blackjack non è toccato** (`onLeave(state.chips)` invariato).
+- **Interazione col premio della Casa dello Stud (D-079):** nessun caso speciale. Il premio si paga
+  solo a chi **batte il tavolo**, e abbandonare lascia almeno un avversario vivo → premio 0; la
+  trattenuta si applica quindi ai soli `heroChips` e la logica del premio resta intatta.
+- **Testato col movimento REALE dei gettoni, `DEBUG_FREE_PLAY` OFF** (come D-050/D-079): abbandono in
+  pari → metà a casa; dominio (>2×) → tutto a casa; Blackjack → tutto a casa; più le ancore della curva
+  e la monotonìa. **Principio permanente in CONVENTIONS §8.**

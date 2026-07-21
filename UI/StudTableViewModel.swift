@@ -171,10 +171,15 @@ public final class StudTableViewModel: ObservableObject {
         leaveAfterHand = true
         pendingLeave = false
         // THE HOUSE PRIZE NEEDS NO SPECIAL CASE (D-086): it is paid only to a player who
-        // BEAT THE TABLE (D-079), and abandoning leaves both opponents alive, so
-        // `beatTheTable` is simply false and no prize is earned. The economics reconcile
-        // themselves — nothing about D-079 changes.
-        let remaining = heroCashOut
+        // BEAT THE TABLE (D-079), and abandoning leaves at least one opponent alive, so
+        // `beatTheTable` is false and no prize is earned. What CAN come home is a
+        // fraction of the stack, scaled by how well the player was doing (D-099) — the
+        // prize logic is untouched (it was zero here anyway).
+        let opponents = state.opponents
+        let remaining = EarlyLeaveRetention.retained(
+            heroStack: state.seat(heroSeatID)?.chips ?? 0,
+            aliveOpponentStacks: opponents.filter { !$0.isBusted && $0.chips > 0 }.map { $0.chips },
+            eliminatedCount: opponents.filter { $0.isBusted }.count)
         Task { await human.abandon() }
         onLeave(remaining)
     }

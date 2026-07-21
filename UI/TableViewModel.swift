@@ -210,7 +210,14 @@ public final class TableViewModel: ObservableObject {
         hasLeft = true
         leaveAfterHand = true
         pendingLeave = false
-        let remaining = state.seat(heroSeatID)?.chips ?? 0
+        // Leaving EARLY forfeits part of the stack, scaled by how well the player was
+        // doing (D-099). This is the only place the penalty applies — the natural end
+        // (win/bust overlay → returnToCasino) keeps everything.
+        let opponents = state.seats.filter { $0.id != heroSeatID }
+        let remaining = EarlyLeaveRetention.retained(
+            heroStack: state.seat(heroSeatID)?.chips ?? 0,
+            aliveOpponentStacks: opponents.filter { !$0.isBusted && $0.chips > 0 }.map { $0.chips },
+            eliminatedCount: opponents.filter { $0.isBusted }.count)
         Task { await human.abandon() }
         onLeave(remaining)
     }

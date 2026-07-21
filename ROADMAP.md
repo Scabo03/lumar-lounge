@@ -674,8 +674,18 @@ subisce pause pensate per l'orecchio. Valori da confermare sul device.
   problema erano **due momenti distanti**; ora **una riga atomica** «Il banco 19. Perdi 20.»
   (causa+effetto insieme), `dealerPlayed` muto, detta una volta per mano.
 
+### ✅ Trattenimento fiches all'abbandono anticipato (poker) — Blackjack invariato (D-099)
+Lasciare un tavolo di **poker** prima della fine naturale forfeita **parte dello stack**, in misura di
+quanto bene si andava: `EarlyLeaveRetention` (GameWorld, pura, casino-agnostica) su `lead = stack ÷
+avversari vivi` — 100% se ≥2×, 90% a +30%, 50% in pari, 25% dietro; pavimento 50% se eliminato ≥1
+avversario. Applicata solo in `requestLeave()` di Texas/Draw/Omaha/Stud; la fine naturale resta piena.
+**Blackjack tiene tutto** (nessuna fine da bustare, D-090). Machiavelli non toccato (rimborso D-075).
+Testato con `DEBUG_FREE_PLAY` OFF.
+
 ### 🔭 Prossimo
-Ascolto/approvazione dei campioni fonetici del blackjack; nuovo test sul telefono per validare le
+Ascolto/approvazione dei campioni fonetici del blackjack;
+**calibrazione della curva di trattenimento D-099 dopo il test reale** (le ancore 25/50/90/100% e il
+pavimento 50% sono scelte di design, non ancora provate sul campo); nuovo test sul telefono per validare le
 calibrazioni; produzione dei restanti file audio (blackjack, `vob_sky_*`, slot storici del mondo M2
 e del croupier Draw); calibrazione comparativa Riverwood↔Skypool; cassa/DLC per ricarica gettoni;
 NPC narrativi; piscina/discoteca.
