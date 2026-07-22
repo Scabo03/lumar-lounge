@@ -720,8 +720,8 @@ Riverwood (10/500, buy-in 1000) e Skypool (50/2500, buy-in 5000). Annuncio compa
 **Residui aperti (produzione audio):**
 - ~~File mp3 della Roulette da produrre e cablare~~ → **fatto (D-104)**: ruota (governa l'attesa,
   pallina che chiude il giro sulla sua coda), esito negativo, fiches place/remove, presenza
-  `fx_roulette_presence_*` (cablata tra i giri, pattern Blackjack). **`fx_roulette_win` non
-  prodotto** → fallback al `fx_win_hand` generico. **Croupier Roulette RIMOSSO** (decisione utente:
+  `fx_roulette_presence_*` (cablata tra i giri, pattern Blackjack). **`fx_roulette_win`** = copia di
+  `tbl_chips_stack` (il suono del Call, scelta utente). **Croupier Roulette RIMOSSO** (decisione utente:
   niente voci per ora — slot e fallback di sintesi tolti; si ri-aggiungono come dati se prodotti).
 - **Set di fiches per-sessione (D-104):** 4 nuovi `sfx_chips_shifted_*` in pool coi due suoni storici;
   ogni sessione (tutti i giochi con fiches) ne sceglie 1–2 e li tiene, la successiva ne sceglie altri.

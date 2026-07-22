@@ -239,8 +239,8 @@ il banco, regole della casa fisse, annuncio essenziale misurato) è giocabile a 
 la **Roulette** europea a zero singolo (regola dello zero a restituzione integrale, slip unico
 condiviso da tabella e fascia-registro) è giocabile agli stessi due casinò. Con D-104 la Roulette ha
 i suoi **file audio reali** (ruota che governa l'attesa, pallina che chiude il giro, fiches,
-presenza degli avventori; croupier **rimosso** per scelta, `fx_roulette_win` non prodotto → fallback
-generico) e il casinò ha i suoi **set di fiches**: quattro nuovi suoni in pool coi due storici, ogni
+presenza degli avventori; croupier **rimosso** per scelta, vincita = il suono di fiches del Call) e
+il casinò ha i suoi **set di fiches**: quattro nuovi suoni in pool coi due storici, ogni
 sessione ne sceglie uno o due e li tiene, la successiva ne sceglie altri (`TableChipSet`).
 **661 unit test verdi.**
 

@@ -24,7 +24,7 @@ final class RouletteAudioCablingTests: XCTestCase {
     /// The mp3s delivered and cabled in D-104 (renamed to the catalog form).
     private let cabled: [SoundID] = [
         SoundCatalog.fxRouletteWheelSpin, SoundCatalog.fxRouletteBall,
-        SoundCatalog.fxRouletteLose,
+        SoundCatalog.fxRouletteWin, SoundCatalog.fxRouletteLose,
         SoundCatalog.fxRouletteChipPlace, SoundCatalog.fxRouletteChipRemove,
         SoundCatalog.fxRoulettePresenceMurmur, SoundCatalog.fxRoulettePresenceChips,
         SoundCatalog.sfxChipsShifted1, SoundCatalog.sfxChipsShifted2,
@@ -38,12 +38,16 @@ final class RouletteAudioCablingTests: XCTestCase {
         }
     }
 
-    /// `fx_roulette_win` was NOT produced: the view model falls back to the generic
-    /// win cue. If the file ever lands, this fails on purpose — drop the fallback
-    /// check in `sting(for:)` deliberately, not by accident.
-    func testTheUndeliveredWinSlotStaysEmpty() {
-        XCTAssertFalse(exists(SoundCatalog.fxRouletteWin.rawValue),
-                       "fx_roulette_win landed: revisit the sting fallback in RouletteTableViewModel")
+    /// `fx_roulette_win` is bundled as a byte-identical COPY of `tbl_chips_stack` —
+    /// the poker call's chip sound, the user's explicit pick for the win sting
+    /// (D-104): chips gathered, not a jingle. A dedicated win sound, if ever
+    /// produced, just overwrites the file (this guard then fails on purpose so the
+    /// provenance note in the catalog gets updated too).
+    func testTheWinSlotIsTheCallChipSound() throws {
+        let win = audioDir().appendingPathComponent("fx_roulette_win.mp3")
+        let stack = audioDir().appendingPathComponent("tbl_chips_stack.mp3")
+        XCTAssertEqual(try Data(contentsOf: win), try Data(contentsOf: stack),
+                       "fx_roulette_win diverged from tbl_chips_stack: a dedicated win sound landed — update the provenance notes (SoundCatalog, Roulette_audio_catalog.md)")
     }
 
     /// The roulette croupier voices were REMOVED (D-104, user decision): the catalog

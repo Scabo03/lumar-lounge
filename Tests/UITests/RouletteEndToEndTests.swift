@@ -127,12 +127,12 @@ final class RouletteEndToEndTests: XCTestCase {
 
     // MARK: - The win sting is never quieter than a loss (D-104) — source guard
 
-    func testTheMissingWinFileFallsBackToTheGenericWinSting() throws {
+    func testTheWinStingUsesTheBundledRouletteWinCue() throws {
+        // `fx_roulette_win` is bundled (as a copy of the call's chip sound — see
+        // `RouletteAudioCablingTests`), so the sting plays it directly.
         let vm = try source("RouletteTableViewModel.swift")
-        XCTAssertTrue(vm.contains("audio.isAvailable(SoundCatalog.fxRouletteWin)"),
-                      "the win sting checks the (unproduced) roulette win file")
-        XCTAssertTrue(vm.contains("SoundCatalog.fxWinHand"),
-                      "and falls back to the generic win cue")
+        XCTAssertTrue(vm.contains("SoundCatalog.fxRouletteWin"),
+                      "the win sting plays the bundled roulette win cue")
     }
 
     private func source(_ name: String) throws -> String {

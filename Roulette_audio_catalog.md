@@ -1,11 +1,12 @@
 # Catalogo audio — Roulette (D-102 → D-104)
 
-Stato: **file reali PRODOTTI e CABLATI** (D-104), con due eccezioni dichiarate:
+Stato: **file reali PRODOTTI e CABLATI** (D-104), con due note dichiarate:
 
-- **`fx_roulette_win` non è stato prodotto** → il colpo di vincita cade sul generico
-  `fx_win_hand` (preferito→fallback, così una vincita non è mai più silenziosa di una
-  perdita). Se il file verrà prodotto, il test di cablaggio fallirà apposta per far
-  rivedere il fallback in `RouletteTableViewModel.sting(for:)`.
+- **`fx_roulette_win` non è stato prodotto come file proprio**: su scelta dell'utente è
+  cablato come **copia di `tbl_chips_stack`** — il suono di fiches che si sente al Call
+  del poker (fiches raccolte, non un jingle). Un eventuale suono dedicato futuro
+  **sovrascrive il file** e basta; il test di cablaggio pinna la byte-identità con
+  `tbl_chips_stack` e fallirà apposta per far aggiornare questa nota.
 - **Le voci del croupier sono state RIMOSSE** (decisione dell'utente, D-104): niente
   croupier alla Roulette per ora — né mp3 né fallback di sintesi. Gli slot
   `vo_*_roulette_rien_ne_va_plus` non esistono più nel `SoundCatalog`; l'attesa della
@@ -28,7 +29,7 @@ alla forma del catalogo (D-025).
 |---|---|---|
 | `fx_roulette_wheel_spin` | ✅ cablato (6,0 s) | **Governa l'attesa della ruota**: `audio.duration(of:) ?? spinFloor`. |
 | `fx_roulette_ball` | ✅ cablato (5,6 s) | Parte sulla coda della ruota, calcolato per **finire con l'attesa**: la pallina si posa subito prima della riga d'esito (l'ordine porta informazione, D-085). |
-| `fx_roulette_win` | ❌ NON prodotto | Fallback al generico `fx_win_hand` (vedi sopra). |
+| `fx_roulette_win` | ✅ cablato (copia) | Copia di `tbl_chips_stack` (il suono del Call del poker), scelta dell'utente — vedi sopra. |
 | `fx_roulette_lose` | ✅ cablato | Sequenziato **dopo** la riga d'esito (`say(trailing:)`, D-085). |
 | `fx_roulette_chip_place` | ✅ cablato | Consegnato come `sfx_roulette_chips_place` → rinominato (singolare da catalogo). |
 | `fx_roulette_chip_remove` | ✅ cablato | Consegnato come `sfx_roulette_chips_remove` → rinominato. |

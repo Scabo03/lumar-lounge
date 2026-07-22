@@ -189,13 +189,10 @@ public final class RouletteTableViewModel: ObservableObject {
     }
 
     private func sting(for r: RouletteRoundResolution) -> SoundID {
-        // `fx_roulette_win` was not produced (D-104): the win sting falls back to the
-        // generic hand-win cue, so a win is never quieter than a loss.
-        if r.net > 0 {
-            return audio.isAvailable(SoundCatalog.fxRouletteWin)
-                ? SoundCatalog.fxRouletteWin : SoundCatalog.fxWinHand
-        }
-        return r.net < 0 ? SoundCatalog.fxRouletteLose : SoundCatalog.fxHandNeutral
+        // `fx_roulette_win` is bundled as a copy of `tbl_chips_stack` — the poker call's
+        // chip sound, the user's pick for the win (D-104): chips gathered, not a jingle.
+        r.net > 0 ? SoundCatalog.fxRouletteWin
+                  : (r.net < 0 ? SoundCatalog.fxRouletteLose : SoundCatalog.fxHandNeutral)
     }
 
     // MARK: - The betting suspension

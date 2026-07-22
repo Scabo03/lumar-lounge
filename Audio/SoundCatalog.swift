@@ -251,15 +251,16 @@ public enum SoundCatalog {
     public static let fxDefeatFinal = SoundID("fx_defeat_final")
 
     // Roulette (D-103/D-104): the wheel/ball/outcome/chip/presence effects are DELIVERED
-    // and cabled, with one exception — `fx_roulette_win` was not produced, so the win
-    // sting falls back to the generic `fx_win_hand` (preferred → fallback, D-030-style).
+    // and cabled. `fx_roulette_win` was not produced as its own file: it is bundled as a
+    // COPY of `tbl_chips_stack` (the poker call's chip sound, the user's pick — chips
+    // gathered, not a jingle); a dedicated win sound just overwrites the file.
     // The two croupier voice slots (`vo_*_roulette_rien_ne_va_plus`) were REMOVED with
     // their synthesis fallbacks: the user decided not to implement the roulette croupier
     // for now, and the real wheel mp3 fills the spin wait (D-104). Re-add the slots if
     // the voices are ever produced.
     public static let fxRouletteWheelSpin = SoundID("fx_roulette_wheel_spin")   // fills the spin wait
     public static let fxRouletteBall = SoundID("fx_roulette_ball")
-    public static let fxRouletteWin = SoundID("fx_roulette_win")                // not delivered → fx_win_hand
+    public static let fxRouletteWin = SoundID("fx_roulette_win")                // = tbl_chips_stack copy
     public static let fxRouletteLose = SoundID("fx_roulette_lose")
     public static let fxRouletteChipPlace = SoundID("fx_roulette_chip_place")
     public static let fxRouletteChipRemove = SoundID("fx_roulette_chip_remove")

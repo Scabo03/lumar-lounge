@@ -149,7 +149,8 @@ e la sua **musica** (archi al poker, clockwork dosato al Machiavelli — D-080).
   `small_blind`/`flop`/`turn`/`river`/`role_button`/`stakes_rise`. Cataloghi aggiornati.
 - **Roulette (D-104): file reali PRODOTTI e CABLATI** — ruota (governa l'attesa), pallina (chiude il
   giro sulla coda della ruota), lose, fiches place/remove, presenza 2/2 (via `TablePresence`, pattern
-  Blackjack). **`fx_roulette_win` non prodotto** → fallback al generico `fx_win_hand`. **Croupier
+  Blackjack). **`fx_roulette_win` = copia di `tbl_chips_stack`** (il suono del Call, scelta utente;
+  un futuro suono dedicato sovrascrive il file). **Croupier
   Roulette RIMOSSO** (decisione utente: niente voci per ora — slot e fallback di sintesi tolti).
   In più i **set di fiches del casinò**: 4 `sfx_chips_shifted_*` in pool coi due storici, 1–2 scelti
   per sessione in ogni gioco con fiches (`TableChipSet`).
@@ -195,7 +196,7 @@ nuovi generati e in attesa dell'ascolto** in `~/Desktop/lumar-phonetics/blackjac
 (ruota che ora **governa l'attesa** del giro, **pallina** che parte sulla coda della ruota e si posa
 subito prima della riga d'esito, lose, fiches place/remove, **presenza degli avventori** tra i giri
 via il nuovo `TablePresence` condiviso col Blackjack). **`fx_roulette_win` non consegnato** →
-fallback al `fx_win_hand` generico (una vincita mai più silenziosa di una perdita). **Croupier
+cablato come **copia di `tbl_chips_stack`**, il suono del Call del poker (scelta utente). **Croupier
 Roulette RIMOSSO** su decisione dell'utente (slot + fallback di sintesi «rien ne va plus» tolti da
 codice e stringhe). Novità trasversale: i **set di fiches del casinò** (`TableChipSet`) — 4 nuovi
 `sfx_chips_shifted_*` in pool coi due suoni storici; **ogni sessione** di Texas/Draw/Omaha/Stud/
@@ -3459,10 +3460,13 @@ che ha **deciso di non implementare per ora**) più quattro suoni nuovi di fiche
   nome dell'utente (slot nuovi: il file È il catalogo). **Nessuna logica nuova per il cablaggio
   base** (D-030/D-068): `isAvailable`/`duration` rilevano i file, il gruppo `Resources/Audio` li
   auto-bundla.
-- **`fx_roulette_win` NON consegnato** (unico assente): il colpo di vincita cade sul **generico
-  `fx_win_hand`** (preferito→fallback nel `sting(for:)` del view model), così una vincita non è mai
-  più silenziosa di una perdita (il lose reale è arrivato). Il test di cablaggio **pinna l'assenza**:
-  se il file un giorno arriva, fallisce apposta per far rivedere il fallback.
+- **`fx_roulette_win` NON consegnato** (unico assente): su scelta esplicita dell'utente (fra chips
+  stack / chip shift / «l'mp3 di quando clicchi il bottone per il Call») è cablato come **copia di
+  `tbl_chips_stack`** — che È il suono distintivo che si sente al Call del poker (il tap dei
+  pulsanti, `ui_button_tap`, è un blip generico comune anche al Fold): fiches raccolte, non un
+  jingle. Il test di cablaggio **pinna la byte-identità** con `tbl_chips_stack`: un eventuale suono
+  dedicato futuro sovrascrive il file e il test fallisce apposta per far aggiornare le note di
+  provenienza.
 - **La pallina chiude il giro (cablaggio con un'aggiunta di ritmo):** `fx_roulette_ball` (5,6 s)
   parte **sulla coda** della ruota (6,0 s), calcolata perché **finisca con l'attesa**
   (`pause(spin−ball)` → play ball → `pause(ball)`): la pallina si posa subito prima della riga
