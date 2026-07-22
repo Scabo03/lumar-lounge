@@ -58,13 +58,17 @@ public final class DrawAudioDirector {
     private var activeSeats: Set<Int> = []
     private var bustedSeats: Set<Int> = []
 
+    /// This session's chip set (D-104), resolved at play time.
+    private let chipSet: TableChipSet
+
     public init(audio: AudioServicing, heroSeatID: Int, characters: [Int: BotCharacter],
-                seed: UInt64, fastMode: Bool = false) {
+                seed: UInt64, fastMode: Bool = false, chipSet: TableChipSet = .identity) {
         self.audio = audio
         self.heroSeatID = heroSeatID
         self.characters = characters
         self.rng = SeededGenerator(seed: seed)
         self.fastMode = fastMode
+        self.chipSet = chipSet
     }
 
     public func run(_ stream: AsyncStream<DrawSessionEvent>) async {
@@ -132,7 +136,7 @@ public final class DrawAudioDirector {
         }
 
         let cues = DrawAudioScore.cues(for: payload, heroSeatID: heroSeatID)
-        for case let .play(id, category) in cues { audio.play(id, category: category) }
+        for case let .play(id, category) in cues { audio.play(chipSet.resolve(id), category: category) }
         return cues
     }
 

@@ -717,7 +717,6 @@
 "roulette.ordinal.3" = "terza";
 
 /* Roulette table UI (D-103) */
-"roulette.no.more.bets" = "Non si accettano più puntate.";
 "roulette.session.broke" = "Fiches esaurite. La sessione è finita.";
 "roulette.bet.value.a11y" = "%1$@, %2$d fiches.";
 "roulette.bet.value.none.a11y" = "%1$@, nessuna puntata.";

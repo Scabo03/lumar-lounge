@@ -84,6 +84,17 @@ public enum SoundCatalog {
     public static let tblMuck = SoundID("tbl_muck")
     public static let tblShuffle = SoundID("tbl_shuffle")
 
+    // MARK: Chip sets (D-104) — the casino owns SEVERAL physical chip sets.
+    // Four extra generic chip-movement sounds, pooled with `tbl_chips_single` and
+    // `tbl_chips_stack`: each SESSION picks one or two from the pool and keeps them
+    // for its whole length, the next session picks others (UI's `TableChipSet`).
+    // The special-moment sounds (`tbl_chips_bet_large`, `tbl_chips_pot_collect`)
+    // are NOT in the pool: they mark all-in and pot sweep, not "a chip set".
+    public static let sfxChipsShifted1 = SoundID("sfx_chips_shifted_01")
+    public static let sfxChipsShifted2 = SoundID("sfx_chips_shifted_02")
+    public static let sfxChipsShifted3 = SoundID("sfx_chips_shifted_03")
+    public static let sfxChipsShifted4 = SoundID("sfx_chips_shifted_04")
+
     // MARK: Croupier voices — Italian (16)
     public static let voYourTurn = SoundID("vo_it_your_turn")
     public static let voHandStart = SoundID("vo_it_hand_start")
@@ -239,18 +250,21 @@ public enum SoundCatalog {
     public static let fxVictoryFinal = SoundID("fx_victory_final")
     public static let fxDefeatFinal = SoundID("fx_defeat_final")
 
-    // Roulette (D-103): none delivered — the wheel/ball/outcome/chip effects and the two
-    // croupier voices all fall back (informative → synthesis, ambient → silence).
+    // Roulette (D-103/D-104): the wheel/ball/outcome/chip/presence effects are DELIVERED
+    // and cabled, with one exception — `fx_roulette_win` was not produced, so the win
+    // sting falls back to the generic `fx_win_hand` (preferred → fallback, D-030-style).
+    // The two croupier voice slots (`vo_*_roulette_rien_ne_va_plus`) were REMOVED with
+    // their synthesis fallbacks: the user decided not to implement the roulette croupier
+    // for now, and the real wheel mp3 fills the spin wait (D-104). Re-add the slots if
+    // the voices are ever produced.
     public static let fxRouletteWheelSpin = SoundID("fx_roulette_wheel_spin")   // fills the spin wait
     public static let fxRouletteBall = SoundID("fx_roulette_ball")
-    public static let fxRouletteWin = SoundID("fx_roulette_win")
+    public static let fxRouletteWin = SoundID("fx_roulette_win")                // not delivered → fx_win_hand
     public static let fxRouletteLose = SoundID("fx_roulette_lose")
     public static let fxRouletteChipPlace = SoundID("fx_roulette_chip_place")
     public static let fxRouletteChipRemove = SoundID("fx_roulette_chip_remove")
     public static let fxRoulettePresenceMurmur = SoundID("fx_roulette_presence_murmur")
     public static let fxRoulettePresenceChips = SoundID("fx_roulette_presence_chips")
-    public static let voRouletteNoMoreBets = SoundID("vo_it_roulette_rien_ne_va_plus")
-    public static let voSkyRouletteNoMoreBets = SoundID("vo_it_sky_roulette_rien_ne_va_plus")
 
     /// Every sound with its category — used to preload and to report which files
     /// are missing from the bundle at startup.
@@ -269,6 +283,8 @@ public enum SoundCatalog {
         (tblCardDealSingle, .table), (tblCardFlipSingle, .table), (tblCardsDealFlop, .table),
         (tblChipsSingle, .table), (tblChipsStack, .table), (tblChipsBetLarge, .table),
         (tblChipsPotCollect, .table), (tblMuck, .table), (tblShuffle, .table),
+        (sfxChipsShifted1, .table), (sfxChipsShifted2, .table),
+        (sfxChipsShifted3, .table), (sfxChipsShifted4, .table),
         (voYourTurn, .croupier), (voHandStart, .croupier), (voBlindSmall, .croupier), (voBlindBig, .croupier),
         (voRoleButton, .croupier), (voHighStakes, .croupier),
         (voFlop, .croupier), (voTurn, .croupier), (voRiver, .croupier), (voShowdown, .croupier),
@@ -304,6 +320,5 @@ public enum SoundCatalog {
         (fxRouletteWin, .effect), (fxRouletteLose, .effect),
         (fxRouletteChipPlace, .ui), (fxRouletteChipRemove, .ui),
         (fxRoulettePresenceMurmur, .botVoice), (fxRoulettePresenceChips, .botVoice),
-        (voRouletteNoMoreBets, .croupier), (voSkyRouletteNoMoreBets, .croupier),
     ]
 }

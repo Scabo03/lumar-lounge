@@ -150,7 +150,8 @@ public final class StudTableViewModel: ObservableObject {
         self.names = names
 
         self.audioDirector = StudAudioDirector(audio: audio, heroSeatID: 0, fastMode: fastMode,
-                                               seed: rootSeed, ambient: casinoAudio.ambient)
+                                               seed: rootSeed, ambient: casinoAudio.ambient,
+                                               chipSet: TableChipSet.forNewSession(seed: rootSeed))
         self.conductor = SpeechConductor(audio: audio, queue: announcements)
 
         self.state = StudTableState(

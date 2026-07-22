@@ -234,6 +234,16 @@ carte scoperte di ogni avversario — è risolta con l'**annuncio di ogni scoper
 **badge avversario interrogabile a comando** che ne legge il tabellone (**descrive, non consiglia**).
 **460 unit test verdi** (+40); Riverwood/Skypool/Machiavelli invariati.
 
+**Blackjack e Roulette — sesto e settimo motore, giocabili (D-090…D-104).** Il **Blackjack** (contro
+il banco, regole della casa fisse, annuncio essenziale misurato) è giocabile a Riverwood e Skypool;
+la **Roulette** europea a zero singolo (regola dello zero a restituzione integrale, slip unico
+condiviso da tabella e fascia-registro) è giocabile agli stessi due casinò. Con D-104 la Roulette ha
+i suoi **file audio reali** (ruota che governa l'attesa, pallina che chiude il giro, fiches,
+presenza degli avventori; croupier **rimosso** per scelta, `fx_roulette_win` non prodotto → fallback
+generico) e il casinò ha i suoi **set di fiches**: quattro nuovi suoni in pool coi due storici, ogni
+sessione ne sceglie uno o due e li tiene, la successiva ne sceglie altri (`TableChipSet`).
+**661 unit test verdi.**
+
 > **🏁 La prima fase è completa.** Il gioco base è funzionante end-to-end — motore
 > completo, bot credibili, sessione multi-mano, flusso di eventi, UI giocabile e
 > accessibile, e **audio pieno**: i 47 file mp3 consegnati (atmosfera, carte,

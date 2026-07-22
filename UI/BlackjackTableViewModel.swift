@@ -86,7 +86,8 @@ public final class BlackjackTableViewModel: ObservableObject {
         self.audioDirector = BlackjackAudioDirector(audio: audio,
                                                     fastMode: fastMode,
                                                     seed: rootSeed,
-                                                    ambient: casinoAudio.ambient(forGame: "blackjack"))
+                                                    ambient: casinoAudio.ambient(forGame: "blackjack"),
+                                                    chipSet: TableChipSet.forNewSession(seed: rootSeed))
         self.conductor = SpeechConductor(audio: audio, queue: announcements)
 
         // Seeded synchronously so the first frame is never empty.

@@ -663,7 +663,6 @@
 "roulette.ordinal.3" = "third";
 
 /* Roulette table UI (D-103) */
-"roulette.no.more.bets" = "No more bets.";
 "roulette.session.broke" = "Out of fiches. The session is over.";
 "roulette.bet.value.a11y" = "%1$@, %2$d fiches.";
 "roulette.bet.value.none.a11y" = "%1$@, no bet.";

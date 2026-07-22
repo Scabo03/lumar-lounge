@@ -54,13 +54,18 @@ public final class StudAudioDirector {
     /// The mixing base scale of the main bed (D-080): the ClockTower plays quieter.
     private var baseScale: Float { ambient.bedVolume }
 
+    /// This session's chip set (D-104), resolved at play time.
+    private let chipSet: TableChipSet
+
     public init(audio: AudioServicing, heroSeatID: Int, fastMode: Bool = false,
-                seed: UInt64 = 0, ambient: AmbientBeds = .clocktower) {
+                seed: UInt64 = 0, ambient: AmbientBeds = .clocktower,
+                chipSet: TableChipSet = .identity) {
         self.audio = audio
         self.heroSeatID = heroSeatID
         self.fastMode = fastMode
         self.ambient = ambient
         self.rng = SeededGenerator(seed: seed &* 0x2545_F491 &+ 0xB7)
+        self.chipSet = chipSet
     }
 
     public func run(_ stream: AsyncStream<StudSessionEvent>) async {
@@ -130,7 +135,7 @@ public final class StudAudioDirector {
         }
 
         let cues = StudAudioScore.cues(for: payload, heroSeatID: heroSeatID)
-        for case let .play(id, category) in cues { audio.play(id, category: category) }
+        for case let .play(id, category) in cues { audio.play(chipSet.resolve(id), category: category) }
         return cues
     }
 

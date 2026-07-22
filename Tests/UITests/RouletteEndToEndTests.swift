@@ -106,18 +106,33 @@ final class RouletteEndToEndTests: XCTestCase {
                       "the cell/symbol is adjustable: swipe up/down changes the fiches")
     }
 
-    // MARK: - The spin wait is not a silent freeze (D-103) — source guard
+    // MARK: - The spin wait is not a silent freeze (D-103/D-104) — source guard
 
-    func testTheSpinWaitFillsTheEarAndIsPreparedForTheRealWheelMp3() throws {
+    func testTheSpinWaitIsGovernedByTheRealWheelMp3AndTheBallClosesIt() throws {
         let vm = try source("RouletteTableViewModel.swift")
-        // The "no more bets" croupier cue (informative → synthesis fallback) fills the ear.
-        XCTAssertTrue(vm.contains("voRouletteNoMoreBets"))
-        XCTAssertTrue(vm.contains("roulette.no.more.bets") || vm.contains("croupier"),
-                      "a synthesis fallback speaks when the mp3 is absent")
-        // The wait is sized to the real wheel mp3 when present, the short floor when not —
-        // so the sound slots in with no teardown.
+        // The wait is sized to the real wheel mp3 (delivered in D-104), the short floor
+        // only if the file were absent.
         XCTAssertTrue(vm.contains("audio.duration(of: SoundCatalog.fxRouletteWheelSpin) ?? RoulettePacing.spinFloor"),
-                      "the wait grows to the wheel mp3's duration once it is cabled")
+                      "the wheel mp3's duration governs the wait")
+        // The ball settles over the wheel's tail, closing the spin before the outcome.
+        XCTAssertTrue(vm.contains("SoundCatalog.fxRouletteBall"),
+                      "the delivered ball cue closes the spin")
+        // The roulette croupier was REMOVED with its synthesis fallback (D-104): no cue,
+        // no fallback line may creep back in.
+        XCTAssertFalse(vm.contains("voRouletteNoMoreBets"),
+                       "the roulette croupier voice was removed (D-104)")
+        XCTAssertFalse(vm.contains("roulette.no.more.bets"),
+                       "the removed croupier's fallback line must not return")
+    }
+
+    // MARK: - The win sting is never quieter than a loss (D-104) — source guard
+
+    func testTheMissingWinFileFallsBackToTheGenericWinSting() throws {
+        let vm = try source("RouletteTableViewModel.swift")
+        XCTAssertTrue(vm.contains("audio.isAvailable(SoundCatalog.fxRouletteWin)"),
+                      "the win sting checks the (unproduced) roulette win file")
+        XCTAssertTrue(vm.contains("SoundCatalog.fxWinHand"),
+                      "and falls back to the generic win cue")
     }
 
     private func source(_ name: String) throws -> String {

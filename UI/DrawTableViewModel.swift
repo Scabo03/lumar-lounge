@@ -162,7 +162,8 @@ public final class DrawTableViewModel: ObservableObject {
 
         let characters: [Int: BotCharacter] = [1: .novice, 2: .rock, 3: .aggressor]
         self.audioDirector = DrawAudioDirector(audio: audio, heroSeatID: 0, characters: characters,
-                                               seed: rootSeed, fastMode: fastMode)
+                                               seed: rootSeed, fastMode: fastMode,
+                                               chipSet: TableChipSet.forNewSession(seed: rootSeed))
         self.conductor = SpeechConductor(audio: audio, queue: announcements)
         self.botChatter = DrawBotChatter(heroSeatID: 0, characters: characters, seed: rootSeed &+ 777)
 

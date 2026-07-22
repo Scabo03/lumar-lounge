@@ -64,10 +64,14 @@ public final class AudioDirector {
     /// reproduce today's Riverwood behaviour EXACTLY, so a Riverwood table is unchanged.
     private let ambient: AmbientBeds
     private let voices: BotVoices
+    /// This session's chip set (D-104): the generic chip-movement cues are resolved
+    /// through it at play time, so the whole session sounds like one physical set.
+    private let chipSet: TableChipSet
 
     public init(audio: AudioServicing, heroSeatID: Int, characters: [Int: BotCharacter],
                 seed: UInt64, fastMode: Bool = false, baseBigBlind: Int = 20,
-                ambient: AmbientBeds = .riverwood, voices: BotVoices = .riverwood) {
+                ambient: AmbientBeds = .riverwood, voices: BotVoices = .riverwood,
+                chipSet: TableChipSet = .identity) {
         self.audio = audio
         self.heroSeatID = heroSeatID
         self.characters = characters
@@ -76,6 +80,7 @@ public final class AudioDirector {
         self.baseBigBlind = baseBigBlind
         self.ambient = ambient
         self.voices = voices
+        self.chipSet = chipSet
     }
 
     public func run(_ stream: AsyncStream<SessionEvent>) async {
@@ -139,7 +144,7 @@ public final class AudioDirector {
         }
 
         let cues = AudioScore.cues(for: payload, heroSeatID: heroSeatID)
-        for case let .play(id, category) in cues { audio.play(id, category: category) }
+        for case let .play(id, category) in cues { audio.play(chipSet.resolve(id), category: category) }
         return cues
     }
 

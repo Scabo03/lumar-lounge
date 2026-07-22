@@ -17,59 +17,30 @@ import GameEngine
 import GameWorld
 import Audio
 
-/// Chooses, deterministically, when the rest of the room makes itself heard.
-///
-/// Pure and seeded so a session is reproducible, and sparse on purpose: the
-/// point is an inhabited room, not a busy one.
-struct BlackjackPresence {
-    private var generator: SeededGenerator
-    private let chance: Double
-    private var lastPlayed: SoundID?
-
-    /// The whole repertoire. Shared across every casino, because no NPC ever
-    /// speaks and therefore nothing here carries a place's identity.
-    static let repertoire: [SoundID] = [
-        SoundCatalog.fxBjPresenceChips,
-        SoundCatalog.fxBjPresenceMurmur,
-        SoundCatalog.fxBjPresenceCards
-    ]
-
-    init(seed: UInt64, chance: Double = 0.28) {
-        self.generator = SeededGenerator(seed: seed)
-        self.chance = chance
-    }
-
-    /// The sound the room makes between one round and the next, if any.
-    /// Never repeats the previous one back to back.
-    mutating func next() -> SoundID? {
-        let roll = Double(generator.next() % 1000) / 1000.0
-        guard roll < chance else { return nil }
-
-        var candidates = Self.repertoire.filter { $0 != lastPlayed }
-        if candidates.isEmpty { candidates = Self.repertoire }
-        let pick = candidates[Int(generator.next() % UInt64(candidates.count))]
-        lastPlayed = pick
-        return pick
-    }
-}
-
 @MainActor
 public final class BlackjackAudioDirector {
 
     private let audio: AudioServicing
     private let fastMode: Bool
     private let ambient: AmbientBeds
-    private var presence: BlackjackPresence
+    /// When the rest of the room makes itself heard (now the shared
+    /// `TablePresence`, extracted for roulette in D-104 — same algorithm).
+    private var presence: TablePresence
     private var movement = 0
+
+    /// This session's chip set (D-104), resolved at play time.
+    private let chipSet: TableChipSet
 
     public init(audio: AudioServicing,
                 fastMode: Bool = false,
                 seed: UInt64 = 0,
-                ambient: AmbientBeds = .riverwood) {
+                ambient: AmbientBeds = .riverwood,
+                chipSet: TableChipSet = .identity) {
         self.audio = audio
         self.fastMode = fastMode
         self.ambient = ambient
-        self.presence = BlackjackPresence(seed: seed)
+        self.presence = TablePresence(repertoire: TablePresence.blackjack, seed: seed)
+        self.chipSet = chipSet
     }
 
     public func run(_ stream: AsyncStream<BlackjackSessionEvent>) async {
@@ -109,7 +80,7 @@ public final class BlackjackAudioDirector {
 
         let cues = BlackjackAudioScore.cues(for: payload)
         for case let .play(id, category) in cues {
-            audio.play(id, category: category)
+            audio.play(chipSet.resolve(id), category: category)
         }
         return cues
     }

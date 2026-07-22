@@ -15,12 +15,12 @@
 // confirm and after the outcome, focus is placed on a live element, never left on a
 // control that has changed under it.
 //
-// THE SPIN WAIT (D-103), the delicate point with no mp3 yet: the "no more bets"
-// croupier cue (informative → synthesis fallback) fills the ear right after confirm,
-// then a SHORT floor beat stands in for the wheel, so the interval is felt, not a
-// silent freeze. The wait is sized to `audio.duration(of: wheel) ?? spinFloor`, so
-// when the real wheel mp3 is cabled it simply governs the wait — the fill it replaces
-// needs no dismantling.
+// THE SPIN WAIT (D-103/D-104): the real wheel mp3 now fills the interval — the wait
+// is sized to `audio.duration(of: wheel) ?? spinFloor`, and the BALL cue starts so it
+// SETTLES exactly when the wait ends, closing the spin right before the outcome line
+// (order carries information, D-085 — nothing anticipates the number). The roulette
+// croupier was REMOVED with its synthesis fallback (D-104, user decision: no croupier
+// voices for now); if the voices are ever produced, the cue is re-added as data.
 
 import Foundation
 import GameEngine
@@ -55,6 +55,10 @@ public final class RouletteTableViewModel: ObservableObject {
     private let casinoAudio: CasinoAudio
     private let onLeave: (Int) -> Void
 
+    /// The room's occasional between-rounds presence (D-104): the delivered
+    /// `fx_roulette_presence_*` one-shots, ambient by category (missing → silence).
+    private var presence: TablePresence
+
     private var eventQueue: [RouletteEventPayload] = []
     private var streamFinished = false
     private var betContinuation: CheckedContinuation<Void, Never>?
@@ -80,6 +84,9 @@ public final class RouletteTableViewModel: ObservableObject {
 
         self.driver = RouletteSessionDriver(chips: rules.buyIn, rules: rules,
                                             provider: human, seed: seed)
+        // Seeded in tests, fresh per session in production (D-047).
+        self.presence = TablePresence(repertoire: TablePresence.roulette,
+                                      seed: seed ?? UInt64.random(in: .min ... .max))
         self.conductor = SpeechConductor(audio: audio, queue: announcements)
         self.slip = RouletteBetSlip(minimumBet: rules.minimumBet, maximumBet: rules.maximumBet)
         self.state = RouletteTableState(chips: rules.buyIn,
@@ -136,25 +143,25 @@ public final class RouletteTableViewModel: ObservableObject {
             state = RouletteTableReducer.reduce(state, payload)
 
         case .roundBegan:
+            // No croupier voice (D-104): the wheel itself, right after, is the audible
+            // signal that the betting is closed.
             state = RouletteTableReducer.reduce(state, payload)
-            // "Rien ne va plus" — the natural roulette call, and the audible signal that
-            // the wheel is starting. Informative → the register/synthesis fallback speaks
-            // it when the mp3 is absent (D-030), filling the ear after confirm.
-            let (lead, fbKey) = casinoAudio.croupier(SoundCatalog.voRouletteNoMoreBets)
-            conductor.say(lead: lead,
-                          synthesis: nil,
-                          fallback: fbKey.map(uiLocalized) ?? uiLocalized("roulette.no.more.bets"),
-                          priority: .medium, reason: "roulette-spin-start")
             await pace(payload)
 
         case .wheelSpun:
             state = RouletteTableReducer.reduce(state, payload)
-            // The wheel FILL. Silent today (a `.table` effect falls back to silence), so
-            // the ear is held by the cue above and this short floor stands in for the
-            // spin. When the mp3 is cabled its duration governs the wait — no teardown.
+            // The real wheel mp3 governs the wait (the short floor stands in only if the
+            // file is somehow absent). The BALL bounces and settles over the wheel's tail,
+            // timed so it ends WITH the wait — the spin closes right before the outcome.
             audio.play(SoundCatalog.fxRouletteWheelSpin, category: .table)
             let spin = audio.duration(of: SoundCatalog.fxRouletteWheelSpin) ?? RoulettePacing.spinFloor
-            await pause(spin)
+            if let ball = audio.duration(of: SoundCatalog.fxRouletteBall), ball < spin {
+                await pause(spin - ball)
+                audio.play(SoundCatalog.fxRouletteBall, category: .table)
+                await pause(ball)
+            } else {
+                await pause(spin)
+            }
 
         case let .roundResolved(resolution, _):
             state = RouletteTableReducer.reduce(state, payload)
@@ -170,6 +177,9 @@ public final class RouletteTableViewModel: ObservableObject {
 
         case .roundEnded:
             state = RouletteTableReducer.reduce(state, payload)
+            // Between one spin and the next the room occasionally makes itself heard —
+            // never during a decision, never over a result (D-090/D-104).
+            if let cue = presence.next() { audio.play(cue, category: .botVoice) }
             await pace(payload)
 
         case .sessionEnded:
@@ -179,7 +189,13 @@ public final class RouletteTableViewModel: ObservableObject {
     }
 
     private func sting(for r: RouletteRoundResolution) -> SoundID {
-        r.net > 0 ? SoundCatalog.fxRouletteWin : (r.net < 0 ? SoundCatalog.fxRouletteLose : SoundCatalog.fxHandNeutral)
+        // `fx_roulette_win` was not produced (D-104): the win sting falls back to the
+        // generic hand-win cue, so a win is never quieter than a loss.
+        if r.net > 0 {
+            return audio.isAvailable(SoundCatalog.fxRouletteWin)
+                ? SoundCatalog.fxRouletteWin : SoundCatalog.fxWinHand
+        }
+        return r.net < 0 ? SoundCatalog.fxRouletteLose : SoundCatalog.fxHandNeutral
     }
 
     // MARK: - The betting suspension

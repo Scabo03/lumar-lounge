@@ -179,7 +179,8 @@ public final class TableViewModel: ObservableObject {
         let characters: [Int: BotCharacter] = [1: .novice, 2: .rock, 3: .aggressor]
         self.audioDirector = AudioDirector(audio: audio, heroSeatID: 0, characters: characters,
                                            seed: rootSeed, fastMode: fastMode, baseBigBlind: rules.bigBlind,
-                                           ambient: casinoAudio.ambient, voices: casinoAudio.botVoices)
+                                           ambient: casinoAudio.ambient, voices: casinoAudio.botVoices,
+                                           chipSet: TableChipSet.forNewSession(seed: rootSeed))
         self.conductor = SpeechConductor(audio: audio, queue: announcements)
         self.botChatter = BotChatter(heroSeatID: 0, characters: characters, seed: rootSeed &+ 999,
                                      voices: casinoAudio.botVoices)

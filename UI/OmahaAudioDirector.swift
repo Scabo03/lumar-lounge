@@ -55,9 +55,13 @@ public final class OmahaAudioDirector {
     private let ambient: AmbientBeds
     private let voices: BotVoices
 
+    /// This session's chip set (D-104), resolved at play time.
+    private let chipSet: TableChipSet
+
     public init(audio: AudioServicing, heroSeatID: Int, characters: [Int: BotCharacter],
                 seed: UInt64, fastMode: Bool = false,
-                ambient: AmbientBeds = .skypool, voices: BotVoices = .skypool) {
+                ambient: AmbientBeds = .skypool, voices: BotVoices = .skypool,
+                chipSet: TableChipSet = .identity) {
         self.audio = audio
         self.heroSeatID = heroSeatID
         self.characters = characters
@@ -65,6 +69,7 @@ public final class OmahaAudioDirector {
         self.fastMode = fastMode
         self.ambient = ambient
         self.voices = voices
+        self.chipSet = chipSet
     }
 
     public func run(_ stream: AsyncStream<OmahaSessionEvent>) async {
@@ -127,7 +132,7 @@ public final class OmahaAudioDirector {
         }
 
         let cues = OmahaAudioScore.cues(for: payload, heroSeatID: heroSeatID)
-        for case let .play(id, category) in cues { audio.play(id, category: category) }
+        for case let .play(id, category) in cues { audio.play(chipSet.resolve(id), category: category) }
         return cues
     }
 

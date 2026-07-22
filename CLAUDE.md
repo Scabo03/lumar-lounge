@@ -147,6 +147,12 @@ e la sua **musica** (archi al poker, clockwork dosato al Machiavelli — D-080).
   `_house_prize` (sintesi), colore bot `vob_clock_*` (silenzio, non prodotti). **Ambigui esclusi:**
   `vo_it_clock_opponent_shift`/`player_shift`. **Riservati (bundle, futuro Texas):** `vo_it_tower_big_blind`/
   `small_blind`/`flop`/`turn`/`river`/`role_button`/`stakes_rise`. Cataloghi aggiornati.
+- **Roulette (D-104): file reali PRODOTTI e CABLATI** — ruota (governa l'attesa), pallina (chiude il
+  giro sulla coda della ruota), lose, fiches place/remove, presenza 2/2 (via `TablePresence`, pattern
+  Blackjack). **`fx_roulette_win` non prodotto** → fallback al generico `fx_win_hand`. **Croupier
+  Roulette RIMOSSO** (decisione utente: niente voci per ora — slot e fallback di sintesi tolti).
+  In più i **set di fiches del casinò**: 4 `sfx_chips_shifted_*` in pool coi due storici, 1–2 scelti
+  per sessione in ogni gioco con fiches (`TableChipSet`).
 - **Storici ancora aperti:** mondo M2 (`amb_home_neutral`, `amb_riverwood_calm_*`,
   `vo_it_high_stakes`, `ui_navigation`), croupier Draw (`vo_it_ante`, `vo_it_draw_phase`,
   `vo_it_pass_and_out`, `vo_it_carried_pot`, `vo_it_openers_disqualified`, `vo_it_high_stakes_draw`),
@@ -185,6 +191,17 @@ riceve.** Nessun file audio prodotto: il croupier tace quasi sempre per scelta, 
 altri avventori è solo effetto ambientale con fallback al silenzio. **Campioni fonetici dei termini
 nuovi generati e in attesa dell'ascolto** in `~/Desktop/lumar-phonetics/blackjack/`. 574 test verdi.
 
+**Sessione audio Roulette + set di fiches (D-104):** cablati i **file reali della Roulette**
+(ruota che ora **governa l'attesa** del giro, **pallina** che parte sulla coda della ruota e si posa
+subito prima della riga d'esito, lose, fiches place/remove, **presenza degli avventori** tra i giri
+via il nuovo `TablePresence` condiviso col Blackjack). **`fx_roulette_win` non consegnato** →
+fallback al `fx_win_hand` generico (una vincita mai più silenziosa di una perdita). **Croupier
+Roulette RIMOSSO** su decisione dell'utente (slot + fallback di sintesi «rien ne va plus» tolti da
+codice e stringhe). Novità trasversale: i **set di fiches del casinò** (`TableChipSet`) — 4 nuovi
+`sfx_chips_shifted_*` in pool coi due suoni storici; **ogni sessione** di Texas/Draw/Omaha/Stud/
+Blackjack ne sceglie **1–2** e li tiene, **la successiva ne sceglie altri** (esclusi i precedenti).
+661 test verdi.
+
 **Sessione Roulette — GIOCABILE (D-103):** i due tavoli di **Roulette** sono ora **giocabili** a
 Riverwood (min 10/max 500, buy-in 1000) e Skypool (min 50/max 2500, buy-in 5000). Tre zone su **un
 solo `RouletteBetSlip`** (tabella di selezione ordinata per **frequenza**, fascia-registro coi
@@ -193,8 +210,9 @@ per il pollice). **Attesa della ruota senza mp3** gestita pulita: croupier "rien
 fallback) + attesa `duration(wheel) ?? spinFloor`, così l'mp3 vero **prende il posto del riempimento
 senza teardown** (solo dati). Focus-landing all'ingresso e a ogni transizione di fase (D-092),
 sottoalbero stabile (celle a insieme fisso; rimozione simbolino → focus al totale). **ClockTower senza
-Roulette** (test). **Nessun mp3 prodotto** (fallback sintesi/silenzio). Riverwood/Skypool/ClockTower
-invariati. Motore Roulette non toccato.
+Roulette** (test). **Nessun mp3 prodotto** (fallback sintesi/silenzio — **superato in D-104**, che
+cabla i file reali e rimuove il croupier). Riverwood/Skypool/ClockTower invariati. Motore Roulette
+non toccato.
 
 **Sessione Roulette — motore (D-101/D-102):** aperto il **settimo motore**, la **Roulette** europea a
 zero singolo, in `GameEngine/Roulette/` — il più diverso di tutti: **niente carte, nessun tipo
@@ -3431,3 +3449,56 @@ cablaggio ai casinò. Il motore **non è toccato**.
   eventi descrittivi; produttore ignaro del ritmo umano; nessun `UIAccessibility.post` diretto (tutto
   via coda); `CheckedContinuation` con abbandono gestito; cache dallo stato corrente; focus-landing su
   schermata e transizioni. **Nessun bot, nessun suggerimento di puntata.** Test verdi.
+
+### D-104 — Audio reale della Roulette (croupier rimosso) + i set di fiches del casinò
+L'utente ha prodotto e depositato in Downloads gli mp3 della Roulette (tranne le voci del croupier,
+che ha **deciso di non implementare per ora**) più quattro suoni nuovi di fiches. Due lavori distinti.
+- **Riscontro catalogo↔Downloads (D-025): 11 file, tutti distinti (md5), 7 rinomine dichiarate**
+  (`sfx_roulette_*` → forma di catalogo `fx_roulette_*`; `chips_place/remove` → singolare
+  `chip_place/remove`; `presence` → `presence_murmur`); i 4 `sfx_chips_shifted_01…04` mantengono il
+  nome dell'utente (slot nuovi: il file È il catalogo). **Nessuna logica nuova per il cablaggio
+  base** (D-030/D-068): `isAvailable`/`duration` rilevano i file, il gruppo `Resources/Audio` li
+  auto-bundla.
+- **`fx_roulette_win` NON consegnato** (unico assente): il colpo di vincita cade sul **generico
+  `fx_win_hand`** (preferito→fallback nel `sting(for:)` del view model), così una vincita non è mai
+  più silenziosa di una perdita (il lose reale è arrivato). Il test di cablaggio **pinna l'assenza**:
+  se il file un giorno arriva, fallisce apposta per far rivedere il fallback.
+- **La pallina chiude il giro (cablaggio con un'aggiunta di ritmo):** `fx_roulette_ball` (5,6 s)
+  parte **sulla coda** della ruota (6,0 s), calcolata perché **finisca con l'attesa**
+  (`pause(spin−ball)` → play ball → `pause(ball)`): la pallina si posa subito prima della riga
+  d'esito — l'ordine porta informazione (D-085), niente anticipa il numero. Se la pallina mancasse
+  dal bundle si degrada al comportamento D-103 (solo ruota / floor).
+- **Croupier Roulette RIMOSSO, non silenziato:** su indicazione esplicita dell'utente («se sono
+  lette in fallback da sintesi, togli pure anche quelli») i due slot `vo_*_roulette_rien_ne_va_plus`
+  sono **tolti dal `SoundCatalog`**, il `conductor.say` del `roundBegan` è rimosso e la chiave
+  `roulette.no.more.bets` è cancellata da it/en. Il segnale acustico di «puntate chiuse» è ora la
+  **ruota stessa**, che parte subito dopo. Guardiani: il test sorgente vieta il ritorno del cue, il
+  test di catalogo vieta il ritorno degli slot. Se le voci verranno prodotte, si ri-aggiunge tutto
+  **come dati** (slot + un `say` al `roundBegan`).
+- **Presenza degli avventori cablata** (i due file da 21 s): estratto **`TablePresence`** (UI) dal
+  meccanismo del Blackjack (D-090, **algoritmo identico**, repertorio iniettato) e usato da
+  entrambi — Blackjack invariato per costruzione, Roulette lo suona a `roundEnded` (~28%, mai due
+  volte di fila lo stesso, mai durante una decisione né sopra un esito). Categoria `.botVoice` →
+  assente = silenzio (D-066).
+- **I SET DI FICHES DEL CASINÒ (`TableChipSet`, UI — la novità trasversale).** I 4
+  `sfx_chips_shifted_*` (1,7 s) entrano in **pool** coi due suoni storici di movimento
+  (`tbl_chips_single`, `tbl_chips_stack`); **ogni sessione** — Texas, Draw, Omaha, Stud, Blackjack,
+  qualunque casinò — **sceglie 1–2 suoni dal pool e li tiene per tutta la sessione**; la sessione
+  successiva li **esclude** e ne sceglie altri («il casinò tira fuori un altro set»). Architettura:
+  gli **`AudioScore` restano canonici** (emettono sempre `tbl_chips_single`/`stack`, i loro test non
+  cambiano); la sostituzione avviene **al momento del `play`** nei cinque director via
+  `chipSet.resolve(id)` (default `.identity` = suono pre-D-104, così i test che costruiscono un
+  director direttamente non cambiano); i view model passano `TableChipSet.forNewSession(seed:
+  rootSeed)` (selezione **pura e deterministica dato seed** — D-047: seedata nei test, seme casuale
+  per sessione in produzione — con memoria `@MainActor` dell'ultima scelta per l'esclusione).
+  A due scelte, il suono **più «leggero»** (ordine di pool: il tick corto prima dei clatter lunghi)
+  prende il ruolo *light* (blind/call), l'altro il ruolo *heavy* (bet/raise). **Non sostituiti** i
+  momenti semantici `tbl_chips_bet_large` (all-in) e `tbl_chips_pot_collect` (piatto): marcano
+  momenti, non il timbro di un set. **Fuori dal pool anche la Roulette e il Machiavelli**, dichiarato:
+  la Roulette ha i suoi due suoni dedicati place/remove appena prodotti (feedback UI di composizione,
+  non movimento di fiches al tavolo), il Machiavelli non ha fiches in gioco.
+- **Vincoli:** motori/driver non toccati; `Audio` resta neutro (il pool e la scelta vivono in `UI`);
+  nessun `UIAccessibility.post` diretto; eventi descrittivi; determinismo dato seed / casuale in
+  produzione (D-047). Riverwood/Skypool/ClockTower invariati nei tavoli. **661 test verdi** (+14
+  nuovi: chip set, cablaggio Roulette, guardiani croupier-rimosso e win-fallback); app iOS compila.
+  Cataloghi aggiornati (`Roulette_audio_catalog.md` riscritto allo stato reale).

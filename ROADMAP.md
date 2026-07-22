@@ -718,15 +718,18 @@ Riverwood (10/500, buy-in 1000) e Skypool (50/2500, buy-in 5000). Annuncio compa
   attesa della ruota gestita col fallback (predisposta per l'mp3 vero). ClockTower senza Roulette (test).
 
 **Residui aperti (produzione audio):**
-- **File mp3 della Roulette da produrre e cablare** (`Roulette_audio_catalog.md`): ruota
-  (`fx_roulette_wheel_spin` — quando c'è, governa l'attesa della ruota), pallina, esito, fiches,
-  croupier `vo_it_roulette_*` / `vo_it_sky_roulette_*`, presenza condivisa `fx_roulette_presence_*`.
-  Finché mancano, tutto gira su sintesi/silenzio via fallback (nessun cambio di logica al cablaggio).
+- ~~File mp3 della Roulette da produrre e cablare~~ → **fatto (D-104)**: ruota (governa l'attesa,
+  pallina che chiude il giro sulla sua coda), esito negativo, fiches place/remove, presenza
+  `fx_roulette_presence_*` (cablata tra i giri, pattern Blackjack). **`fx_roulette_win` non
+  prodotto** → fallback al `fx_win_hand` generico. **Croupier Roulette RIMOSSO** (decisione utente:
+  niente voci per ora — slot e fallback di sintesi tolti; si ri-aggiungono come dati se prodotti).
+- **Set di fiches per-sessione (D-104):** 4 nuovi `sfx_chips_shifted_*` in pool coi due suoni storici;
+  ogni sessione (tutti i giochi con fiches) ne sceglie 1–2 e li tiene, la successiva ne sceglie altri.
 - **Ascolto fonetico manque/passe** (`~/Desktop/lumar-phonetics/roulette/`) prima del cablaggio definitivo.
 
 ### 🔭 Prossimo
 Ascolto/approvazione dei campioni fonetici del blackjack;
-**i tavoli di Roulette giocabili** (UI + cablaggio casinò + audio, sopra);
+**ascolto fonetico manque/passe** (unico residuo Roulette);
 **calibrazione della curva di trattenimento D-099 dopo il test reale** (le ancore 25/50/90/100% e il
 pavimento 50% sono scelte di design, non ancora provate sul campo); nuovo test sul telefono per validare le
 calibrazioni; produzione dei restanti file audio (blackjack, `vob_sky_*`, slot storici del mondo M2

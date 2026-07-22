@@ -4,9 +4,9 @@
 //
 // Roulette is a FAST game — bet, spin, collect, again — so the beats are short,
 // the same brisk rhythm blackjack keeps (D-091). The one beat that matters is the
-// SPIN WAIT, handled with care because there is no wheel mp3 yet (see the view
-// model): its floor is deliberately short so the wait is never a long silence,
-// and it is structured so the real wheel sound slots straight in without teardown.
+// SPIN WAIT: the real wheel mp3 governs it (D-104 — its duration IS the wait, with
+// the ball settling over its tail); the short floor below only stands in if the
+// file is somehow absent from the bundle.
 
 import Foundation
 import Audio
@@ -14,11 +14,10 @@ import GameWorld
 
 public enum RoulettePacing {
 
-    /// The felt interval the wheel "turns" for when NO wheel mp3 is bundled — short, so
-    /// the wait is a beat, never a disorienting silent freeze (D-103). When the real
-    /// `fx_roulette_wheel_spin.mp3` is cabled, the wait grows to ITS duration instead
-    /// (the view model uses `audio.duration(of:) ?? spinFloor`), so the sound takes the
-    /// place of the fill with no change to the logic.
+    /// The felt interval the wheel "turns" for if the wheel mp3 were missing from the
+    /// bundle — short, so the wait is a beat, never a disorienting silent freeze
+    /// (D-103). With the file delivered (D-104) the view model uses
+    /// `audio.duration(of:) ?? spinFloor`, so the real spin governs the wait.
     public static let spinFloor: Double = 1.6
 
     /// How long the table lingers on each event when the app's VoiceOver mode is OFF.

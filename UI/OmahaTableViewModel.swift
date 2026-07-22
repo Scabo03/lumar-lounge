@@ -154,7 +154,8 @@ public final class OmahaTableViewModel: ObservableObject {
         let characters: [Int: BotCharacter] = [1: .novice, 2: .rock, 3: .aggressor]
         self.audioDirector = OmahaAudioDirector(audio: audio, heroSeatID: 0, characters: characters,
                                                 seed: rootSeed, fastMode: fastMode,
-                                                ambient: casinoAudio.ambient, voices: casinoAudio.botVoices)
+                                                ambient: casinoAudio.ambient, voices: casinoAudio.botVoices,
+                                                chipSet: TableChipSet.forNewSession(seed: rootSeed))
         self.conductor = SpeechConductor(audio: audio, queue: announcements)
         self.botChatter = OmahaBotChatter(heroSeatID: 0, characters: characters, seed: rootSeed &+ 555,
                                           voices: casinoAudio.botVoices)
