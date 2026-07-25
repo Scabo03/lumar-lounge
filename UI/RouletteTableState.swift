@@ -31,15 +31,23 @@ public struct RouletteTableState: Equatable, Sendable {
     /// The last settled spin, for the felt to show the number/colour and the result.
     public var lastResolution: RouletteRoundResolution?
 
+    /// The pocket the current spin will land on (from `wheelSpun`, which the driver
+    /// emits at spin start, D-102) — what the VISUAL wheel decelerates onto (D-105).
+    /// The sighted reveal is the ball settling, exactly as the audible reveal is the
+    /// outcome line; neither anticipates the other. Cleared when a new round opens.
+    public var spinTarget: Int?
+
     public init(chips: Int = 0, minimumBet: Int = 0, maximumBet: Int = 0,
                 roundNumber: Int = 0, phase: RoulettePhase = .betting,
-                lastResolution: RouletteRoundResolution? = nil) {
+                lastResolution: RouletteRoundResolution? = nil,
+                spinTarget: Int? = nil) {
         self.chips = chips
         self.minimumBet = minimumBet
         self.maximumBet = maximumBet
         self.roundNumber = roundNumber
         self.phase = phase
         self.lastResolution = lastResolution
+        self.spinTarget = spinTarget
     }
 
     public var lastPocket: Int? { lastResolution?.winningPocket }
@@ -60,9 +68,11 @@ public enum RouletteTableReducer {
             next.chips = chips
             next.phase = .spinning
             next.lastResolution = nil
+            next.spinTarget = nil
 
-        case .wheelSpun:
+        case let .wheelSpun(pocket, _):
             next.phase = .spinning
+            next.spinTarget = pocket
 
         case let .roundResolved(resolution, chips):
             next.chips = chips

@@ -120,4 +120,55 @@ final class RouletteTableTests: XCTestCase {
         XCTAssertEqual(s.lastPocket, 3)
         XCTAssertEqual(s.chips, 1020)
     }
+
+    // MARK: - The visual wheel (D-105)
+
+    func testTheReducerExposesTheSpinTargetForTheVisualWheel() {
+        var s = RouletteTableState()
+        s = RouletteTableReducer.reduce(s, .wheelSpun(pocket: 17, color: .black))
+        XCTAssertEqual(s.spinTarget, 17, "the wheel view decelerates onto the winning pocket")
+        s = RouletteTableReducer.reduce(s, .roundBegan(roundNumber: 2, totalStaked: 10, chips: 990))
+        XCTAssertNil(s.spinTarget, "a new round clears the target before the next spin")
+    }
+
+    func testTheWheelGeometryPlacesEveryPocketDistinctlyWithZeroAtTheTop() {
+        XCTAssertEqual(RouletteWheelGeometry.angle(of: 0), 0, "the unrotated wheel has zero at the marker")
+        let angles = (0...36).map { RouletteWheelGeometry.angle(of: $0) }
+        XCTAssertEqual(Set(angles).count, 37, "every pocket has its own sector angle")
+        for a in angles { XCTAssertTrue(a >= 0 && a < 360) }
+        // The resting rotation brings the pocket back under the marker.
+        for p in [0, 17, 26, 36] {
+            let rest = RouletteWheelGeometry.restingRotation(for: p)
+            XCTAssertEqual(RouletteWheelGeometry.normalized(rest + RouletteWheelGeometry.angle(of: p)),
+                           0, accuracy: 0.0001)
+        }
+    }
+
+    // MARK: - The compact surface (D-105)
+
+    func testTheInsideSubgroupsPartitionTheBoardExactly() {
+        let flattened = RouletteSurfaceLayout.insideSubgroups.flatMap { $0.bets }
+        // Same bets, none lost, none duplicated — only regrouped by kind for the eye.
+        XCTAssertEqual(Set(flattened), Set(RouletteBoard.insideMulti))
+        XCTAssertEqual(flattened.count, RouletteBoard.insideMulti.count)
+        // Each subgroup is homogeneous and preserves the board's order within itself.
+        for sub in RouletteSurfaceLayout.insideSubgroups {
+            XCTAssertFalse(sub.bets.isEmpty)
+            XCTAssertEqual(Set(sub.bets.map { $0.kind }).count, 1)
+            XCTAssertEqual(sub.bets, RouletteBoard.insideMulti.filter { $0.kind == sub.bets[0].kind })
+        }
+    }
+
+    func testEveryCompactCellHasATerseNonEmptyTag() {
+        for bet in RouletteBoard.allBets {
+            let tag = RouletteSurfaceLayout.shortLabel(for: bet)
+            XCTAssertFalse(tag.isEmpty)
+        }
+        // The tag is numbers, terse — never the long spoken name for inside bets.
+        XCTAssertEqual(RouletteSurfaceLayout.shortLabel(for: .straight(5)), "5")
+        XCTAssertEqual(RouletteSurfaceLayout.shortLabel(for: .split(0, 1)), "0·1")
+        XCTAssertEqual(RouletteSurfaceLayout.shortLabel(for: .street(row: 1)), "1–3")
+        XCTAssertEqual(RouletteSurfaceLayout.shortLabel(for: .sixLine(topRow: 4)), "10–15")
+        XCTAssertEqual(RouletteSurfaceLayout.shortLabel(for: .corner(topLeft: 1)!), "1·2·4·5")
+    }
 }

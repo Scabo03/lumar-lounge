@@ -115,6 +115,26 @@ final class RouletteTests: XCTestCase {
         XCTAssertEqual(r.winningResults.count, 4, "four of the six bets paid")
     }
 
+    // MARK: - The physical wheel ring (D-105)
+
+    func testTheWheelRingIsTheCanonicalEuropeanOrder() {
+        let ring = RouletteLayout.wheelOrder
+        // Every pocket exactly once.
+        XCTAssertEqual(ring.count, 37)
+        XCTAssertEqual(Set(ring), Set(0...36))
+        // Pinned to the canonical single-zero wheel: zero between 26 and 32.
+        XCTAssertEqual(Array(ring.prefix(8)), [0, 32, 15, 19, 4, 21, 2, 25])
+        XCTAssertEqual(ring.last, 26)
+        // Around the ring, non-zero neighbours strictly alternate red and black —
+        // the property that cross-checks the ring against `redNumbers`.
+        for i in 0..<ring.count {
+            let a = ring[i], b = ring[(i + 1) % ring.count]
+            guard a != 0, b != 0 else { continue }
+            XCTAssertNotEqual(RouletteLayout.color(of: a), RouletteLayout.color(of: b),
+                              "pockets \(a) and \(b) are adjacent and must differ in colour")
+        }
+    }
+
     // MARK: - Determinism
 
     func testTheWheelIsDeterministicGivenASeed() {

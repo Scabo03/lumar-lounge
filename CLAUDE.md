@@ -203,6 +203,15 @@ codice e stringhe). Novità trasversale: i **set di fiches del casinò** (`Table
 Blackjack ne sceglie **1–2** e li tiene, **la successiva ne sceglie altri** (esclusi i precedenti).
 661 test verdi.
 
+**Sessione ruota visiva + griglia compatta (D-105):** la Roulette ha ora la **ruota grafica con la
+pallina** — il *reveal* del vedente, che non usa la sintesi: ruota disegnata dall'**ordine fisico
+delle caselle nel motore** (`RouletteLayout.wheelOrder`, pinnato), decelerazione **sulla casella
+vincente** sincronizzata con la durata dell'mp3, pallina che si posa subito prima della riga d'esito;
+decorativa per VoiceOver (canali occhio/orecchio separati, nessuno anticipa l'altro). La tabella
+delle puntate è **compattata in vere griglie** (interne per tipo a 4 colonne con etichette corte,
+tappeto classico 12×3 con zero in testa); frequenza di navigazione, label piene, identifier e slip
+invariati. 666 test verdi.
+
 **Sessione Roulette — GIOCABILE (D-103):** i due tavoli di **Roulette** sono ora **giocabili** a
 Riverwood (min 10/max 500, buy-in 1000) e Skypool (min 50/max 2500, buy-in 5000). Tre zone su **un
 solo `RouletteBetSlip`** (tabella di selezione ordinata per **frequenza**, fascia-registro coi
@@ -3506,3 +3515,40 @@ che ha **deciso di non implementare per ora**) più quattro suoni nuovi di fiche
   produzione (D-047). Riverwood/Skypool/ClockTower invariati nei tavoli. **661 test verdi** (+14
   nuovi: chip set, cablaggio Roulette, guardiani croupier-rimosso e win-fallback); app iOS compila.
   Cataloghi aggiornati (`Roulette_audio_catalog.md` riscritto allo stato reale).
+
+### D-105 — Roulette: la ruota VISIVA per i vedenti + la tabella compattata in vere griglie
+L'esito di un giro viveva solo nella riga parlata e nel numero che compare sul feltro — canali
+costruiti per l'orecchio; il vedente, che la sintesi non la usa, non aveva il suo *reveal*. Aggiunta
+la **ruota grafica con la pallina**, e la tabella delle puntate — che era in larga parte un **elenco
+verticale** (le interne multiple: ~103 righe una per riga) — è diventata **griglie compatte**, che le
+fanno spazio.
+- **L'ordine fisico delle caselle è NEL MOTORE** (`RouletteLayout.wheelOrder`, additivo): è geometria
+  della ruota esattamente come il tappeto è geometria del feltro (D-101 — dichiarata una volta,
+  pinnata dai test), così una ruota disegnata da lì **non può divergere dal resolver**. Pin: 37
+  caselle tutte distinte, sequenza canonica (zero tra 26 e 32), e la proprietà che **intorno
+  all'anello rosso e nero si alternano strettamente** — il controllo incrociato con `redNumbers`.
+- **La ruota decelera SULLA casella vincente, sincronizzata con l'audio.** `wheelSpun` porta già il
+  numero (emesso a inizio giro, D-102): il reducer lo espone come `spinTarget`, il VM pubblica la
+  durata effettiva dell'attesa (quella dell'mp3 della ruota, D-104 — o il floor), e la vista pianifica
+  **tutto il giro in un colpo**: la ruota fa due giri orari e si ferma con la casella vincente sotto
+  l'**indicatore** in alto; la pallina fa tre giri in senso contrario sul bordo e **cade nell'anello
+  delle caselle nell'ultimo battito** — si posa quando finisce l'attesa, cioè subito prima della riga
+  d'esito, come la pallina audio (D-085: il reveal visivo e quello udibile arrivano insieme, nessuno
+  dei due anticipa l'altro). Tra un giro e l'altro la pallina **resta** sulla casella uscita.
+- **Decorativa per VoiceOver, per costruzione:** la ruota è `accessibilityHidden` dentro l'elemento
+  stabile del feltro, la cui label/focus-discipline (àncora D-092, totale interrogabile) è invariata.
+  È "nessuno perde niente" in entrambe le direzioni (D-097): si aggiunge il canale dell'occhio senza
+  toccare quello dell'orecchio. **Reduce Motion onorato**: niente orbite, il risultato appare a scatto.
+- **La tabella diventa griglia** (`RouletteSurfaceLayout`, puro e testato): le **interne multiple**
+  si dividono per tipo (Cavalli/Terzine/Quartine/Sestine, sottotitoli nuovi) in griglie a **4
+  colonne** con **etichette numeriche corte** ("0·1", "1–3", "1·2·4·5" — sotto un'intestazione di
+  tipo, i numeri SONO l'informazione); i **numeri** diventano il **tappeto classico**: zero a tutta
+  larghezza, poi 1…36 in 12 righe × 3 colonne nell'ordine del feltro, celle colorate col solo numero.
+  Le esterne restano coi nomi pieni (4 colonne le semplici, 3 dozzine/colonne). Lo scroll delle
+  interne scende da migliaia di punti a un quarto.
+- **Ciò che NON cambia:** l'insieme delle celle resta **fisso** (stabilità del sottoalbero D-052 —
+  cambia solo il raggruppamento visivo), la **navigazione per frequenza** (priorità dal rango globale,
+  D-101), le label VoiceOver **piene** (`betName` — l'etichetta corta è solo per l'occhio, D-096:
+  visivo e navigazione disaccoppiati), gli identifier, lo slip unico (D-102), il motore (solo
+  `wheelOrder` additivo), driver ed eventi. **666 test verdi** (+5: anello pinnato, spinTarget,
+  geometria angolare, partizione esatta dei sottogruppi, etichette corte); app iOS compila.

@@ -40,6 +40,10 @@ public final class RouletteTableViewModel: ObservableObject {
     /// spin can't be confirmed before the betting suspension exists (the initial phase
     /// is `.betting` for display, but no round is open until the driver asks).
     @Published public private(set) var awaitingBets = false
+    /// The effective duration of the current spin wait — the wheel mp3's length (or
+    /// the short floor), what the VISUAL wheel animates over (D-105). Published before
+    /// `state.spinTarget` changes, so the view reads it when the spin starts.
+    @Published public private(set) var spinDuration: Double = 0
 
     public let returnLabel: String
     public let minimumBet: Int
@@ -149,12 +153,15 @@ public final class RouletteTableViewModel: ObservableObject {
             await pace(payload)
 
         case .wheelSpun:
-            state = RouletteTableReducer.reduce(state, payload)
             // The real wheel mp3 governs the wait (the short floor stands in only if the
             // file is somehow absent). The BALL bounces and settles over the wheel's tail,
             // timed so it ends WITH the wait — the spin closes right before the outcome.
-            audio.play(SoundCatalog.fxRouletteWheelSpin, category: .table)
+            // The VISUAL wheel animates over the same effective wait (D-105): the duration
+            // is published BEFORE the reduce, so it is set when `spinTarget` appears.
             let spin = audio.duration(of: SoundCatalog.fxRouletteWheelSpin) ?? RoulettePacing.spinFloor
+            spinDuration = fastMode ? 0.01 : spin
+            state = RouletteTableReducer.reduce(state, payload)
+            audio.play(SoundCatalog.fxRouletteWheelSpin, category: .table)
             if let ball = audio.duration(of: SoundCatalog.fxRouletteBall), ball < spin {
                 await pause(spin - ball)
                 audio.play(SoundCatalog.fxRouletteBall, category: .table)

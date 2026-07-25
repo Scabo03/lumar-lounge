@@ -688,6 +688,11 @@
 "roulette.group.dozcol" = "Dozens and columns";
 "roulette.group.inside" = "Multi-number bets";
 "roulette.group.numbers" = "Numbers";
+/* Compact-grid sub-headers of the inside multis (D-105) */
+"roulette.subgroup.split" = "Splits";
+"roulette.subgroup.street" = "Streets";
+"roulette.subgroup.corner" = "Corners";
+"roulette.subgroup.sixline" = "Six lines";
 "roulette.felt.result.a11y" = "Result: %1$@. %2$@";
 "table.roulette.title" = "Roulette";
 "table.roulette.riverwood" = "The Saloon Wheel";

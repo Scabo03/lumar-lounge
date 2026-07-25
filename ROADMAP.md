@@ -726,6 +726,12 @@ Riverwood (10/500, buy-in 1000) e Skypool (50/2500, buy-in 5000). Annuncio compa
 - **Set di fiches per-sessione (D-104):** 4 nuovi `sfx_chips_shifted_*` in pool coi due suoni storici;
   ogni sessione (tutti i giochi con fiches) ne sceglie 1–2 e li tiene, la successiva ne sceglie altri.
 - **Ascolto fonetico manque/passe** (`~/Desktop/lumar-phonetics/roulette/`) prima del cablaggio definitivo.
+- ~~Ruota visiva per i vedenti~~ → **fatto (D-105)**: la ruota **grafica** con la pallina che decelera
+  sulla casella vincente (ordine fisico delle caselle nel motore, `RouletteLayout.wheelOrder`, pinnato),
+  sincronizzata con l'attesa dell'mp3; decorativa per VoiceOver (l'esito parlato resta il canale del
+  cieco). Tabella delle puntate **compattata in vere griglie** (interne multiple per tipo a 4 colonne
+  con etichette numeriche corte, tappeto classico 12×3 con lo zero in testa); navigazione per frequenza
+  e identifier invariati.
 
 ### 🔭 Prossimo
 Ascolto/approvazione dei campioni fonetici del blackjack;

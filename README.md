@@ -242,7 +242,10 @@ i suoi **file audio reali** (ruota che governa l'attesa, pallina che chiude il g
 presenza degli avventori; croupier **rimosso** per scelta, vincita = il suono di fiches del Call) e
 il casinò ha i suoi **set di fiches**: quattro nuovi suoni in pool coi due storici, ogni
 sessione ne sceglie uno o due e li tiene, la successiva ne sceglie altri (`TableChipSet`).
-**661 unit test verdi.**
+Con D-105 la Roulette ha anche la **ruota visiva**: ruota grafica e pallina che decelerano sulla
+casella vincente (ordine fisico delle caselle nel motore, sincronia con l'mp3, decorativa per
+VoiceOver), e la tabella delle puntate è compattata in **vere griglie** (interne per tipo, tappeto
+classico 12×3). **666 unit test verdi.**
 
 > **🏁 La prima fase è completa.** Il gioco base è funzionante end-to-end — motore
 > completo, bot credibili, sessione multi-mano, flusso di eventi, UI giocabile e

@@ -87,23 +87,33 @@ struct RouletteTableScreen: View {
     }
 }
 
-// MARK: - The felt: the central status / result element (focus anchor)
+// MARK: - The felt: the wheel + the central status / result element (focus anchor)
 
 private struct RouletteFeltView: View {
     @ObservedObject var model: RouletteTableViewModel
 
     var body: some View {
-        VStack(spacing: 4) {
-            // The big number wheel-face: dash while betting/spinning, the result after.
-            Text(verbatim: pocketText)
-                .font(.system(size: 54, weight: .heavy, design: .rounded).monospacedDigit())
-                .foregroundColor(pocketColor)
-                .accessibilityHidden(true)
-            Text(verbatim: captionText)
-                .font(.subheadline).foregroundColor(TablePalette.secondaryText)
-                .accessibilityHidden(true)
+        HStack(spacing: 12) {
+            // The VISUAL wheel (D-105): the sighted player's reveal. Decorative for
+            // VoiceOver — this container's stable label stays the spoken channel.
+            RouletteWheelView(spinTarget: model.state.spinTarget,
+                              spinDuration: model.spinDuration,
+                              restingPocket: model.state.lastPocket,
+                              diameter: 148)
+            VStack(spacing: 4) {
+                // The big number face: dash while betting/spinning, the result after.
+                Text(verbatim: pocketText)
+                    .font(.system(size: 44, weight: .heavy, design: .rounded).monospacedDigit())
+                    .foregroundColor(pocketColor)
+                Text(verbatim: captionText)
+                    .font(.footnote).foregroundColor(TablePalette.secondaryText)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .accessibilityHidden(true)
         }
-        .frame(maxWidth: .infinity, minHeight: 90)
+        .padding(.vertical, 8).padding(.horizontal, 10)
+        .frame(maxWidth: .infinity)
         .background(RoundedRectangle(cornerRadius: 14).fill(Color.black.opacity(0.35)))
         // One STABLE leaf whose LABEL changes with the phase — the focus anchor after
         // confirm and after the outcome (D-092), and the interrogable total while betting.
@@ -176,23 +186,81 @@ private struct RouletteBettingSurface: View {
 
     @ViewBuilder private func section(_ group: RouletteBoard.Group) -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text(verbatim: uiLocalized("roulette.group.\(group.id)"))
-                .font(.caption.weight(.semibold)).foregroundColor(TablePalette.accent)
-                .accessibilityAddTraits(.isHeader)
-            LazyVGrid(columns: columns(for: group), alignment: .leading, spacing: 5) {
-                ForEach(group.bets, id: \.self) { bet in
-                    RouletteBetCell(model: model, bet: bet,
-                                    sortPriority: 900 - Double(Self.order[bet] ?? 0))
+            header(uiLocalized("roulette.group.\(group.id)"))
+            switch group.id {
+            case "inside":
+                // The inside multis as COMPACT GRIDS by kind (D-105) — the old one-per-row
+                // list scrolled for thousands of points. Terse number tags for the eye;
+                // the full bet name stays in each cell's VoiceOver label.
+                ForEach(RouletteSurfaceLayout.insideSubgroups, id: \.id) { sub in
+                    header(uiLocalized("roulette.subgroup.\(sub.id)"), sub: true)
+                    grid(sub.bets, columns: 4, compact: true)
                 }
+            case "numbers":
+                // The classic tappeto: zero spanning the top, then 1…36 in 12 rows of 3.
+                grid(Array(group.bets.prefix(1)), columns: 1, compact: true)
+                grid(Array(group.bets.dropFirst()), columns: 3, compact: true)
+            case "simple":
+                grid(group.bets, columns: 4, compact: false)
+            case "dozcol":
+                grid(group.bets, columns: 3, compact: false)
+            default:
+                grid(group.bets, columns: 2, compact: false)
             }
         }
     }
 
-    private func columns(for group: RouletteBoard.Group) -> [GridItem] {
-        switch group.id {
-        case "numbers": return Array(repeating: GridItem(.flexible(), spacing: 4), count: 3)
-        case "inside":  return [GridItem(.flexible())]   // a readable list
-        default:        return Array(repeating: GridItem(.flexible(), spacing: 5), count: 2)
+    private func header(_ text: String, sub: Bool = false) -> some View {
+        Text(verbatim: text)
+            .font(sub ? .caption2.weight(.semibold) : .caption.weight(.semibold))
+            .foregroundColor(sub ? TablePalette.secondaryText : TablePalette.accent)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private func grid(_ bets: [RouletteBet], columns: Int, compact: Bool) -> some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: columns),
+                  alignment: .leading, spacing: 4) {
+            ForEach(bets, id: \.self) { bet in
+                RouletteBetCell(model: model, bet: bet, compact: compact,
+                                sortPriority: 900 - Double(Self.order[bet] ?? 0))
+            }
+        }
+    }
+}
+
+/// The pure display layout of the betting surface (D-105): how the offered bets
+/// compact into grids, and the terse sighted tag each compact cell shows. The
+/// VoiceOver names and the frequency order are untouched — this only shapes what
+/// the EYE scans; testable without SwiftUI (D-017).
+public enum RouletteSurfaceLayout {
+
+    public struct Subgroup {
+        public let id: String
+        public let bets: [RouletteBet]
+    }
+
+    /// The inside-multi bets partitioned by kind for display, preserving the
+    /// board's order within each kind (the a11y sort priorities still come from
+    /// the global frequency order, unchanged).
+    public static let insideSubgroups: [Subgroup] = [
+        Subgroup(id: "split",   bets: RouletteBoard.insideMulti.filter { $0.kind == .split }),
+        Subgroup(id: "street",  bets: RouletteBoard.insideMulti.filter { $0.kind == .street }),
+        Subgroup(id: "corner",  bets: RouletteBoard.insideMulti.filter { $0.kind == .corner }),
+        Subgroup(id: "sixline", bets: RouletteBoard.insideMulti.filter { $0.kind == .sixLine }),
+    ]
+
+    /// The terse tag a compact cell shows — numbers, because under a kind header
+    /// the numbers ARE the information. Never used as a VoiceOver label.
+    public static func shortLabel(for bet: RouletteBet) -> String {
+        let n = bet.covered
+        switch bet.kind {
+        case .straight: return "\(n.first ?? 0)"
+        case .split:    return n.map(String.init).joined(separator: "·")
+        case .corner:   return n.map(String.init).joined(separator: "·")
+        case .street, .sixLine:
+            return "\(n.first ?? 0)–\(n.last ?? 0)"
+        default:
+            return RouletteSpeechMap.betName(bet)
         }
     }
 }
@@ -202,18 +270,21 @@ private struct RouletteBettingSurface: View {
 private struct RouletteBetCell: View {
     @ObservedObject var model: RouletteTableViewModel
     let bet: RouletteBet
+    var compact: Bool = false
     let sortPriority: Double
 
     private var amount: Int { model.slip.amount(on: bet) }
 
     var body: some View {
         let placed = amount > 0
-        return Text(verbatim: RouletteSpeechMap.betName(bet) + (placed ? "\n\(amount)" : ""))
-            .font(.footnote.weight(placed ? .bold : .regular))
+        let display = compact ? RouletteSurfaceLayout.shortLabel(for: bet)
+                              : RouletteSpeechMap.betName(bet)
+        return Text(verbatim: display + (placed ? "\n\(amount)" : ""))
+            .font((compact ? Font.caption2 : Font.footnote).weight(placed ? .bold : .regular))
             .multilineTextAlignment(.center)
-            .lineLimit(2).minimumScaleFactor(0.6)
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .padding(.vertical, 4).padding(.horizontal, 2)
+            .lineLimit(2).minimumScaleFactor(0.5)
+            .frame(maxWidth: .infinity, minHeight: compact ? 34 : 44)
+            .padding(.vertical, compact ? 2 : 4).padding(.horizontal, 2)
             .background(RoundedRectangle(cornerRadius: 8).fill(cellColor(placed: placed)))
             .overlay(RoundedRectangle(cornerRadius: 8)
                 .strokeBorder(TablePalette.accent, lineWidth: placed ? 2 : 0))
