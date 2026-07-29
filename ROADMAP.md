@@ -733,6 +733,18 @@ Riverwood (10/500, buy-in 1000) e Skypool (50/2500, buy-in 5000). Annuncio compa
   con etichette numeriche corte, tappeto classico 12×3 con lo zero in testa); navigazione per frequenza
   e identifier invariati.
 
+**Sessione trasversale — affidabilità dell'input (D-106):**
+- ~~«dopo un'azione l'interfaccia a volte non avanza»~~ → **fatto (D-106)**: trovata la **causa
+  comune** dietro le istanze già corrette una per una (D-092 focus appeso, D-096 parlato troncato,
+  doppia pressione). Il ciclo consumatore decideva fra «presenta» e «offri il turno» campionando due
+  sorgenti **a cavallo di un `await`**; corretto in tutti e sette i tavoli con `ConsumerHandoff`,
+  **senza toccare i driver**. Riprodotto con un harness affidabile (misure in D-106).
+- **Cintura contro la doppia azione** installata su ogni intento che impegna il giocatore, come
+  livello di sicurezza **indipendente** dal fix.
+- **Da validare sul dispositivo:** che dopo ogni pressione l'interfaccia avanzi e annunci sempre,
+  che una doppia pressione rapida non peschi mai due carte, e che nessuna pressione legittima venga
+  ingoiata (nessun `ui_cancel` udibile durante il gioco normale).
+
 ### 🔭 Prossimo
 Ascolto/approvazione dei campioni fonetici del blackjack;
 **ascolto fonetico manque/passe** (unico residuo Roulette);

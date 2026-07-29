@@ -132,6 +132,24 @@ con un'*audience* sull'evento e un *punto di vista* sull'iscrizione, così
 l'informazione riservata (le hole card di un giocatore) è instradata solo a chi
 ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
 
+**Il produttore emette PRIMA di chiedere, e il consumatore non offre la decisione
+finché non ha finito di raccontare (D-106).** Ogni driver emette **tutti** gli eventi
+che descrivono il nuovo stato **prima** di chiedere la mossa successiva (`emit`
+happens-before `provideAction`, in tutti e sette i giochi). È una garanzia forte, e il
+consumatore deve **onorarla**: il ciclo che alterna "presenta il prossimo evento" e
+"offri la sospensione umana" non può decidere fra i due campionando **due sorgenti
+indipendenti a cavallo di un punto di sospensione** — la coda in modo sincrono, poi
+`pendingTurn` dietro un salto d'attore. Fra i due campionamenti la relay può accodare
+proprio ciò che è appena successo, e la decisione viene presa su una lettura **stantia**:
+i pulsanti si accendono su uno stato che il giocatore non ha ancora visto. Regole:
+1. **Ri-verificare dopo ogni `await`** ciò che si è letto prima (è un check-then-act
+   classico, non una stranezza di questo progetto).
+2. Ricordare che fra l'hub e la coda del consumatore c'è un **terzo buffer**
+   (l'`AsyncStream`): ri-leggere la coda non basta, bisogna **lasciar girare la relay**
+   (`ConsumerHandoff.isCaughtUp`).
+3. La correzione vive **sempre nel consumatore**: non si rallenta il driver, che non
+   conosce e non deve conoscere il ritmo umano (D-018).
+
 ## 4. Accessibilità (priorità architetturale)
 
 - L'accessibilità **non è una feature finale ma un vincolo di progetto**, presente
@@ -744,6 +762,27 @@ ha diritto — coerente con la garanzia di informazione onesta di `GameEngine`.
   legge, lo si regola, lo si cancella lì, con lo stesso gesto dell'elemento originale. Vincolo che ne
   discende: la vista compatta e l'origine agiscono su **un solo stato** (una sola fonte di verità, mai
   due implementazioni) — come le due interfacce del Machiavelli interrogano un solo predicato (D-070).
+
+- **UN INPUT DEL GIOCATORE NON DEVE MAI AGIRE SU UNO STATO NON ANCORA PRONTO (D-106).** Un pulsante
+  attivo è una **promessa**: dice che la decisione che si vede è la decisione che si sta prendendo. Se
+  l'interfaccia mostra ancora la mano di prima, quella promessa è falsa e la pressione agisce **al
+  buio**. Perciò ogni intento che **impegna** il giocatore (una puntata, una carta, un fold, un
+  terminale) è vincolato a una **corrispondenza**: nulla di narrato può essere ancora in attesa di
+  consegna, e — dove il gioco lo consente in modo netto, come le carte della mano al Blackjack — ciò
+  che è **sullo schermo** deve essere ciò su cui si sta **decidendo**. Il vincolo di corrispondenza è
+  derivato da stato pubblicato, così i **pulsanti** ci si agganciano e l'interfaccia resta onesta.
+
+- **Nei giochi con azioni IRREVERSIBILI la protezione dalla doppia azione è un livello di sicurezza
+  INDIPENDENTE dalla correttezza del flusso (D-106).** Non è un duplicato del fix: è la cintura che
+  regge **il giorno in cui il difetto tornasse**. Con la cintura, il caso peggiore degrada da "una
+  seconda carta cieca che sballa una mano vincente" a "un'interfaccia ferma", che è **recuperabile**.
+  Va progettata su **due gate distinti**, perché catturano cose diverse: la **corrispondenza** (sopra),
+  che non è un'euristica e vale anche a distanza di secondi; e una **soglia temporale** che separa il
+  rimbalzo del dito da una decisione. Vincolo che evita il **difetto opposto**: la soglia si misura
+  **dall'azione precedente del giocatore, non da quando la decisione è comparsa** — misurata dalla
+  comparsa, ogni turno comincerebbe coi pulsanti morti e la **prima** pressione, del tutto legittima,
+  verrebbe ingoiata. E un input **rifiutato** suona il segnale di rifiuto (`ui_cancel`): una pressione
+  che non fa nulla e non suona nulla è indistinguibile da un'app rotta — soprattutto per chi non vede.
 
 ## 5. Testabilità
 

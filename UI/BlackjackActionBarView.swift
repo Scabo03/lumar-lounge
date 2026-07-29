@@ -67,29 +67,29 @@ struct BlackjackActionBarView: View {
                 BlackjackActionButton(title: uiLocalized("blackjack.action.hit"),
                                       a11yLabel: uiLocalized("blackjack.action.hit.a11y"),
                                       identifier: "action.hit", sortPriority: 70, kind: .accent,
-                                      enabled: turn?.legal.canHit ?? false) { model.hit() }
+                                      enabled: model.decisionIsShown && (turn?.legal.canHit ?? false)) { model.hit() }
 
                 BlackjackActionButton(title: uiLocalized("blackjack.action.stand"),
                                       a11yLabel: uiLocalized("blackjack.action.stand.a11y"),
                                       identifier: "action.stand", sortPriority: 69, kind: .neutral,
-                                      enabled: turn?.legal.canStand ?? false) { model.stand() }
+                                      enabled: model.decisionIsShown && (turn?.legal.canStand ?? false)) { model.stand() }
             }
 
             HStack(spacing: 8) {
                 BlackjackActionButton(title: uiLocalized("blackjack.action.double"),
                                       a11yLabel: uiLocalized("blackjack.action.double.a11y"),
                                       identifier: "action.double", sortPriority: 68, kind: .quiet,
-                                      enabled: turn?.legal.canDouble ?? false) { model.double() }
+                                      enabled: model.decisionIsShown && (turn?.legal.canDouble ?? false)) { model.double() }
 
                 BlackjackActionButton(title: uiLocalized("blackjack.action.split"),
                                       a11yLabel: uiLocalized("blackjack.action.split.a11y"),
                                       identifier: "action.split", sortPriority: 67, kind: .quiet,
-                                      enabled: turn?.legal.canSplit ?? false) { model.split() }
+                                      enabled: model.decisionIsShown && (turn?.legal.canSplit ?? false)) { model.split() }
 
                 BlackjackActionButton(title: uiLocalized("blackjack.action.surrender"),
                                       a11yLabel: uiLocalized("blackjack.action.surrender.a11y"),
                                       identifier: "action.surrender", sortPriority: 66, kind: .danger,
-                                      enabled: turn?.legal.canSurrender ?? false) { model.surrender() }
+                                      enabled: model.decisionIsShown && (turn?.legal.canSurrender ?? false)) { model.surrender() }
             }
         }
     }

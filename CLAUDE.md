@@ -212,6 +212,20 @@ delle puntate è **compattata in vere griglie** (interne per tipo a 4 colonne co
 tappeto classico 12×3 con zero in testa); frequenza di navigazione, label piene, identifier e slip
 invariati. 666 test verdi.
 
+**Sessione «l'interfaccia non avanza» — la causa comune trovata (D-106):** il difetto che tornava
+sotto volti diversi (focus appeso, parlato troncato, doppia pressione necessaria) ha **una sola**
+radice, e non era nel canale parlato: il ciclo che consuma il flusso sceglieva fra «presenta
+l'evento» e «offri il turno» campionando **due sorgenti a cavallo di un `await`**, così il turno
+poteva essere offerto su uno stato che il giocatore non aveva visto — e poiché la sospensione
+congela **lo stesso ciclo** che drena la coda, l'unica chiave per sbloccare era **un'altra
+pressione**, che al Blackjack pesca una **seconda carta vera**. Riprodotto con un harness che lo
+innesca a ogni esecuzione (**4–6% quieto, 40–46% sotto contesa MainActor** — la contesa che sul
+telefono fornisce SwiftUI; **0 su ~1400 dopo il fix**). Corretto **nei consumatori** in tutti e
+sette i tavoli (`ConsumerHandoff.isCaughtUp`), driver **non** toccati. In più una **cintura
+indipendente**: un input che impegna il giocatore è rifiutato se lo stato non è mostrato o se arriva
+entro il rimbalzo del dito — così il peggio possibile è un'interfaccia ferma, mai un'azione
+irreversibile al buio. 672 test verdi.
+
 **Sessione Roulette — GIOCABILE (D-103):** i due tavoli di **Roulette** sono ora **giocabili** a
 Riverwood (min 10/max 500, buy-in 1000) e Skypool (min 50/max 2500, buy-in 5000). Tre zone su **un
 solo `RouletteBetSlip`** (tabella di selezione ordinata per **frequenza**, fascia-registro coi
@@ -3552,3 +3566,117 @@ fanno spazio.
   visivo e navigazione disaccoppiati), gli identifier, lo slip unico (D-102), il motore (solo
   `wheelOrder` additivo), driver ed eventi. **666 test verdi** (+5: anello pinnato, spinTarget,
   geometria angolare, partizione esatta dei sottogruppi, etichette corte); app iOS compila.
+
+### D-106 — La causa comune dietro «l'interfaccia non avanza»: una decisione presa a cavallo di un `await` (e la cintura contro la doppia azione)
+Difetto già affrontato più volte sotto volti diversi — focus appeso (D-092), parlato troncato
+(D-096), necessità di premere due volte — e ogni volta corretto **nella sua istanza**. Questa
+sessione ha cercato la **radice condivisa**, e ce n'è **una sola**.
+
+**LA CAUSA, al fondo.** Tutti e sette i tavoli drenano il driver con la stessa forma: un task
+`relay` accoda gli eventi dello stream in un `eventQueue`, `produce` fa girare il driver a
+velocità di codice, e `consume` alterna «presenta il prossimo evento» e «offri la sospensione
+umana». Quel ciclo sceglieva fra i due **campionando due sorgenti aggiornate indipendentemente a
+cavallo di un punto di sospensione**:
+```swift
+if !eventQueue.isEmpty { present(...) }              // letto in modo sincrono
+else if let ctx = await human.pendingTurn { ... }    // …poi un salto d'attore
+```
+Durante quel salto la relay può accodare **proprio gli eventi che raccontano ciò che è appena
+successo**. Il ciclo agisce allora sulla lettura stantia e offre il turno lo stesso: i pulsanti si
+accendono su una mano che il giocatore **non ha visto**. E poiché `runTurn` sospende **lo stesso
+ciclo** che drena la coda, quegli eventi restano **congelati** finché il giocatore non agisce.
+**L'unica chiave che sblocca l'interfaccia è un'altra pressione — e quella pressione è un'azione di
+gioco viva.** Al Blackjack: una seconda carta vera. È un check-then-act classico, non una stranezza
+del progetto; il progetto lo ha solo replicato **sette volte** perché i view model sono nati per
+copia della stessa forma provata (D-021).
+- **Perché spiega tutti e tre i volti.** *Stato fermo*: il turno è installato sullo stato
+  precedente. *Parlato mancante*: l'evento non viene mai presentato, quindi la sua riga non viene
+  mai nemmeno generata — e `runTurn` chiama `conductor.flushPending()`, che spazzava via anche ciò
+  che era già in coda. *Doppia pressione*: è letteralmente l'unico modo di uscirne.
+- **Una causa o più?** **Una.** La seconda pista (il flush che distrugge la narrazione) è stata
+  **misurata e scartata come causa**: al Blackjack il flush non ha mai trovato nulla in attesa
+  (`flushedTotal = 0` in entrambe le modalità) e le righe della carta pescata arrivano (277/281 con
+  modalità OFF, 11/11 con modalità ON). Resta però una **violazione latente** dell'invariante di
+  Strategy C — «high non si scarta mai: il giocatore non perde mai le proprie carte, il proprio
+  turno, il proprio risultato» (D-085) — perché il flush spazzava **incondizionatamente**. Corretta
+  come irrobustimento, non come causa: `flushPending` (conductor **e** coda) ora **conserva le
+  `.high`**; il cue time-critical è esso stesso high e si accoda dietro, che è anche l'ordine giusto
+  (senti le tue carte, poi ti si chiede di agire).
+
+**COME È STATO RIPRODOTTO — rapporto onesto.** È una **race di ordinamento**: nessuna singola
+occorrenza è deterministica, e non ho trovato un modo di forzare l'interleaving senza mettere in
+produzione un seam artificiale. Ciò che **è** deterministico è l'**harness**: far girare mani vere e
+campionare l'invariante a **ogni** decisione offerta lo innesca **a ogni esecuzione**. E si amplifica
+in modo mirato aggiungendo **contesa sul MainActor** — che è ciò che SwiftUI fornisce sul dispositivo
+e `swift test` no, il che spiega anche perché il difetto si vede sul telefono e non in laboratorio.
+Misurato su questo host, **prima** del fix:
+
+| | decisioni offerte | offerte su stato non mostrato |
+|---|---|---|
+| host quieto | 239 / 240 / 238 | 10 / 15 / 14 → **4,2% · 6,2% · 5,9%** |
+| sotto contesa MainActor | 240 / 240 / 240 | 110 / 96 / 100 → **45,8% · 40,0% · 41,7%** |
+
+In **tutte** le occorrenze la mano sul tavolo era diversa dalla mano su cui si stava decidendo
+(`handMismatch == staleOffers`, 11 su 11 nella prima misura) — cioè l'invariante di corrispondenza
+è **esattamente equivalente** a «la coda è drenata», senza falsi positivi. **Dopo** il fix: **0 su
+~1400**, quieto e sotto contesa. A ~42% per decisione su ~240 decisioni, la probabilità che una
+singola esecuzione dell'harness non inneschi nulla è ~10⁻⁵⁷: l'harness è un innesco affidabile anche
+se la singola occorrenza non lo è.
+
+**IL FIX, alla radice.** Il driver **emette tutto ciò che descrive il nuovo stato PRIMA di chiedere
+la mossa successiva** (`emit` happens-before `provideAction`, in tutti e sette i giochi). È la
+garanzia che rende il fix sano: quando compare una richiesta di input, tutto ciò che spiega lo stato
+è **già nello stream**. Non è però necessariamente nella coda del consumatore — fra l'hub e
+`eventQueue` c'è un **terzo buffer**, l'`AsyncStream`, e per questo **ri-leggere la coda non basta**:
+bisogna **lasciar girare la relay**. Nuovo `ConsumerHandoff.isCaughtUp` (`UI`, puro, game-agnostico):
+cede il MainActor un numero limitato di volte e ri-verifica. Applicato a **tutti e sette** i tavoli,
+su **ogni** sospensione umana (turno, puntata, scambio del Draw, turno del Machiavelli, slip della
+Roulette). **Nessun driver è stato rallentato e nessun produttore conosce il ritmo umano** (D-018):
+la correzione vive interamente nei consumatori. Corretto per strada anche il `!= nil` + **unwrap
+forzato** su due salti d'attore separati nel Draw — lo stesso check-then-act nella sua forma più
+tagliente (un crash invece di un turno stantio).
+
+**LA CINTURA (livello indipendente).** A prescindere dal fix, un input non deve **mai** agire su uno
+stato non pronto. `InputReadiness` + il gate `decisionIsShown` in ognuno dei sette view model, con
+**due gate distinti perché catturano cose diverse**:
+- **Corrispondenza** (non è un'euristica): nulla di narrato ancora in consegna, e al Blackjack anche
+  `state.hands[i].cards == turn.cards` — le carte **sullo schermo** sono le carte su cui si decide.
+  È il gate che **regge se il difetto tornasse**, anche a distanza di secondi: con display stantio
+  ogni pressione è rifiutata, quindi il peggio è un'interfaccia ferma (recuperabile) e **mai**
+  un'azione dannosa irreversibile. È derivato da stato pubblicato, quindi i **pulsanti** ci si
+  agganciano (barra azioni del Blackjack) e l'interfaccia resta onesta.
+- **Freschezza** (soglia 0,35 s): separa il rimbalzo del dito da una decisione. **Misurata
+  dall'azione precedente del giocatore, NON da quando la decisione è comparsa** — ed è tutta la
+  differenza fra una cintura e un nuovo difetto: misurata dalla comparsa, ogni turno comincerebbe coi
+  pulsanti morti e la **prima** pressione, legittima, verrebbe ingoiata. Misurata dall'azione
+  precedente, la prima pressione è **sempre** immediata, mentre una seconda può essere onorata solo
+  quando è passato più di un rimbalzo. Non è un budget di percezione: la percezione è protetta dal
+  fix, che mostra e pronuncia il nuovo stato **prima** che il turno sia offerto.
+- Un input **rifiutato** suona `ui_cancel` e non tace: una pressione che non fa nulla e non suona
+  nulla è indistinguibile da un'app rotta, e chi non vede non ha altro modo di distinguerle.
+- Applicata a **ogni** intento che impegna: Blackjack (`hit/stand/double/split/surrender` +
+  conferma della posta), poker (`fold`/`checkOrCall`/`confirmRaise`, e `betOpen`/`raise`/
+  `confirmDraw` al Draw), Machiavelli (il terminale `submit`), Roulette (`confirm`). Soglia **0** in
+  `-uiTesting` e nei test unitari, dove l'input arriva da un programma e non da un dito.
+
+**COSA GARANTISCE IL SIMULATORE E COSA NO.** Il test host **prova** che l'invariante regge sotto la
+contesa che l'harness sa produrre, e che la cintura distingue rimbalzo e decisione (con **orologio
+iniettato**, quindi in modo esatto e non dormendo). **Non** può garantire i tempi reali del
+dispositivo: lì le completion audio, la latenza di VoiceOver e il carico di rendering di SwiftUI sono
+altri (lezione D-056), e la contesa reale è **più** severa di quella simulata — motivo per cui il
+difetto si vedeva sul telefono con una frequenza che l'host quieto sottostimava di quasi dieci volte.
+**Da confermare sul dispositivo:** che dopo ogni pressione (Carta in particolare) l'interfaccia
+avanzi **sempre** e annunci la carta uscita senza dover premere due volte; che una doppia pressione
+rapida non peschi mai due carte; e che nessuna pressione legittima venga ingoiata (il tavolo non deve
+risultare meno reattivo). Se dovesse comparire un rifiuto udibile (`ui_cancel`) durante gioco
+normale, va segnalato: significherebbe che la corrispondenza è violata sul dispositivo in un modo che
+l'host non riproduce.
+
+**Verifiche.** I `CheckedContinuation` sono stati riesaminati come richiesto: quelli dei view model
+attendono **input umano** e non devono avere timeout (un giocatore può pensare a lungo); quelli che
+attendono una **notifica esterna** sono già limitati — `AudioEngine` garantisce la completion (D-056:
+delegate, oppure `play()` fallita, oppure timeout durata+0,6 s, al più una volta) e
+`AnnouncementQueue` ha il proprio tetto per elemento. Nessuna `UIAccessibility.post` diretta (guard
+statico verde). Stabilità del sottoalbero d'accessibilità preservata (nessun modificatore aggiunge o
+rimuove sottoviste). Budget del canale **non** alzato. Nessun motore toccato, nessun tavolo aggiunto.
+**672 test verdi** (666 + 6); app iOS compila.

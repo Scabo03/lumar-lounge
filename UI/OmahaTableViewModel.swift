@@ -90,6 +90,9 @@ public final class OmahaTableViewModel: ObservableObject {
     private let announcements = AnnouncementQueue()
     private let gate = HandGate()
     private let fastMode: Bool
+    /// The safety belt (D-106). Zero settle under `-uiTesting`, where input
+    /// comes from a program rather than a finger.
+    private var readiness: InputReadiness
     private let audio: AudioServicing
     private let audioDirector: OmahaAudioDirector
     private let conductor: SpeechConductor
@@ -108,6 +111,8 @@ public final class OmahaTableViewModel: ObservableObject {
     /// showdown instead of narrating rounds they cannot act in (D-087).
     private var fastForward = false
     private var eventQueue: [OmahaEventPayload] = []
+    /// How much of what just happened the player has NOT been shown yet (D-106).
+    var undeliveredCount: Int { eventQueue.count }
     private var streamFinished = false
     private var turnContinuation: CheckedContinuation<Void, Never>?
     private var shownCategory: [Int: HandCategory] = [:]
@@ -126,6 +131,7 @@ public final class OmahaTableViewModel: ObservableObject {
                 casinoAudio: CasinoAudio = .skypool,
                 onLeave: @escaping (Int) -> Void = { _ in }) {
         self.fastMode = fastMode
+        self.readiness = InputReadiness(settle: fastMode ? 0 : InputReadiness.defaultSettle)
         self.audio = audio
         self.mode = mode
         self.rules = rules
@@ -222,6 +228,9 @@ public final class OmahaTableViewModel: ObservableObject {
             if !eventQueue.isEmpty {
                 await present(eventQueue.removeFirst())
             } else if let context = await human.pendingContext {
+                // D-106: the queue's emptiness was sampled BEFORE the actor hop
+                // above; the relay can have appended what just happened during it.
+                guard await ConsumerHandoff.isCaughtUp({ self.eventQueue.isEmpty }) else { continue }
                 await runHumanTurn(context)
             } else if streamFinished {
                 break
@@ -416,11 +425,32 @@ public final class OmahaTableViewModel: ObservableObject {
         if state.activeSeatID == heroSeatID { state.activeSeatID = nil }
     }
 
+    /// THE SAFETY BELT, correspondence half (D-106): the player may only act on a
+    /// decision they are actually being SHOWN — nothing narrated may still be
+    /// undelivered. Derived from published state, so the view renders with it.
+    public var decisionIsShown: Bool {
+        humanTurn != nil && turnContinuation != nil && undeliveredCount == 0
+    }
+
+    /// The gate for every intent that COMMITS the player to something (D-106).
+    /// A refused press sounds the rejection cue rather than doing nothing
+    /// silently, which a blind player could not tell from a broken app.
+    private func acceptsInput() -> Bool {
+        guard humanTurn != nil, turnContinuation != nil else { return false }
+        guard decisionIsShown, readiness.isSettled else {
+            playUI(SoundCatalog.uiCancel)
+            SpokenLog.log("input REFUSED (shown=\(decisionIsShown) settled=\(readiness.isSettled))")
+            return false
+        }
+        return true
+    }
+
     private func act(_ action: OmahaAction) {
         guard let continuation = turnContinuation else { return }
         turnContinuation = nil
         humanTurn = nil
         raiseBox = nil
+        readiness.accept()
         Task {
             await human.submit(action)
             continuation.resume()
@@ -430,13 +460,14 @@ public final class OmahaTableViewModel: ObservableObject {
     // MARK: - Action-bar + raise-box intents (called by the view)
 
     public func fold() {
+        guard acceptsInput() else { return }
         playUI(SoundCatalog.uiButtonTap)
         fastForward = true      // run straight to the showdown (D-087)
         act(.fold)
     }
 
     public func checkOrCall() {
-        guard let turn = humanTurn else { return }
+        guard let turn = humanTurn, acceptsInput() else { return }
         playUI(SoundCatalog.uiButtonTap)
         act(turn.canCheck ? .check : .call)
     }
@@ -485,7 +516,7 @@ public final class OmahaTableViewModel: ObservableObject {
     }
 
     public func confirmRaise() {
-        guard let box = raiseBox else { return }
+        guard let box = raiseBox, acceptsInput() else { return }
         playUI(SoundCatalog.uiConfirm)
         // Always a bet/raise "to" the chosen value: the engine makes it all-in
         // automatically when the value equals the whole stack; a pot-capped max is a

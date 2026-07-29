@@ -95,6 +95,9 @@ public final class MachiavelliTableViewModel: ObservableObject {
     private let announcements = AnnouncementQueue()
     private let gate = HandGate()
     private let fastMode: Bool
+    /// The safety belt (D-106). Zero settle under `-uiTesting`, where input
+    /// comes from a program rather than a finger.
+    private var readiness: InputReadiness
     private let audio: AudioServicing
     private let audioDirector: MachiavelliAudioDirector
     private let conductor: SpeechConductor
@@ -107,6 +110,8 @@ public final class MachiavelliTableViewModel: ObservableObject {
     /// Set once the player has stood up: stop narrating, never offer another turn (D-086).
     private var hasLeft = false
     private var eventQueue: [MachiavelliEventPayload] = []
+    /// How much of what just happened the player has NOT been shown yet (D-106).
+    var undeliveredCount: Int { eventQueue.count }
     private var streamFinished = false
     private var turnContinuation: CheckedContinuation<Void, Never>?
     /// The context the human's current turn started from (for "restart turn").
@@ -126,6 +131,7 @@ public final class MachiavelliTableViewModel: ObservableObject {
                 returnLabel: String,
                 onLeave: @escaping (Int) -> Void = { _ in }) {
         self.fastMode = fastMode
+        self.readiness = InputReadiness(settle: fastMode ? 0 : InputReadiness.defaultSettle)
         self.audio = audio
         self.mode = mode
         self.buyIn = rules.buyIn
@@ -247,6 +253,9 @@ public final class MachiavelliTableViewModel: ObservableObject {
             if !eventQueue.isEmpty {
                 await present(eventQueue.removeFirst())
             } else if await human.isWaiting, let context = await human.pendingContext {
+                // D-106: the queue's emptiness was sampled BEFORE the actor hops
+                // above; the relay can have appended what just happened during them.
+                guard await ConsumerHandoff.isCaughtUp({ self.eventQueue.isEmpty }) else { continue }
                 await runHumanTurn(context)
             } else if streamFinished {
                 break
@@ -409,8 +418,23 @@ public final class MachiavelliTableViewModel: ObservableObject {
         announcements.announceLiveValue(uiLocalized("machiavelli.turn.restarted"))
     }
 
+    /// THE SAFETY BELT, correspondence half (D-106): the player may only act on a
+    /// decision they are actually being SHOWN — nothing narrated may still be
+    /// undelivered. Derived from published state, so the view renders with it.
+    public var decisionIsShown: Bool {
+        workspace != nil && turnContinuation != nil && undeliveredCount == 0
+    }
+
     private func submit(_ terminal: MachiavelliTerminal) {
         guard let ws = workspace, let continuation = turnContinuation else { return }
+        // The terminal ENDS the turn irreversibly — passing or drawing cannot be
+        // taken back — so it carries the belt (D-106).
+        guard decisionIsShown, readiness.isSettled else {
+            playUI(SoundCatalog.uiCancel)
+            SpokenLog.log("terminal REFUSED (shown=\(decisionIsShown) settled=\(readiness.isSettled))")
+            return
+        }
+        readiness.accept()
         turnContinuation = nil
         let plan = MachiavelliTurnPlan(finalTable: ws.finalArrangement, terminal: terminal)
         workspace = nil

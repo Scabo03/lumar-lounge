@@ -87,6 +87,9 @@ public final class TableViewModel: ObservableObject {
     private let announcements = AnnouncementQueue()
     private let gate = HandGate()
     private let fastMode: Bool
+    /// The safety belt (D-106). Zero settle under `-uiTesting`, where input
+    /// comes from a program rather than a finger.
+    private var readiness: InputReadiness
     private let audio: AudioServicing
     private let audioDirector: AudioDirector
     /// The serial owner of the croupier voice + VoiceOver synthesis (D-029).
@@ -120,6 +123,8 @@ public final class TableViewModel: ObservableObject {
     private var sawFlopThisHand = false
 
     private var eventQueue: [EventPayload] = []
+    /// How much of what just happened the player has NOT been shown yet (D-106).
+    var undeliveredCount: Int { eventQueue.count }
     private var streamFinished = false
     private var turnContinuation: CheckedContinuation<Void, Never>?
     /// Each seat's revealed hand at showdown (category + best five), for the pot
@@ -145,6 +150,7 @@ public final class TableViewModel: ObservableObject {
                 casinoAudio: CasinoAudio = .riverwood,
                 onLeave: @escaping (Int) -> Void = { _ in }) {
         self.fastMode = fastMode
+        self.readiness = InputReadiness(settle: fastMode ? 0 : InputReadiness.defaultSettle)
         self.audio = audio
         self.mode = mode
         self.rules = rules
@@ -277,6 +283,9 @@ public final class TableViewModel: ObservableObject {
             if !eventQueue.isEmpty {
                 await present(eventQueue.removeFirst())
             } else if let context = await human.pendingContext {
+                // D-106: the queue's emptiness was sampled BEFORE the actor hop
+                // above; the relay can have appended what just happened during it.
+                guard await ConsumerHandoff.isCaughtUp({ self.eventQueue.isEmpty }) else { continue }
                 await runHumanTurn(context)
             } else if streamFinished {
                 break
@@ -540,11 +549,34 @@ public final class TableViewModel: ObservableObject {
     }
 
     /// Forwards the human's chosen action to the driver and resumes the turn.
+    /// THE SAFETY BELT, correspondence half (D-106): the player may only act on a
+    /// decision they are actually being SHOWN — nothing narrated may still be
+    /// undelivered. Derived from published state, so the view renders with it.
+    public var decisionIsShown: Bool {
+        humanTurn != nil && turnContinuation != nil && undeliveredCount == 0
+    }
+
+    /// The gate for every intent that COMMITS the player to something (D-106). A
+    /// press on a decision that is not fully shown, or within a finger bounce of
+    /// the previous one, is refused with the project's rejection cue rather than
+    /// silently: a press that does nothing and sounds like nothing reads as a
+    /// broken app, and a blind player has no other way to tell the two apart.
+    private func acceptsInput() -> Bool {
+        guard humanTurn != nil, turnContinuation != nil else { return false }
+        guard decisionIsShown, readiness.isSettled else {
+            playUI(SoundCatalog.uiCancel)
+            SpokenLog.log("input REFUSED (shown=\(decisionIsShown) settled=\(readiness.isSettled))")
+            return false
+        }
+        return true
+    }
+
     private func act(_ action: Action) {
         guard let continuation = turnContinuation else { return }
         turnContinuation = nil
         humanTurn = nil // hide immediately to prevent a double action
         raiseBox = nil
+        readiness.accept()
         Task {
             await human.submit(action)
             continuation.resume()
@@ -554,6 +586,7 @@ public final class TableViewModel: ObservableObject {
     // MARK: - Action-bar intents (called by the view)
 
     public func fold() {
+        guard acceptsInput() else { return }
         playUI(SoundCatalog.uiButtonTap)
         // FAST-FORWARD (D-087): once the human is out of the hand, the betting rounds
         // they are not part of are skipped — no pauses, no narration — and the hand
@@ -565,7 +598,7 @@ public final class TableViewModel: ObservableObject {
     }
 
     public func checkOrCall() {
-        guard let turn = humanTurn else { return }
+        guard let turn = humanTurn, acceptsInput() else { return }
         playUI(SoundCatalog.uiButtonTap)
         act(turn.canCheck ? .check : .call)
     }
@@ -601,7 +634,7 @@ public final class TableViewModel: ObservableObject {
     }
 
     public func confirmRaise() {
-        guard let box = raiseBox, let turn = humanTurn else { return }
+        guard let box = raiseBox, let turn = humanTurn, acceptsInput() else { return }
         playUI(SoundCatalog.uiConfirm)
         let action: Action
         if box.isAtMax && turn.canAllIn {

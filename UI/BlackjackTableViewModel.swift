@@ -49,12 +49,20 @@ public final class BlackjackTableViewModel: ObservableObject {
     private let onLeave: (Int) -> Void
 
     private var eventQueue: [BlackjackEventPayload] = []
+    /// How much of what just happened the player has NOT been shown yet. This is
+    /// what distinguishes "the interface is showing the current hand" from "the
+    /// buttons are live for a hand the player has not been shown" (D-106) — the
+    /// reproduction samples it, and the safety belt refuses input while it is > 0.
+    var undeliveredCount: Int { eventQueue.count }
     private var streamFinished = false
     private var turnContinuation: CheckedContinuation<Void, Never>?
     private var betContinuation: CheckedContinuation<Void, Never>?
     private var leaveRequested = false
     private var hasLeft = false
     private var lastBet: Int?
+    /// The safety belt (D-106). Zero settle under `-uiTesting`, where input comes
+    /// from a program rather than a finger.
+    private var readiness: InputReadiness
     /// Whether the dealer's total has been said this round, so the combined
     /// end-of-hand line names it once even across a split (D-098).
     private var dealerClauseSaid = false
@@ -71,6 +79,7 @@ public final class BlackjackTableViewModel: ObservableObject {
         let rootSeed = seed ?? UInt64.random(in: .min ... .max)
 
         self.fastMode = fastMode
+        self.readiness = InputReadiness(settle: fastMode ? 0 : InputReadiness.defaultSettle)
         self.audio = audio
         self.mode = mode
         self.casinoAudio = casinoAudio
@@ -131,8 +140,14 @@ public final class BlackjackTableViewModel: ObservableObject {
             if !eventQueue.isEmpty {
                 await present(eventQueue.removeFirst())
             } else if let context = await human.pendingTurn {
+                // D-106: the emptiness of the queue was sampled BEFORE the actor
+                // hop above, and the relay can have appended what just happened
+                // during it. Offering the turn on that stale reading is how the
+                // buttons went live over a hand the player had not been shown.
+                guard await ConsumerHandoff.isCaughtUp({ self.eventQueue.isEmpty }) else { continue }
                 await runTurn(context)
             } else if let context = await human.pendingBet {
+                guard await ConsumerHandoff.isCaughtUp({ self.eventQueue.isEmpty }) else { continue }
                 await runBet(context)
             } else if streamFinished {
                 break
@@ -149,6 +164,9 @@ public final class BlackjackTableViewModel: ObservableObject {
         case .roundBegan:
             conductor.handBegan()
             dealerClauseSaid = false
+            // A new round is a new decision sequence: there is no previous action
+            // for the next press to be a bounce of (D-106).
+            readiness.reset()
             state = BlackjackTableReducer.reduce(state, payload)
             await pace(payload)
 
@@ -275,6 +293,11 @@ public final class BlackjackTableViewModel: ObservableObject {
     /// test and the end-of-round waiting must still be exercised (D-098).
     var forceListeningForTests = false
 
+    /// Test seam (D-106): drives the safety belt from a controlled clock, so the
+    /// difference between a finger bounce and a real second decision can be tested
+    /// exactly rather than by sleeping and hoping.
+    func setInputReadinessForTests(_ readiness: InputReadiness) { self.readiness = readiness }
+
     private func pause(_ seconds: Double) async {
         let effective = fastMode ? 0.01 : seconds
         try? await Task.sleep(nanoseconds: UInt64(effective * 1_000_000_000))
@@ -343,6 +366,13 @@ public final class BlackjackTableViewModel: ObservableObject {
 
     public func confirmBet() {
         guard let box = betBox, let continuation = betContinuation else { return }
+        // The same belt on the other committing input (D-106): a wager is money.
+        guard undeliveredCount == 0, readiness.isSettled else {
+            playUI(SoundCatalog.uiCancel)
+            SpokenLog.log("wager REFUSED (undelivered=\(undeliveredCount) settled=\(readiness.isSettled))")
+            return
+        }
+        readiness.accept()
         betContinuation = nil
         betBox = nil
         lastBet = box.value
@@ -359,10 +389,39 @@ public final class BlackjackTableViewModel: ObservableObject {
     public func split()     { act(.split) }
     public func surrender() { act(.surrender) }
 
+    /// THE SAFETY BELT, correspondence half (D-106): the player may only act on a
+    /// hand they are actually being SHOWN. Nothing narrated may still be
+    /// undelivered, and the cards on the table must be the cards the decision is
+    /// about — so a press can never draw a card against a hand the player has not
+    /// seen. This is what the buttons gate on: it is derived entirely from
+    /// published state, so the view re-renders with it.
+    ///
+    /// The temporal half deliberately does NOT live here. It is a clock, and a
+    /// clock in a rendering gate would leave the buttons dead with nothing to
+    /// wake the view; it is enforced in `act`, where refusing costs nothing.
+    public var decisionIsShown: Bool {
+        guard let turn, turnContinuation != nil else { return false }
+        guard undeliveredCount == 0 else { return false }
+        guard state.hands.indices.contains(turn.handIndex) else { return false }
+        return state.hands[turn.handIndex].cards == turn.cards
+    }
+
     private func act(_ action: BlackjackAction) {
+        // Nothing on offer at all: silent, as before — this is an ordinary stray tap.
+        guard turn != nil, turnContinuation != nil else { return }
+        // Something IS on offer but is not safe to act on. Refuse, and say so with
+        // the project's established rejection cue rather than silently: a press
+        // that does nothing and sounds like nothing reads as a broken app, and a
+        // blind player has no other way to tell the two apart.
+        guard decisionIsShown, readiness.isSettled else {
+            playUI(SoundCatalog.uiCancel)
+            SpokenLog.log("input REFUSED (shown=\(decisionIsShown) settled=\(readiness.isSettled)) \(action)")
+            return
+        }
         guard let continuation = turnContinuation else { return }
         turnContinuation = nil
         turn = nil
+        readiness.accept()
         playUI(SoundCatalog.uiButtonTap)
         Task {
             await human.submitAction(action)

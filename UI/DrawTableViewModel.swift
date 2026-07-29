@@ -99,6 +99,9 @@ public final class DrawTableViewModel: ObservableObject {
     private let announcements = AnnouncementQueue()
     private let gate = HandGate()
     private let fastMode: Bool
+    /// The safety belt (D-106). Zero settle under `-uiTesting`, where input
+    /// comes from a program rather than a finger.
+    private var readiness: InputReadiness
     private let audio: AudioServicing
     private let audioDirector: DrawAudioDirector
     private let conductor: SpeechConductor
@@ -115,6 +118,8 @@ public final class DrawTableViewModel: ObservableObject {
     private var fastForward = false
 
     private var eventQueue: [DrawEventPayload] = []
+    /// How much of what just happened the player has NOT been shown yet (D-106).
+    var undeliveredCount: Int { eventQueue.count }
     private var streamFinished = false
     private var turnContinuation: CheckedContinuation<Void, Never>?
     private var drawContinuation: CheckedContinuation<Void, Never>?
@@ -133,6 +138,7 @@ public final class DrawTableViewModel: ObservableObject {
                 returnLabel: String,
                 onLeave: @escaping (Int) -> Void = { _ in }) {
         self.fastMode = fastMode
+        self.readiness = InputReadiness(settle: fastMode ? 0 : InputReadiness.defaultSettle)
         self.audio = audio
         self.mode = mode
         self.rules = rules
@@ -232,10 +238,17 @@ public final class DrawTableViewModel: ObservableObject {
         while !Task.isCancelled, !hasLeft {
             if !eventQueue.isEmpty {
                 await present(eventQueue.removeFirst())
-            } else if await human.pendingAction != nil {
-                await runBettingTurn(await human.pendingAction!)
-            } else if await human.pendingDraw != nil {
-                await runDrawTurn(await human.pendingDraw!)
+            } else if let context = await human.pendingAction {
+                // D-106: the queue's emptiness was sampled BEFORE the actor hop
+                // above; the relay can have appended what just happened during it.
+                // (The two reads this branch used to make — `!= nil` then a forced
+                // unwrap, across two separate hops — were the same check-then-act
+                // hazard in its sharpest form: a crash rather than a stale turn.)
+                guard await ConsumerHandoff.isCaughtUp({ self.eventQueue.isEmpty }) else { continue }
+                await runBettingTurn(context)
+            } else if let context = await human.pendingDraw {
+                guard await ConsumerHandoff.isCaughtUp({ self.eventQueue.isEmpty }) else { continue }
+                await runDrawTurn(context)
             } else if streamFinished {
                 break
             } else {
@@ -436,10 +449,31 @@ public final class DrawTableViewModel: ObservableObject {
         if state.activeSeatID == heroSeatID { state.activeSeatID = nil }
     }
 
+    /// THE SAFETY BELT, correspondence half (D-106): the player may only act on a
+    /// decision they are actually being SHOWN — nothing narrated may still be
+    /// undelivered. Derived from published state, so the view renders with it.
+    public var decisionIsShown: Bool {
+        bettingTurn != nil && turnContinuation != nil && undeliveredCount == 0
+    }
+
+    /// The gate for every intent that COMMITS the player to something (D-106).
+    /// A refused press sounds the rejection cue rather than doing nothing
+    /// silently, which a blind player could not tell from a broken app.
+    private func acceptsInput() -> Bool {
+        guard bettingTurn != nil, turnContinuation != nil else { return false }
+        guard decisionIsShown, readiness.isSettled else {
+            playUI(SoundCatalog.uiCancel)
+            SpokenLog.log("input REFUSED (shown=\(decisionIsShown) settled=\(readiness.isSettled))")
+            return false
+        }
+        return true
+    }
+
     private func act(_ action: DrawAction) {
         guard let continuation = turnContinuation else { return }
         turnContinuation = nil
         bettingTurn = nil
+        readiness.accept()
         Task {
             await human.submitAction(action)
             continuation.resume()
@@ -447,22 +481,23 @@ public final class DrawTableViewModel: ObservableObject {
     }
 
     public func fold() {
+        guard acceptsInput() else { return }
         playUI(SoundCatalog.uiButtonTap)
         fastForward = true      // run straight to the showdown (D-087)
         act(.fold)
     }
     public func checkOrCall() {
-        guard let turn = bettingTurn else { return }
+        guard let turn = bettingTurn, acceptsInput() else { return }
         playUI(SoundCatalog.uiButtonTap)
         act(turn.canCheck ? .check : .call)
     }
     public func betOpen() {
-        guard bettingTurn?.canBet == true else { return }
+        guard bettingTurn?.canBet == true, acceptsInput() else { return }
         playUI(SoundCatalog.uiConfirm)
         act(.bet)
     }
     public func raise() {
-        guard bettingTurn?.canRaise == true else { return }
+        guard bettingTurn?.canRaise == true, acceptsInput() else { return }
         playUI(SoundCatalog.uiConfirm)
         act(.raise)
     }
@@ -503,6 +538,13 @@ public final class DrawTableViewModel: ObservableObject {
 
     public func confirmDraw() {
         guard let box = drawBox, let continuation = drawContinuation else { return }
+        // The exchange is committing too, and irreversible (D-106).
+        guard undeliveredCount == 0, readiness.isSettled else {
+            playUI(SoundCatalog.uiCancel)
+            SpokenLog.log("discards REFUSED (undelivered=\(undeliveredCount) settled=\(readiness.isSettled))")
+            return
+        }
+        readiness.accept()
         drawContinuation = nil
         let discards = box.orderedDiscards
         drawBox = nil

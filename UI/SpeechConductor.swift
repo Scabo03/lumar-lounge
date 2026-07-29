@@ -113,9 +113,29 @@ public final class SpeechConductor {
     /// Resets the per-hand de-dup at the start of each hand.
     public func handBegan() { oncePerHandPlayed.removeAll() }
 
+    /// Test seam: observes every item a `flushPending` CONSIDERS, with its priority.
+    /// A flush used to be a silent sweep — invisible to both drop observers — which
+    /// is how it went unnoticed that it was discarding high-priority lines (D-106).
+    public var flushObserver: ((String, AnnouncementPriority) -> Void)?
+
     /// Drops queued-but-not-started narration (conductor and queue) so a following
     /// time-critical cue plays promptly.
-    public func flushPending() { pending.removeAll(); queue.flushPending() }
+    ///
+    /// D-106: HIGH-priority lines are KEPT. Strategy C's founding invariant is that
+    /// high is never dropped — "the player never loses their own cards, their turn,
+    /// or their result" (D-085) — but this flush swept the list unconditionally, so
+    /// the very announcement of the card the player had just drawn could be destroyed
+    /// by the prompt asking them what to do about it. The time-critical cue is itself
+    /// high and lands behind them in FIFO order, which is the correct sequence anyway.
+    public func flushPending() {
+        // Reports EVERY item the flush considers, with its priority — so a
+        // measurement can count exactly what the old unconditional sweep destroyed.
+        for item in pending {
+            flushObserver?(item.synthesis ?? item.fallback ?? item.reason, item.priority)
+        }
+        pending.removeAll { $0.priority != .high }
+        queue.flushPending()
+    }
 
     /// Enqueues a spoken item: a LEAD sound (croupier/vob) then a SYNTHESIS line
     /// (either optional), with an optional mp3-missing fallback and a priority.

@@ -129,9 +129,16 @@ public final class AnnouncementQueue {
 
     /// Drops queued-but-not-started announcements so a following time-critical cue
     /// (the human turn) plays promptly.
+    ///
+    /// D-106: HIGH-priority announcements are KEPT. Strategy C's founding invariant
+    /// is that high is never dropped — the player never loses their own cards, their
+    /// turn, or their result — but this flush swept the list unconditionally, so a
+    /// line the player was entitled to could be destroyed by the prompt that came
+    /// after it. The time-critical cue is itself high and simply queues behind them,
+    /// which is the right order anyway: hear your cards, then be asked to act.
     public func flushPending() {
-        let dropped = pending
-        pending.removeAll()
+        let dropped = pending.filter { $0.priority != .high }
+        pending.removeAll { $0.priority != .high }
         for item in dropped { item.completion?() }
     }
 

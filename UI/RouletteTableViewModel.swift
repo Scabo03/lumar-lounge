@@ -53,6 +53,9 @@ public final class RouletteTableViewModel: ObservableObject {
     private let human = HumanRouletteActionProvider()
     private let announcements = AnnouncementQueue()
     private let fastMode: Bool
+    /// The safety belt (D-106). Zero settle under `-uiTesting`, where input
+    /// comes from a program rather than a finger.
+    private var readiness: InputReadiness
     private let audio: AudioServicing
     private let conductor: SpeechConductor
     private let mode: AppVoiceOverMode
@@ -64,6 +67,8 @@ public final class RouletteTableViewModel: ObservableObject {
     private var presence: TablePresence
 
     private var eventQueue: [RouletteEventPayload] = []
+    /// How much of what just happened the player has NOT been shown yet (D-106).
+    var undeliveredCount: Int { eventQueue.count }
     private var streamFinished = false
     private var betContinuation: CheckedContinuation<Void, Never>?
     private var hasLeft = false
@@ -78,6 +83,7 @@ public final class RouletteTableViewModel: ObservableObject {
                 casinoAudio: CasinoAudio = .riverwood,
                 onLeave: @escaping (Int) -> Void = { _ in }) {
         self.fastMode = fastMode
+        self.readiness = InputReadiness(settle: fastMode ? 0 : InputReadiness.defaultSettle)
         self.audio = audio
         self.mode = mode
         self.casinoAudio = casinoAudio
@@ -130,6 +136,9 @@ public final class RouletteTableViewModel: ObservableObject {
             if !eventQueue.isEmpty {
                 await present(eventQueue.removeFirst())
             } else if await human.pending != nil {
+                // D-106: the queue's emptiness was sampled BEFORE the actor hop
+                // above; the relay can have appended what just happened during it.
+                guard await ConsumerHandoff.isCaughtUp({ self.eventQueue.isEmpty }) else { continue }
                 await runBetting()
             } else if streamFinished {
                 break
@@ -278,6 +287,13 @@ public final class RouletteTableViewModel: ObservableObject {
 
     public func confirm() {
         guard canConfirm, let continuation = betContinuation else { return }
+        // Confirming commits the whole slip — money on the felt (D-106).
+        guard undeliveredCount == 0, readiness.isSettled else {
+            playUI(SoundCatalog.uiCancel)
+            SpokenLog.log("spin REFUSED (undelivered=\(undeliveredCount) settled=\(readiness.isSettled))")
+            return
+        }
+        readiness.accept()
         betContinuation = nil
         let bets = slip.bets
         state.phase = .spinning

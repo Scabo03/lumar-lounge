@@ -247,6 +247,17 @@ casella vincente (ordine fisico delle caselle nel motore, sincronia con l'mp3, d
 VoiceOver), e la tabella delle puntate è compattata in **vere griglie** (interne per tipo, tappeto
 classico 12×3). **666 unit test verdi.**
 
+**Affidabilità dell'input — la causa comune di «l'interfaccia non avanza» (D-106).** Il difetto che
+tornava sotto volti diversi (focus appeso, parlato troncato, doppia pressione necessaria) aveva
+**una sola** radice, comune a tutti e sette i tavoli: il ciclo che consuma il flusso di eventi
+sceglieva fra «presenta l'evento» e «offri il turno» campionando **due sorgenti a cavallo di un
+`await`**, così il turno poteva essere offerto su uno stato che il giocatore non aveva ancora visto —
+e la sospensione congela **lo stesso ciclo** che drena la coda, quindi l'unico modo di sbloccare
+l'interfaccia era **premere di nuovo**, che al Blackjack pesca una **seconda carta vera**. Corretto
+nei **consumatori** (i driver non sono stati toccati), con in più una **cintura indipendente** che
+rifiuta ogni input che impegna il giocatore quando lo stato non è quello mostrato: il peggio
+possibile diventa un'interfaccia ferma, mai un'azione irreversibile al buio. **672 unit test verdi.**
+
 > **🏁 La prima fase è completa.** Il gioco base è funzionante end-to-end — motore
 > completo, bot credibili, sessione multi-mano, flusso di eventi, UI giocabile e
 > accessibile, e **audio pieno**: i 47 file mp3 consegnati (atmosfera, carte,
