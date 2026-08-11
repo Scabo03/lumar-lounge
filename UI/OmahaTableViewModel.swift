@@ -371,7 +371,7 @@ public final class OmahaTableViewModel: ObservableObject {
             // informative attribution synthesis.
             let vob = botChatter.actionVoice(seat: seatID, action: action)
             conductor.say(lead: vob, leadCategory: .botVoice, synthesis: synth,
-                          priority: .medium, reason: "opp-action")
+                          priority: plan.synthesis.map(OmahaSpeechMap.priority) ?? .low, reason: "opp-action")
         }
     }
 

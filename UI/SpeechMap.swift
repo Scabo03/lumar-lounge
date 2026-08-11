@@ -266,10 +266,20 @@ public enum SpeechMap {
             // whole hand was building to, and for a blind player it is the only way to
             // read the opponents. The channel budget may drop chatter, never the result.
             return .high
-        case .otherWon, .opponentAction:
+        case .otherWon:
             return .medium
-        case .communityCards:
+        case .opponentAction:
+            // D-108: opponent-action chatter is the LOWEST tier — the same ordering the
+            // Stud map already uses (D-094). On device the channel saturates, and this
+            // used to be MEDIUM while the community board was LOW, so under pressure the
+            // player heard "giocatore 2 passa" but not the flop that had just landed.
             return .low
+        case .communityCards:
+            // The shared board (flop/turn/river) is essential information the player
+            // cannot otherwise get except by manually focusing the board element, so it
+            // outranks chatter (D-108). MEDIUM, the analog of Stud's up-cards (D-094) —
+            // below the player's own cards/turn/result (HIGH), above opponent chatter.
+            return .medium
         }
     }
 }

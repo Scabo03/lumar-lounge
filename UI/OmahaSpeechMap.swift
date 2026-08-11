@@ -216,10 +216,12 @@ public enum OmahaSpeechMap {
         case .heroCards, .roleSmallBlind, .roleBigBlind, .roleButton, .stakesEscalated,
              .heroWon, .splitWon, .sessionWon, .sessionLost:
             return .high
-        case .otherWon, .opponentAction, .shown, .streetName:
+        case .otherWon, .shown, .streetName:
             return .medium
+        case .opponentAction:
+            return .low          // chatter is the lowest tier (D-108/D-094)
         case .communityCards:
-            return .low
+            return .medium       // the shared board outranks chatter (D-108)
         }
     }
 }

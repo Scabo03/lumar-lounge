@@ -3794,3 +3794,69 @@ dal telefono collegato via cavo**.
   partita per ciascuno dei sette giochi in un'unica sessione, alzandosi per passare al successivo,
   lasciando accadere i difetti. **A sessione finita leggo la traccia via cavo**
   (`scripts/pull-diagnostics.sh`) e procedo alla Fase 3.
+
+### D-108 — Fase 3: la causa comune dei difetti di ritmo VoiceOver, TROVATA DAI DATI, e le due correzioni
+Letta via cavo la traccia reale (`trace-1786474483.jsonl`, **3546 record, 20,7 min**, sei giochi — niente
+Machiavelli, come dichiarato dall'utente), l'analisi ha trovato la **causa comune** dietro i molti volti
+(«l'annuncio della propria mano interrompe altri annunci», troncamenti, doppie letture, caos ai poker) —
+come per D-106, una sola radice, e **non era dove la sorvegliavamo**.
+- **LA CAUSA REALE, misurata (non ipotizzata): la coda avanzava sulla notifica di fine di iOS SENZA
+  verificare che l'annuncio fosse stato DAVVERO pronunciato.** Su device, quando VoiceOver è **occupato**
+  — sta pronunciando il **bottone che il giocatore ha appena attivato** (il doppio-tap dice «raddoppia»/
+  «dividi»), oppure **non si è ancora assestato** dopo la riga precedente in una **raffica** — iOS
+  **scarta** il post e spara `announcementDidFinishNotification` **all'istante** con
+  `wasSuccessful == false`. La coda (D-032) prendeva quella fine-immediata per «pronunciato», avanzava, e
+  **la riga andava persa**. Numeri dalla traccia:
+  - **Blackjack: 42% degli annunci tagliati a ~0 s** (18 su 43). Le vittime sono **esattamente** ciò che
+    il giocatore deve sapere: «Raddoppi. Totale 21.» (l'esito della sua mossa), «Dividi. Ora hai 4 mani.»,
+    e **l'intero riepilogo di una mano da 4 split** — «Mano 2: Perdi 200.» … «In tutto: meno 1200.» a
+    **0,00 s ciascuno**, mai udite. Correlazione: **12/25** tagli entro 0,5 s da un tap del giocatore
+    (VoiceOver occupato dal bottone), **8/25** in raffica di fine mano (la coda ripostava la successiva
+    nell'istante in cui la precedente «finiva»).
+  - Anche Stud («A te la parola.» a 0,00 s) e sporadici in Texas/Draw. Blackjack è il peggiore perché è
+    **denso di azioni** (double/split si risolvono sul tap; gli split creano raffiche di fine mano) — che
+    è esattamente ciò che l'utente ha riportato come «Blackjack e Texas i più critici».
+  - Il difetto **sabotava anche D-098**: le righe tagliate «finivano» all'istante, quindi il canale
+    sembrava **quieto** e il box della puntata si apriva sopra righe **mai udite** (l'attesa-quiete di
+    D-098 aspettava un canale già falsamente vuoto). Correggere la coda **ripristina anche** D-098.
+- **È la FAMIGLIA già toccata a pezzi, con la radice al fondo (device-truth):** [[d-096]] («due canali
+  nello stesso istante si annullano») ne era la faccia percepita; [[d-085]]/[[d-094]] governano il
+  **DROP volontario** sotto budget (che funziona), ma **questo** è un **DROP NON VOLONTARIO** da parte di
+  iOS che la coda **scambiava per parlato**; [[d-032]] è la coda che ora impariamo a non fidarci ciecamente
+  della notifica; [[d-106]] è il gemello sull'avanzamento della UI. **CONVENTIONS §4** aggiornata.
+- **FIX 1 (primario, strutturale, nel chokepoint condiviso `AnnouncementQueue` → vale per tutti e sette i
+  giochi):** la coda **verifica** che l'annuncio sia stato pronunciato e **lo RIPOSTA** se non lo è, invece
+  di perderlo. Legge `announcementWasSuccessfulUserInfoKey`; considera «non pronunciato» anche una fine
+  **implausibilmente precoce** (airtime < `min(0,4; 0,5·stima)` — una riga di più parole non può dirsi in
+  centesimi di secondo, la cintura per quando il flag manca); ripasta in testa dopo un **settle** (0,4 s,
+  perché VoiceOver si liberi), con un **tetto di 4 retry** (poi rinuncia, senza loop). Un **token di
+  attesa** impedisce a una fine stantia/doppia di far ripartire per errore la riga corrente. Il timeout di
+  fallback (la notifica mai arrivata) conta come «pronunciato». **Il produttore non è toccato, i motori
+  non sono toccati, il budget non è alzato** (D-085): la correzione vive interamente nella coda.
+- **FIX 2 (secondario, taratura di priorità, Texas/Omaha):** dalla traccia, `21.69 flop prio=low` →
+  `21.70 c.drop` — il **tabellone comune** (flop/turn/river) era **LOW** mentre il **chiacchiericcio
+  avversario** era **MEDIUM**, quindi sotto saturazione il giocatore perdeva **il flop appena sceso** ma
+  teneva «giocatore 2 passa». È la «rilettura della mano invece delle comuni» riportata, ed è **l'inverso**
+  della cura D-094 (applicata allo Stud ma **non** a Texas/Omaha). Corretto: `communityCards` → **medium**
+  (informazione condivisa essenziale, come le scoperte dello Stud), `opponentAction` → **low**; e tolto il
+  **`.medium` cablato** per l'azione avversaria nei due view model (la stessa trappola che D-094 trovò
+  nello Stud: la priorità ora viene **dalla mappa**). A budget **invariato**: cambia solo l'ordine di
+  cedimento.
+- **Rispettata la precisazione dell'utente:** i tap deliberati di navigazione (ripasso manuale, taglio
+  corto nello scambio del Draw) sono `q.live`/letture di elemento a fuoco, **distinti** dai tap sui
+  **bottoni d'azione** che uccidevano le righe — non ho scambiato i primi per difetti. Omaha «non malaccio»
+  e Stud «più ordinato» tornano coi dati (pochi/zero tagli; i loro drop sono chiacchiericcio, che non si
+  rimpiange).
+- **Cosa garantiscono simulatore e test, cosa resta al device:** la logica di retry è **unit-testata**
+  (fine non riuscita → ripostata, non persa; fine istantanea → retry; retry **limitati**; fine normale →
+  una volta; fine doppia → no-op) e la nuova priorità è **pinnata** (il tabellone batte il chiacchiericcio).
+  **Resta da confermare all'orecchio sul device** che iOS riporti davvero `wasSuccessful=false` per quei
+  tagli e che il retry recuperi la riga in modo udibile (il percorso retry vive **solo** con VoiceOver reale,
+  che né `swift test` né il self-test headless esercitano — lezione D-056). **Perciò la build di correzione
+  MANTIENE la registrazione attiva** (`DebugFlags.diagnostics = true`): l'utente può rigiocare e io **misuro
+  dal nuovo trace** che i tagli sono spariti (`q.speak.end` sani, `q.retry` che recupera). Una build di
+  rilascio successiva spegnerà il flag.
+- **681 test verdi** (674 + 5 retry + 2 priorità); app iOS compila e gira sul simulatore (col fix, percorso
+  normale intatto). *(Nota: `swift build` su macOS non vedeva l'errore del simbolo UIKit
+  `announcementWasSuccessfulUserInfoKey` — dentro `#if canImport(UIKit)`, escluso sull'host; preso col
+  build per iPhone prima dell'archive.)* **Build di correzione su TestFlight** (numero nel resoconto).

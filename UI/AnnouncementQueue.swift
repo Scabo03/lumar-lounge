@@ -43,11 +43,27 @@ public final class AnnouncementQueue {
         /// Fires when this item has been SPOKEN — or when it is dropped, so a caller
         /// sequencing something after it (an outcome effect, D-085) is never stranded.
         let completion: (() -> Void)?
+        /// Retries left when VoiceOver drops the post because it is busy (D-108).
+        var retriesLeft: Int = maxRetries
     }
+
+    /// How many times a dropped announcement is re-posted before giving up (D-108).
+    /// VoiceOver drops a post when it is busy — speaking the button the player just
+    /// activated, or not yet settled after the previous line in a rapid burst — and
+    /// reports it "finished" instantly. A handful of retries with a short settle
+    /// recovers the line once VoiceOver is free; the cap stops a runaway loop.
+    static let maxRetries = 4
+    /// Delay before re-posting a dropped announcement, to let VoiceOver settle (D-108).
+    /// Internal so tests can shrink it and exercise the retry deterministically.
+    var retryDelay: TimeInterval = 0.4
 
     private var pending: [Item] = []
     private var current: Item?
     private var currentToken = 0
+    /// The token whose finish (notification or timeout) we are still awaiting, so a
+    /// stale/duplicate finish for an already-resolved post can never fail the current
+    /// one (D-108). -1 = nothing awaited.
+    private var awaitingFinishToken = -1
     /// Monotonic start of the item being spoken, so the trace can report its REAL
     /// duration on finish (D-107), not just its estimate.
     private var currentSpeakStart: UInt64 = 0
@@ -91,8 +107,12 @@ public final class AnnouncementQueue {
         #if canImport(UIKit)
         observer = NotificationCenter.default.addObserver(
             forName: UIAccessibility.announcementDidFinishNotification, object: nil, queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.announcementFinished() }
+        ) { [weak self] note in
+            // D-108: iOS reports whether the announcement was ACTUALLY spoken. When
+            // VoiceOver is busy it fires this immediately with wasSuccessful=false —
+            // the line was dropped, not spoken. Carry the flag so the queue can retry.
+            let ok = note.userInfo?[UIAccessibility.announcementWasSuccessfulUserInfoKey] as? Bool
+            Task { @MainActor [weak self] in self?.announcementFinished(wasSuccessful: ok) }
         }
         #endif
     }
@@ -255,13 +275,14 @@ public final class AnnouncementQueue {
         guard isVoiceOverRunning else {
             // Nobody is listening. Either simulate the duration (app mode ON, so the
             // visuals still pace to it, D-034) or advance at once (mode OFF).
-            if pacedWhenSilent { scheduleAdvance(after: Self.speakTime(item.text), token: token) }
+            if pacedWhenSilent { awaitingFinishToken = token; scheduleAdvance(after: Self.speakTime(item.text), token: token) }
             else { finishCurrent() }
             return
         }
         post(item.text, interrupting: false)
         // Fallback: advance if the finish notification never arrives. The cap is the
         // estimated speech time plus the 1 s max pause, so it never truncates.
+        awaitingFinishToken = token
         scheduleAdvance(after: Self.speakTime(item.text) + maxPause, token: token)
     }
 
@@ -272,22 +293,71 @@ public final class AnnouncementQueue {
         Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             guard let self, self.currentToken == token, self.current != nil else { return }
-            self.finishCurrent()
+            // The notification never came within the cap: treat as spoken (nil).
+            self.announcementFinished(wasSuccessful: nil)
         }
     }
 
-    private func announcementFinished() {
-        guard current != nil else { return }
-        finishCurrent()
+    /// Handles the end of the current announcement — from the OS finish notification
+    /// (carrying `wasSuccessful`) or the fallback timeout (`nil`, i.e. assume spoken).
+    ///
+    /// D-108 — THE CORE FIX. VoiceOver drops a post when it is BUSY (speaking the
+    /// button the player just activated, or not yet settled after the previous line in
+    /// a rapid burst) and reports it "finished" INSTANTLY with `wasSuccessful == false`.
+    /// The queue used to advance on that and discard the line — so the player's own
+    /// action result, their split confirmations and their settlement were never spoken
+    /// (measured: 42% of blackjack lines on device). Now a line that did not actually
+    /// render — reported unsuccessful, or "finished" implausibly early for its length —
+    /// is RE-POSTED once VoiceOver has settled, rather than lost.
+    func announcementFinished(wasSuccessful: Bool?) {
+        // Ignore a stale/duplicate finish for a post already resolved (by the other of
+        // notification/timeout, or by a previous finish): only the awaited token counts.
+        guard let item = current, awaitingFinishToken == currentToken else { return }
+        awaitingFinishToken = -1
+
+        let airtime = Double(DispatchTime.now().uptimeNanoseconds &- currentSpeakStart) / 1_000_000_000
+        // A multi-word line cannot render in a few hundredths of a second: an
+        // implausibly early finish means VoiceOver dropped it, even if it didn't say so.
+        let failThreshold = min(0.4, 0.5 * Self.speakTime(item.text))
+        let dropped = (wasSuccessful == false) || (airtime < failThreshold)
+
+        if dropped, item.retriesLeft > 0 {
+            Diagnostics.shared.record("q.retry",
+                ["text": item.text, "prio": "\(item.priority)", "airtime": airtime,
+                 "retriesLeft": item.retriesLeft - 1,
+                 "reason": wasSuccessful == false ? "unsuccessful" : "instant"])
+            SpokenLog.log("RETRY [\(item.priority)] \(item.text) (airtime=\(airtime))")
+            var retry = item; retry.retriesLeft -= 1
+            current = nil
+            pending.insert(retry, at: 0)     // next up, ahead of everything
+            // A croupier waiting via beginExternalSpeech must not hang on the retry:
+            // let it proceed; the retried line is at the head for after (endExternalSpeech).
+            let waiters = idleWaiters; idleWaiters.removeAll()
+            for w in waiters { w.resume() }
+            // Re-post after a settle so VoiceOver is free; do NOT fire completion — the
+            // line has not been delivered yet.
+            scheduleRetry()
+            return
+        }
+        finishCurrent(spokenOK: !dropped)
     }
 
-    private func finishCurrent() {
+    /// Re-posts the head (a retried item) after `retryDelay`, once VoiceOver has settled.
+    private func scheduleRetry() {
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64((self?.retryDelay ?? 0.4) * 1_000_000_000))
+            guard let self else { return }
+            if !self.externalSpeechActive { self.process() }
+        }
+    }
+
+    private func finishCurrent(spokenOK: Bool = true) {
         let finished = current
         if let finished {
             let dur = Double(DispatchTime.now().uptimeNanoseconds &- currentSpeakStart) / 1_000_000_000
             Diagnostics.shared.record("q.speak.end",
                 ["text": finished.text, "prio": "\(finished.priority)",
-                 "actualDur": dur, "estDur": Self.speakTime(finished.text)])
+                 "actualDur": dur, "estDur": Self.speakTime(finished.text), "spokenOK": spokenOK])
         }
         current = nil
         finished?.completion?()

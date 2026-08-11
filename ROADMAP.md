@@ -754,10 +754,17 @@ Riverwood (10/500, buy-in 1000) e Skypool (50/2500, buy-in 5000). Annuncio compa
   su TestFlight, badge "REGISTRAZIONE", recupero via condivisione file Finder. 674 test verdi.
 - **Fase 2 — utente (pendente):** giocare una partita per ciascuno dei **sette** giochi, di **sola
   registrazione**; alzarsi ed entrare nel gioco successivo segmenta la traccia. Nessuna modifica di Code.
-- **Fase 3 — dopo il ritorno della traccia (pendente):** trovare la **causa comune** dietro i sintomi
-  (banco taglia mano, pop-up precoce, rilettura carte in mano vs comuni, troncamenti/disallineamenti);
-  correggere le **cause** nei consumatori (driver e motori intatti, budget non alzato senza dati);
-  TestFlight della build di correzione (`DebugFlags.diagnostics = false`).
+- **Fase 3 — FATTA (D-108).** Traccia reale letta via cavo (3546 record, 6 giochi). **Causa comune trovata
+  dai dati:** la coda annunci avanzava sulla notifica di fine di iOS **senza verificare** che l'annuncio
+  fosse pronunciato; quando VoiceOver è occupato (bottone appena attivato, o raffica di fine mano) iOS
+  **scarta** il post e fa finire all'istante → **42% delle righe del blackjack perse** (esiti delle proprie
+  mosse, split, riepilogo). **Fix 1 (coda condivisa):** verifica `wasSuccessful` + airtime e **riposta** la
+  riga (retry limitati), niente driver/motori/budget toccati. **Fix 2 (Texas/Omaha):** il tabellone comune
+  era LOW e il chiacchiericcio MEDIUM → il flop veniva droppato; ora board **medium**, chiacchiericcio
+  **low**, priorità **dalla mappa** (fine trappola D-094). 681 test verdi.
+- **Da confermare sul dispositivo:** che i tagli siano spariti all'orecchio. La build di correzione
+  **mantiene la registrazione attiva**: un rigioco misura dal nuovo trace (`q.speak.end` sani, `q.retry` che
+  recupera). Una build di rilascio successiva spegnerà `DebugFlags.diagnostics`.
 
 ### 🔭 Prossimo
 Ascolto/approvazione dei campioni fonetici del blackjack;

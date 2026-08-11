@@ -244,6 +244,18 @@ i pulsanti si accendono su uno stato che il giocatore non ha ancora visto. Regol
     (`SpeechConductor`) come **un unico canale parlato** (la sintesi non parte mentre
     suona il croupier e viceversa). È **trasversale**: riusabile da ogni gioco e ogni
     parte parlata futura.
+  - **Un annuncio non è consegnato finché VoiceOver non conferma di averlo
+    pronunciato (D-108).** Su device, quando VoiceOver è **occupato** (sta dicendo il
+    bottone appena attivato dal giocatore, o non si è assestato dopo la riga precedente
+    in una raffica) **scarta** il post e spara la notifica di fine **all'istante** con
+    `wasSuccessful == false`. La coda **non deve** prendere quella fine-immediata per
+    «parlato»: verifica `announcementWasSuccessfulUserInfoKey` (e, come cintura quando il
+    flag manca, un airtime implausibilmente breve) e **riposta** la riga dopo un settle,
+    con un tetto di retry — così la riga viene **davvero udita** invece di andare persa.
+    È un **DROP non voluto da iOS**, distinto dal drop **voluto** sotto budget (D-085);
+    confonderli fa perdere al giocatore i propri esiti (misurato: 42% delle righe del
+    blackjack, D-108). Regola pratica: la fine di un annuncio è un **segnale da
+    verificare**, non da credere.
   - **mp3 previsto ma non ancora prodotto → fallback di sintesi dichiarato
     (D-030).** Quando la mappatura chiede un mp3 non ancora nel bundle, il sistema
     cade **automaticamente** su un **fallback di sintesi VoiceOver dichiarato nella

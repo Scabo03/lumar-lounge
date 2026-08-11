@@ -482,9 +482,11 @@ public final class TableViewModel: ObservableObject {
             conductor.say(lead: lead, leadCategory: .croupier, synthesis: synth,
                           fallback: fbKey.map(uiLocalized), priority: .medium, reason: "action-allin")
         } else if seatID != heroSeatID {                // opponent ordinary action
+            // Priority from the MAP, not hardcoded (the D-094 trap): opponent chatter is
+            // LOW, so the community board (medium) is not dropped in its favour (D-108).
             let vob = botChatter.actionVoice(seat: seatID, action: action)
             conductor.say(lead: vob, leadCategory: .botVoice, synthesis: synth,
-                          priority: .medium, reason: "opp-action")
+                          priority: plan.synthesis.map(SpeechMap.priority) ?? .low, reason: "opp-action")
         }
     }
 
