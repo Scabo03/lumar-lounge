@@ -160,6 +160,7 @@ public final class BlackjackTableViewModel: ObservableObject {
     // MARK: - Presenting
 
     private func present(_ payload: BlackjackEventPayload) async {
+        diag("ui.present", ["event": String(describing: payload).prefix(200).description])
         switch payload {
         case .roundBegan:
             conductor.handBegan()
@@ -307,6 +308,10 @@ public final class BlackjackTableViewModel: ObservableObject {
 
     private func runBet(_ context: BlackjackBetContext) async {
         if hasLeft { return }
+        // Snapshot the channel as the round asks for the next wager: how much the
+        // spoken channel still OWES here is the direct measure of whether the box is
+        // about to open over the round's own explanation (D-098/D-107).
+        diag("ui.suspend", ["kind": "bet.enter"])
         // THE ROUND MUST BE ALLOWED TO FINISH BEING EXPLAINED (D-096/D-097).
         // The wager box lands VoiceOver focus, and focus landing posts a
         // notification that INTERRUPTS whatever is being spoken. Every round
@@ -321,6 +326,9 @@ public final class BlackjackTableViewModel: ObservableObject {
             await awaitSpokenChannelQuiet()
         }
         if hasLeft { return }
+        // The instant the box actually opens: if the channel is not ~quiet here, the
+        // box is interrupting a line the player has not finished hearing (D-098).
+        diag("ui.suspend", ["kind": "bet.open", "listening": isListening])
         betBox = BlackjackBetBox(minimum: context.minimumBet,
                                  maximum: min(context.maximumBet, context.chips),
                                  opening: context.lastBet)
@@ -332,6 +340,7 @@ public final class BlackjackTableViewModel: ObservableObject {
         if hasLeft { return }
         turn = context
         state.activeHandIndex = context.handIndex
+        diag("ui.suspend", ["kind": "turn", "handIndex": context.handIndex])
         // A time-critical prompt must not queue behind stale narration.
         conductor.flushPending()
         await withCheckedContinuation { turnContinuation = $0 }
@@ -370,8 +379,11 @@ public final class BlackjackTableViewModel: ObservableObject {
         guard undeliveredCount == 0, readiness.isSettled else {
             playUI(SoundCatalog.uiCancel)
             SpokenLog.log("wager REFUSED (undelivered=\(undeliveredCount) settled=\(readiness.isSettled))")
+            diag("ui.action", ["name": "confirmBet", "accepted": false,
+                               "settled": readiness.isSettled])
             return
         }
+        diag("ui.action", ["name": "confirmBet", "accepted": true, "value": box.value])
         readiness.accept()
         betContinuation = nil
         betBox = nil
@@ -416,9 +428,12 @@ public final class BlackjackTableViewModel: ObservableObject {
         guard decisionIsShown, readiness.isSettled else {
             playUI(SoundCatalog.uiCancel)
             SpokenLog.log("input REFUSED (shown=\(decisionIsShown) settled=\(readiness.isSettled)) \(action)")
+            diag("ui.action", ["name": "\(action)", "accepted": false,
+                               "shown": decisionIsShown, "settled": readiness.isSettled])
             return
         }
         guard let continuation = turnContinuation else { return }
+        diag("ui.action", ["name": "\(action)", "accepted": true])
         turnContinuation = nil
         turn = nil
         readiness.accept()
@@ -436,6 +451,28 @@ public final class BlackjackTableViewModel: ObservableObject {
     }
 
     private func playUI(_ id: SoundID) { audio.play(id, category: .ui) }
+
+    // MARK: - Diagnostics (D-107) — gated, no-op when recording is off
+
+    /// A snapshot of the spoken channel + consumer state, for the trace. Only built
+    /// when recording is enabled, so it is free during normal play.
+    private var diagChannel: [String: Any] {
+        ["game": "blackjack",
+         "undelivered": undeliveredCount,
+         "queuePending": announcements.pendingSnapshot().count,
+         "queueQuiet": announcements.isQuiet,
+         "conductorIdle": conductor.isIdle,
+         "channelOwes": conductor.channelRemaining + announcements.estimatedRemaining,
+         "voRunning": announcements.isVoiceOverRunning,
+         "modeOn": mode.isEnabled]
+    }
+
+    private func diag(_ kind: String, _ extra: [String: Any] = [:]) {
+        guard Diagnostics.shared.isEnabled else { return }
+        var fields = diagChannel
+        for (key, value) in extra { fields[key] = value }
+        Diagnostics.shared.record(kind, fields)
+    }
 
     // MARK: - Leaving (D-086)
 

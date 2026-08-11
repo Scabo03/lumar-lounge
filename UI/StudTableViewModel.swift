@@ -240,6 +240,7 @@ public final class StudTableViewModel: ObservableObject {
     // MARK: - Presenting events (human paced)
 
     private func present(_ payload: StudEventPayload) async {
+        diag("ui.present", ["event": String(describing: payload).prefix(200).description])
         switch payload {
         case .handBegan:
             fastForward = false      // a new hand: narrate it fully again (D-087)
@@ -425,6 +426,7 @@ public final class StudTableViewModel: ObservableObject {
         let info = StudTurnInfo(from: context)
         humanTurn = info
         state.activeSeatID = heroSeatID
+        diag("ui.suspend", ["kind": "turn"])
         conductor.flushPending()
         // No tower "your turn" mp3 was delivered → the synthesis "A te la parola" speaks it
         // (kept as an ESSENTIAL turn signal for the blind player, D-080).
@@ -451,10 +453,12 @@ public final class StudTableViewModel: ObservableObject {
     private func acceptsInput() -> Bool {
         guard humanTurn != nil, turnContinuation != nil else { return false }
         guard decisionIsShown, readiness.isSettled else {
+            diag("ui.action", ["name": "input", "accepted": false])
             playUI(SoundCatalog.uiCancel)
             SpokenLog.log("input REFUSED (shown=\(decisionIsShown) settled=\(readiness.isSettled))")
             return false
         }
+        diag("ui.action", ["name": "input", "accepted": true])
         return true
     }
 
@@ -489,6 +493,7 @@ public final class StudTableViewModel: ObservableObject {
         guard let turn = humanTurn, turn.canBetOrRaise else { return }
         playUI(SoundCatalog.uiBoxOpen)
         raiseTurn = turn
+        diag("ui.suspend", ["kind": "raiseBox"])
         raiseBox = RaiseBoxState(minTo: turn.minTo, maxTo: turn.maxTo, isBet: turn.isBet)
     }
 
@@ -570,6 +575,26 @@ public final class StudTableViewModel: ObservableObject {
     public func returnToCasino() { onLeave(heroCashOut) }
 
     // MARK: - Helpers
+
+    // MARK: - Diagnostics (D-107) — gated, no-op when recording is off
+
+    private var diagChannel: [String: Any] {
+        ["game": "stud",
+         "undelivered": undeliveredCount,
+         "queuePending": announcements.pendingSnapshot().count,
+         "queueQuiet": announcements.isQuiet,
+         "conductorIdle": conductor.isIdle,
+         "channelOwes": conductor.channelRemaining + announcements.estimatedRemaining,
+         "voRunning": announcements.isVoiceOverRunning,
+         "modeOn": mode.isEnabled]
+    }
+
+    private func diag(_ kind: String, _ extra: [String: Any] = [:]) {
+        guard Diagnostics.shared.isEnabled else { return }
+        var fields = diagChannel
+        for (key, value) in extra { fields[key] = value }
+        Diagnostics.shared.record(kind, fields)
+    }
 
     private func playUI(_ id: SoundID) { audio.play(id, category: .ui) }
 

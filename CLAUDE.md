@@ -3680,3 +3680,84 @@ delegate, oppure `play()` fallita, oppure timeout durata+0,6 s, al più una volt
 statico verde). Stabilità del sottoalbero d'accessibilità preservata (nessun modificatore aggiunge o
 rimuove sottoviste). Budget del canale **non** alzato. Nessun motore toccato, nessun tavolo aggiunto.
 **672 test verdi** (666 + 6); app iOS compila.
+
+### D-107 — Strumentazione di misura del canale parlato/audio/UI: costruita, cablata e COLLAUDATA prima della consegna (Fase 1)
+Sessione a **tre fasi** per chiudere una volta per tutte la famiglia di difetti di **ritmo VoiceOver**
+che continua a ripresentarsi sotto volti diversi (banco che taglia la mano al Blackjack, pop-up di
+puntata che tronca la fine mano, rilettura delle carte in mano invece delle comuni al Texas, annunci
+troncati e disallineamenti in tutti i poker). **Fase 1 — questa sessione**: costruire la strumentazione
+di registrazione, cablarla, **collaudarla end-to-end da soli**, e consegnare la build pronta a
+registrare. **Fase 2** (utente): giocare una partita per ciascuno dei sette giochi, di **sola
+registrazione** — Code non tocca nulla. **Fase 3** (dopo il ritorno della traccia): analizzare i dati,
+trovare la **causa comune al fondo** (come per D-106), correggere le **cause** non le manifestazioni,
+TestFlight. **Questa voce documenta la Fase 1; sarà estesa in Fase 3 con le cause reali trovate DAI DATI
+e il piano eseguito — nessuna diagnosi da ipotesi qui.**
+- **Il recorder `Diagnostics` (in `Audio`, il modulo che tutti importano — D-023).** Singleton gated,
+  **spento di default** (`isEnabled` letto senza lock sul percorso caldo → costo zero a gioco normale).
+  **Non parla, non suona, non posta mai a VoiceOver**: scrive solo un file, così non può interferire coi
+  canali che misura. **Clock monotòno** (`DispatchTime.uptimeNanoseconds`, immune ai salti del wall
+  clock) per ordine/durate **+ wall clock** per correlazione, su **ogni** record. **JSON Lines**, un
+  oggetto autosufficiente per riga, flush ogni 20 record (una crash perde al più gli ultimi). Scrive in
+  `Documents/LumarDiagnostics/trace-<epoch>.jsonl`.
+- **Cattura il TESTO REALE pronunciato, mai le chiavi** (la lezione D-091/D-093): i chiamanti passano
+  stringhe già localizzate. Verificato nel collaudo con `UIStrings.override` (it.lproj da disco) e sul
+  device col bundle vero.
+- **Punti di aggancio — cablati UNA volta nei chokepoint condivisi da tutti e sette i tavoli, più
+  agganci per-view-model:**
+  - **`AnnouncementQueue`** (il canale seriale, D-032): `q.enqueue` (generazione/entrata in coda),
+    `q.speak.start`/`q.speak.end` (inizio/fine riproduzione + **durata reale** misurata),
+    `q.drop` (Strategy C), `q.flush`, `q.live` + `q.truncate` (l'unica interruzione deliberata),
+    `q.hold.begin/end` (blocco per l'mp3 croupier). E i due **post a VoiceOver** — `focus.screenChanged`
+    (che **interrompe** il parlato: il meccanismo dietro "il box ha tagliato la riga") e
+    `focus.layoutChanged` (D-092) — registrati nel loro **unico chokepoint** (le funzioni statiche della
+    coda), così la regola "nessun `UIAccessibility.post` diretto" resta intatta (guardiano verde).
+  - **`SpeechConductor`** (D-029): `c.say` (la mappa autorevole evento→voce, con reason/priorità/
+    `channelOwes`), `c.lead.start`/`c.lead.end` (**latenza reale per-clip** dell'mp3 croupier — il segnale
+    di D-056), `c.lead.fallback`, `c.drop` (budget del canale D-085), `c.flush`, dedup once-per-hand.
+  - **`AudioEngine`**: `a.play` (ogni riproduzione, con `started`/`nominal`/`missing`) e `a.play.end`
+    (completion + latenza — il fallimento D-056).
+  - **I 7 view model** (Texas, Draw, Omaha, Stud, Machiavelli, Blackjack, Roulette): un helper `diag`
+    gated + snapshot del canale (`undelivered`, `queuePending`, `queueQuiet`, `conductorIdle`,
+    `channelOwes`, `voRunning`, `modeOn`) a ogni **`ui.present`** (evento del driver presentato al
+    consumatore + stato — è "l'aggiornamento UICompletato" campionato per-evento), a ogni **`ui.suspend`**
+    (turno/box/puntata — i momenti critici: apertura overlay, inizio turno) e a ogni **`ui.action`**
+    (pressione del giocatore + accettata/rifiutata dalla cintura D-106).
+  - **`AppRootView`**: `nav.screen` a ogni transizione — **segmenta la traccia per gioco** (alzarsi →
+    casinò → entrare nel gioco successivo è esattamente questa transizione, il segnale di passaggio di
+    Fase 2).
+- **Isolamento e non-invasività (vincolo di accessibilità).** Tutto additivo e **gated**: quando la
+  registrazione è spenta i `diag`/`record` sono un early-return, zero allocazioni, zero effetto sul
+  gioco. Flag temporaneo `DebugFlags.diagnostics` (come D-050 `freePlay`): la **build di registrazione**
+  lo ha a `true` (recorder avviato all'avvio in `AppRootView.onAppear`, **badge rosso "REGISTRAZIONE"**
+  nel chrome, voce Impostazioni per **fermare** e **esportare**); la **build di correzione** (Fase 3) lo
+  rimetterà a `false`. Recupero traccia: **condivisione file del Finder** (nuovi `UIFileSharingEnabled`/
+  `LSSupportsOpeningDocumentsInPlace` in Info.plist — via cavo, funziona anche da TestFlight) come via
+  primaria, più un pulsante **Esporta** (ShareLink accessibile) come riserva.
+- **COLLAUDO — fatto e superato, con i propri occhi, PRIMA della consegna** (la richiesta esplicita: la
+  strumentazione deve registrare davvero al primo colpo). Due livelli:
+  1. **Test deterministico** (`DiagnosticsTests`, nel suite): inietta l'it.lproj reale (D-093), guida
+     sessioni **vere** di Blackjack e Texas coi view model, e verifica sulla traccia riletta: **ogni**
+     categoria core presente, **timestamp monotòni**, e il testo parlato è **italiano vero, mai una
+     chiave** (nessuna stringa "chiave-forme" con punti e senza spazi). Verde.
+  2. **Harness su runtime iOS reale** (`DiagnosticsSelfTest`, arg `-diagnosticsSelfTest`): sul simulatore
+     col bundle vero ha guidato sessioni reali e scritto la traccia in `Documents/`; **riletta a mano**:
+     **175 record**, tutte le categorie — inclusi `c.lead.start/end` e `a.play.end` (**latenza reale
+     degli mp3**, il percorso che il simulatore prima falsava) — e testo reale (es. `"Banco: dieci."`).
+     Il file è nel percorso `Documents/LumarDiagnostics/` recuperabile via Finder. *(Nota: `focus.*` e
+     `nav.screen` non compaiono nel self-test headless — nascono dai modificatori SwiftUI e dalla
+     navigazione, quindi si registrano durante il **gioco reale** di Fase 2, che è dove servono.)*
+- **La famiglia di difetti che questa strumentazione serve a diagnosticare** (correzioni finora **locali**,
+  da rileggere in Fase 3 alla ricerca di una **causa comune**): Blackjack banco-taglia-mano e pop-up
+  precoce [[d-096]]/[[d-097]]/[[d-098]]/[[d-100]]; canale parlato, budget, sincronizzazione, priorità
+  [[d-085]]/[[d-055]]/[[d-092]]/[[d-093]]/[[d-094]]; avanzamento UI a radice unica [[d-106]]. **Metodo di
+  Fase 3:** per ogni sintomo, stabilire la causa **dai record** (timeline di `focus.*` vs `q.speak.*` per
+  i troncamenti; `channelOwes`/`queueQuiet` a `ui.suspend kind=bet.open` per il pop-up precoce; priorità e
+  `c.say` per la rilettura carte vs comuni); distinguere **difetto strutturale unico** da **taratura di un
+  parametro**; correggere le cause nei **consumatori** (mai rallentare il driver, mai toccare i motori,
+  mai `UIAccessibility.post` diretto, budget non alzato senza dati).
+- **Vincoli rispettati:** additivo e gated; nessun motore toccato; nessun driver rallentato; nessun
+  `UIAccessibility.post` diretto (posta solo la coda, guardiano verde); sottoalbero d'accessibilità
+  intatto; economia non toccata. **674 test verdi** (672 + 2 di collaudo); app iOS compila e gira sul
+  simulatore. **Consegnata all'utente la build di registrazione via TestFlight** (numero build nel
+  resoconto). **Fase 2/3 pendenti** — questa voce sarà completata con cause e correzioni dopo il ritorno
+  della traccia.

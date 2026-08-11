@@ -132,6 +132,9 @@ public final class SpeechConductor {
         // measurement can count exactly what the old unconditional sweep destroyed.
         for item in pending {
             flushObserver?(item.synthesis ?? item.fallback ?? item.reason, item.priority)
+            Diagnostics.shared.record("c.flush",
+                ["reason": item.reason, "prio": "\(item.priority)",
+                 "text": item.synthesis ?? item.fallback ?? "", "kept": item.priority == .high])
         }
         pending.removeAll { $0.priority != .high }
         queue.flushPending()
@@ -144,10 +147,18 @@ public final class SpeechConductor {
                     trailing: SoundID? = nil, trailingCategory: SoundCategory = .effect,
                     priority: AnnouncementPriority = .medium, reason: String = "") {
         var lead = lead
+        var dedupSuppressed = false
         if let c = lead, leadCategory == .croupier, Self.oncePerHand.contains(c.rawValue) {
-            if oncePerHandPlayed.contains(c.rawValue) { lead = nil } else { oncePerHandPlayed.insert(c.rawValue) }
+            if oncePerHandPlayed.contains(c.rawValue) { lead = nil; dedupSuppressed = true }
+            else { oncePerHandPlayed.insert(c.rawValue) }
         }
         guard lead != nil || synthesis != nil || fallback != nil || trailing != nil else { return }
+        Diagnostics.shared.record("c.say",
+            ["reason": reason, "prio": "\(priority)",
+             "lead": lead?.rawValue ?? "", "leadCat": leadCategory.rawValue,
+             "synthesis": synthesis ?? "", "fallback": fallback ?? "",
+             "trailing": trailing?.rawValue ?? "", "dedupSuppressed": dedupSuppressed,
+             "channelOwes": channelRemaining])
         pending.append(Item(lead: lead, leadCategory: leadCategory, synthesis: synthesis,
                             fallback: fallback, trailing: trailing, trailingCategory: trailingCategory,
                             priority: priority, reason: reason))
@@ -163,6 +174,10 @@ public final class SpeechConductor {
         while channelRemaining > Self.channelBudget, let index = lowestDroppableIndex() {
             let dropped = pending.remove(at: index)
             SpokenLog.log("CHANNEL DROP [\(dropped.priority)] \(dropped.reason) \(dropped.synthesis ?? "")")
+            Diagnostics.shared.record("c.drop",
+                ["reason": dropped.reason, "prio": "\(dropped.priority)",
+                 "text": dropped.synthesis ?? dropped.fallback ?? "",
+                 "channelOwes": channelRemaining, "budget": Self.channelBudget])
             dropObserver?(dropped.synthesis ?? dropped.fallback ?? dropped.reason, dropped.priority)
             // A trailing cue is INFORMATION-ORDERED, never dropped silently: if its
             // line goes, the cue still fires so the player is not left without it.
@@ -204,11 +219,22 @@ public final class SpeechConductor {
                 // Croupier/vob mp3: hold the announcement queue and let any
                 // in-progress announcement finish, then play, then resume (D-032).
                 await queue.beginExternalSpeech()
+                let nominal = audio.duration(of: lead) ?? -1
+                let started = DispatchTime.now().uptimeNanoseconds
+                Diagnostics.shared.record("c.lead.start",
+                    ["id": lead.rawValue, "cat": item.leadCategory.rawValue,
+                     "reason": item.reason, "nominal": nominal])
                 await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
                     audio.play(lead, category: item.leadCategory) { cont.resume() }
                 }
+                let elapsed = Double(DispatchTime.now().uptimeNanoseconds &- started) / 1_000_000_000
+                Diagnostics.shared.record("c.lead.end",
+                    ["id": lead.rawValue, "elapsed": elapsed, "nominal": nominal,
+                     "overhead": nominal >= 0 ? elapsed - nominal : -1])
                 queue.endExternalSpeech()
             } else if let fallback = item.fallback, item.leadCategory.fallsBackToSynthesis {
+                Diagnostics.shared.record("c.lead.fallback",
+                    ["id": lead.rawValue, "fallback": fallback, "reason": item.reason])
                 // The mp3 isn't in the bundle yet → speak the declared fallback (D-030),
                 // but ONLY for INFORMATIVE voices (croupier). An AMBIENT voice (bot
                 // colour) falls back to SILENCE, never synthesis (D-066): a missing

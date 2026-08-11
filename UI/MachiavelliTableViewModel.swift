@@ -268,6 +268,7 @@ public final class MachiavelliTableViewModel: ObservableObject {
     // MARK: - Presenting events (human paced)
 
     private func present(_ payload: MachiavelliEventPayload) async {
+        diag("ui.present", ["event": String(describing: payload).prefix(200).description])
         switch payload {
         case .handBegan:
             conductor.handBegan()
@@ -400,6 +401,7 @@ public final class MachiavelliTableViewModel: ObservableObject {
         turnContext = context
         workspace = MachiavelliWorkspace(hand: context.hand, table: context.table.map { $0.cards })
         state.activeSeatID = heroSeatID
+        diag("ui.suspend", ["kind": "turn"])
         conductor.flushPending()
         let v = MachiavelliSpeechMap.voice(.yourTurn)
         conductor.say(lead: v.sound, fallback: uiLocalized(v.fallbackKey), priority: .high, reason: "your-turn")
@@ -430,10 +432,12 @@ public final class MachiavelliTableViewModel: ObservableObject {
         // The terminal ENDS the turn irreversibly — passing or drawing cannot be
         // taken back — so it carries the belt (D-106).
         guard decisionIsShown, readiness.isSettled else {
+            diag("ui.action", ["name": "submit", "accepted": false])
             playUI(SoundCatalog.uiCancel)
             SpokenLog.log("terminal REFUSED (shown=\(decisionIsShown) settled=\(readiness.isSettled))")
             return
         }
+        diag("ui.action", ["name": "submit", "accepted": true])
         readiness.accept()
         turnContinuation = nil
         let plan = MachiavelliTurnPlan(finalTable: ws.finalArrangement, terminal: terminal)
@@ -563,6 +567,26 @@ public final class MachiavelliTableViewModel: ObservableObject {
     /// combination's cards vertically (D-072). A live value so rapid walking collapses to
     /// the latest, and it routes through the queue (the single VoiceOver point, D-032).
     public func announce(_ text: String) { announcements.announceLiveValue(text) }
+
+    // MARK: - Diagnostics (D-107) — gated, no-op when recording is off
+
+    private var diagChannel: [String: Any] {
+        ["game": "machiavelli",
+         "undelivered": undeliveredCount,
+         "queuePending": announcements.pendingSnapshot().count,
+         "queueQuiet": announcements.isQuiet,
+         "conductorIdle": conductor.isIdle,
+         "channelOwes": conductor.channelRemaining + announcements.estimatedRemaining,
+         "voRunning": announcements.isVoiceOverRunning,
+         "modeOn": mode.isEnabled]
+    }
+
+    private func diag(_ kind: String, _ extra: [String: Any] = [:]) {
+        guard Diagnostics.shared.isEnabled else { return }
+        var fields = diagChannel
+        for (key, value) in extra { fields[key] = value }
+        Diagnostics.shared.record(kind, fields)
+    }
 
     private func playUI(_ id: SoundID) { audio.play(id, category: .ui) }
 

@@ -48,6 +48,9 @@ public final class AnnouncementQueue {
     private var pending: [Item] = []
     private var current: Item?
     private var currentToken = 0
+    /// Monotonic start of the item being spoken, so the trace can report its REAL
+    /// duration on finish (D-107), not just its estimate.
+    private var currentSpeakStart: UInt64 = 0
     private var externalSpeechActive = false
     private var idleWaiters: [CheckedContinuation<Void, Never>] = []
     private var observer: NSObjectProtocol?
@@ -115,6 +118,9 @@ public final class AnnouncementQueue {
         insert(Item(text: text, priority: priority, completion: completion))
         enforceBacklog()
         SpokenLog.log("enqueue [\(priority)] \(text)  (pending=\(pending.count))")
+        Diagnostics.shared.record("q.enqueue",
+            ["text": text, "prio": "\(priority)", "pending": pending.count,
+             "speaking": current != nil, "voRunning": isVoiceOverRunning])
         process()
     }
 
@@ -123,6 +129,13 @@ public final class AnnouncementQueue {
     public func announceLiveValue(_ text: String) {
         guard !text.isEmpty else { return }
         SpokenLog.log("live \(text)")
+        // The live value is the ONE deliberate interruption: if something is being
+        // spoken it truncates it. Record both so the trace shows the cut and its cause.
+        if let victim = current {
+            Diagnostics.shared.record("q.truncate",
+                ["victim": victim.text, "by": text, "cause": "liveValue"])
+        }
+        Diagnostics.shared.record("q.live", ["text": text])
         synthesisObserver?(text)
         post(text, interrupting: true)
     }
@@ -137,6 +150,10 @@ public final class AnnouncementQueue {
     /// after it. The time-critical cue is itself high and simply queues behind them,
     /// which is the right order anyway: hear your cards, then be asked to act.
     public func flushPending() {
+        for item in pending {
+            Diagnostics.shared.record("q.flush",
+                ["text": item.text, "prio": "\(item.priority)", "kept": item.priority == .high])
+        }
         let dropped = pending.filter { $0.priority != .high }
         pending.removeAll { $0.priority != .high }
         for item in dropped { item.completion?() }
@@ -147,6 +164,10 @@ public final class AnnouncementQueue {
     /// posting lives ONLY here (the single-point rule, D-032), so focus landing routes
     /// through this one method rather than posting directly.
     public static func postScreenChanged() {
+        // A `.screenChanged` INTERRUPTS whatever VoiceOver is currently speaking and
+        // re-reads the focused element — the very mechanism behind "the box cut off
+        // the line". Recorded so the trace can correlate the cut with the post (D-107).
+        Diagnostics.shared.record("focus.screenChanged")
         #if canImport(UIKit)
         UIAccessibility.post(notification: .screenChanged, argument: nil)
         #endif
@@ -158,6 +179,9 @@ public final class AnnouncementQueue {
     /// `.screenChanged` here would re-announce the whole table every single hand.
     /// Posting still lives only in this file (the single-point rule, D-032).
     public static func postLayoutChanged() {
+        // `.layoutChanged` moves focus without a full re-scan; it too re-reads the
+        // focused element and can talk over the queue (D-092/D-107).
+        Diagnostics.shared.record("focus.layoutChanged")
         #if canImport(UIKit)
         UIAccessibility.post(notification: .layoutChanged, argument: nil)
         #endif
@@ -169,11 +193,13 @@ public final class AnnouncementQueue {
     /// in-progress one to finish first.
     public func beginExternalSpeech() async {
         externalSpeechActive = true
+        Diagnostics.shared.record("q.hold.begin", ["waiting": current != nil])
         if current != nil { await withCheckedContinuation { idleWaiters.append($0) } }
     }
     /// The croupier mp3 finished: resume the queue.
     public func endExternalSpeech() {
         externalSpeechActive = false
+        Diagnostics.shared.record("q.hold.end")
         process()
     }
 
@@ -203,6 +229,9 @@ public final class AnnouncementQueue {
         while pending.count > 1, backlog() > maxBacklog, let idx = lowestDroppableIndex() {
             let dropped = pending.remove(at: idx)
             SpokenLog.log("DROP [\(dropped.priority)] \(dropped.text)")
+            Diagnostics.shared.record("q.drop",
+                ["text": dropped.text, "prio": "\(dropped.priority)",
+                 "backlog": backlog(), "reason": "queueBacklog"])
             dropObserver?(dropped.text, dropped.priority)
             dropped.completion?()      // never strand a caller sequenced behind it
         }
@@ -215,9 +244,14 @@ public final class AnnouncementQueue {
         let item = pending.removeFirst()
         current = item
         currentToken += 1
+        currentSpeakStart = DispatchTime.now().uptimeNanoseconds
         let token = currentToken
         synthesisObserver?(item.text)
         SpokenLog.log("SPEAK [\(item.priority)] \(item.text)")
+        Diagnostics.shared.record("q.speak.start",
+            ["text": item.text, "prio": "\(item.priority)", "token": token,
+             "estDur": Self.speakTime(item.text), "voRunning": isVoiceOverRunning,
+             "pendingBehind": pending.count])
         guard isVoiceOverRunning else {
             // Nobody is listening. Either simulate the duration (app mode ON, so the
             // visuals still pace to it, D-034) or advance at once (mode OFF).
@@ -249,6 +283,12 @@ public final class AnnouncementQueue {
 
     private func finishCurrent() {
         let finished = current
+        if let finished {
+            let dur = Double(DispatchTime.now().uptimeNanoseconds &- currentSpeakStart) / 1_000_000_000
+            Diagnostics.shared.record("q.speak.end",
+                ["text": finished.text, "prio": "\(finished.priority)",
+                 "actualDur": dur, "estDur": Self.speakTime(finished.text)])
+        }
         current = nil
         finished?.completion?()
         let waiters = idleWaiters; idleWaiters.removeAll()

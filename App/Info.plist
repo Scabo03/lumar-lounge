@@ -24,6 +24,13 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- ⚠️ TEMPORANEO (D-107): expose Documents/ over the cable via Finder file
+	     sharing, so the diagnostic trace can be pulled off the device. Remove with
+	     the DebugFlags.diagnostics flag for public release. -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

@@ -19,6 +19,15 @@ Flag temporanei attivi in questa build, **da rimuovere prima del rilascio pubbli
   schermata. Definito in [`GameWorld/DebugFlags.swift`](GameWorld/DebugFlags.swift);
   per disattivarlo, mettere `freePlay = false`. Introdotto per la fase di test post-M2.1
   (calibrazione delle personalità dei bot).
+- **`DebugFlags.diagnostics` — Registrazione diagnostica (D-107).** Attivo. All'avvio l'app
+  avvia il recorder `Diagnostics` (in `Audio`), che scrive una traccia **JSON Lines** dei tempi
+  dei canali parlato/audio/UI in `Documents/LumarDiagnostics/`, per diagnosticare i difetti di
+  ritmo VoiceOver **dai dati**. È **inerte** per il gioco (nessun annuncio, nessun suono, solo
+  scrittura su file) e gated (costo zero da spento). L'app mostra un badge rosso
+  **"REGISTRAZIONE"** e una voce nelle Impostazioni per **fermare** ed **esportare** la traccia;
+  il recupero via cavo usa la **condivisione file del Finder** (`UIFileSharingEnabled` in
+  Info.plist). Definito in [`GameWorld/DebugFlags.swift`](GameWorld/DebugFlags.swift); per la
+  build di **correzione** mettere `diagnostics = false`.
 
 ## Stato di sviluppo
 

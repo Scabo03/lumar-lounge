@@ -323,6 +323,15 @@
 "debug.freeplay.badge" = "FREE PLAY";
 "debug.freeplay.a11y" = "Free-play test mode active";
 
+/* ⚠️ TEMPORARY (D-107) — diagnostic recording, remove with the flag */
+"debug.diagnostics.badge" = "RECORDING";
+"debug.diagnostics.a11y" = "Diagnostic recording active";
+"settings.diagnostics.label" = "Diagnostic recording";
+"settings.diagnostics.a11y" = "Diagnostic recording";
+"settings.diagnostics.export" = "Export recording";
+"settings.diagnostics.export.a11y" = "Export the diagnostic trace";
+"settings.diagnostics.footer" = "Records the timing of the spoken, audio and interface channels to diagnose rhythm defects. It does not affect play: it only writes a file. Leave recording on while you play; then connect the phone to the Mac and export the trace (or retrieve it via Finder file sharing).";
+
 /* ------------------------------------------------------------------ */
 /* M1.9 refinement — progressive ante + decisive hands at the Whiskey (D-052/D-053) */
 "draw.ante.label" = "Ante: %d";

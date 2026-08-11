@@ -243,6 +243,7 @@ public final class OmahaTableViewModel: ObservableObject {
     // MARK: - Presenting events (human paced)
 
     private func present(_ payload: OmahaEventPayload) async {
+        diag("ui.present", ["event": String(describing: payload).prefix(200).description])
         switch payload {
         case let .handBegan(_, _, _, _, _, _, _, seats):
             fastForward = false      // a new hand: narrate it fully again (D-087)
@@ -411,6 +412,7 @@ public final class OmahaTableViewModel: ObservableObject {
         if hasLeft { return }
         let info = OmahaTurnInfo(from: context)
         humanTurn = info
+        diag("ui.suspend", ["kind": "turn"])
         state.activeSeatID = heroSeatID
         conductor.flushPending()
         // The croupier's "it's your turn" — the casino's own voice (silent until its mp3
@@ -440,8 +442,10 @@ public final class OmahaTableViewModel: ObservableObject {
         guard decisionIsShown, readiness.isSettled else {
             playUI(SoundCatalog.uiCancel)
             SpokenLog.log("input REFUSED (shown=\(decisionIsShown) settled=\(readiness.isSettled))")
+            diag("ui.action", ["name": "input", "accepted": false])
             return false
         }
+        diag("ui.action", ["name": "input", "accepted": true])
         return true
     }
 
@@ -476,6 +480,7 @@ public final class OmahaTableViewModel: ObservableObject {
         guard let turn = humanTurn, turn.canBetOrRaise else { return }
         playUI(SoundCatalog.uiBoxOpen)
         raiseTurn = turn
+        diag("ui.suspend", ["kind": "raiseBox"])
         raiseBox = RaiseBoxState(minTo: turn.minTo, maxTo: turn.maxTo, isBet: turn.isBet)
     }
 
@@ -542,6 +547,26 @@ public final class OmahaTableViewModel: ObservableObject {
     // MARK: - Helpers
 
     private func playUI(_ id: SoundID) { audio.play(id, category: .ui) }
+
+    // MARK: - Diagnostics (D-107) — gated, no-op when recording is off
+
+    private var diagChannel: [String: Any] {
+        ["game": "omaha",
+         "undelivered": undeliveredCount,
+         "queuePending": announcements.pendingSnapshot().count,
+         "queueQuiet": announcements.isQuiet,
+         "conductorIdle": conductor.isIdle,
+         "channelOwes": conductor.channelRemaining + announcements.estimatedRemaining,
+         "voRunning": announcements.isVoiceOverRunning,
+         "modeOn": mode.isEnabled]
+    }
+
+    private func diag(_ kind: String, _ extra: [String: Any] = [:]) {
+        guard Diagnostics.shared.isEnabled else { return }
+        var fields = diagChannel
+        for (key, value) in extra { fields[key] = value }
+        Diagnostics.shared.record(kind, fields)
+    }
 
     private func pause(_ seconds: Double) async {
         let effective = fastMode ? 0.01 : seconds

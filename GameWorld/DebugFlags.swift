@@ -23,4 +23,15 @@ public enum DebugFlags {
     /// **non si muove** giocando (ogni test parte fresco). L'app mostra un badge di
     /// avviso in ogni schermata. Introdotto per la fase di test post-M2.1.
     public static let freePlay = true
+
+    /// ⚠️ TEMPORANEO (D-107) — **rimuovere / mettere a `false` prima del rilascio**.
+    ///
+    /// **Registrazione diagnostica** dei canali parlato/audio/UI: quando `true`, l'app
+    /// avvia il recorder `Diagnostics` all'avvio, scrivendo una traccia JSONL nel
+    /// proprio `Documents/LumarDiagnostics/`. Serve **solo** a diagnosticare i difetti
+    /// di ritmo VoiceOver senza indovinare — la build "di registrazione". È **inerte**
+    /// per l'esperienza di gioco (nessun annuncio, nessun audio, solo scrittura su
+    /// file) e va spenta nella build di correzione. L'app mostra un badge e una voce
+    /// nelle Impostazioni per fermarla ed esportare la traccia.
+    public static let diagnostics = true
 }

@@ -18,6 +18,13 @@ struct LumarLoungeApp: App {
                 Color.black
                     .ignoresSafeArea()
                     .task { await PacingBench.run() }
+            } else if DiagnosticsSelfTest.isRequested {
+                // Collaudo of the diagnostic recorder (D-107): drive real sessions
+                // with recording on and print back what was captured, so the harness
+                // is proven BEFORE the app is handed over for the observed session.
+                Color.black
+                    .ignoresSafeArea()
+                    .task { await DiagnosticsSelfTest.run() }
             } else {
             // M2.1: the app opens on Home, with navigation to the Riverwood Casino
             // and its tables (D-035). AppRootView owns the app-level state.

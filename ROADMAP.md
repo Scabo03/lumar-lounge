@@ -745,6 +745,20 @@ Riverwood (10/500, buy-in 1000) e Skypool (50/2500, buy-in 5000). Annuncio compa
   che una doppia pressione rapida non peschi mai due carte, e che nessuna pressione legittima venga
   ingoiata (nessun `ui_cancel` udibile durante il gioco normale).
 
+**Sessione diagnostica del ritmo VoiceOver — strumentazione (D-107), a TRE fasi:**
+- **Fase 1 — FATTA:** recorder `Diagnostics` (in `Audio`, gated e inerte per il gioco) cablato nei
+  chokepoint condivisi (coda annunci, conductor, audio engine, post-focus) e nei 7 view model; scrive
+  una traccia **JSON Lines** con clock monotòno+wall, testo **reale** (non chiavi), stato del canale ai
+  momenti critici, e segmentazione per gioco. **Collaudato da solo su runtime iOS reale** (175 record,
+  tutte le categorie, latenza mp3 reale, testo italiano) **prima della consegna**. Build di registrazione
+  su TestFlight, badge "REGISTRAZIONE", recupero via condivisione file Finder. 674 test verdi.
+- **Fase 2 — utente (pendente):** giocare una partita per ciascuno dei **sette** giochi, di **sola
+  registrazione**; alzarsi ed entrare nel gioco successivo segmenta la traccia. Nessuna modifica di Code.
+- **Fase 3 — dopo il ritorno della traccia (pendente):** trovare la **causa comune** dietro i sintomi
+  (banco taglia mano, pop-up precoce, rilettura carte in mano vs comuni, troncamenti/disallineamenti);
+  correggere le **cause** nei consumatori (driver e motori intatti, budget non alzato senza dati);
+  TestFlight della build di correzione (`DebugFlags.diagnostics = false`).
+
 ### 🔭 Prossimo
 Ascolto/approvazione dei campioni fonetici del blackjack;
 **ascolto fonetico manque/passe** (unico residuo Roulette);

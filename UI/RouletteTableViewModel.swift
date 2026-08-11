@@ -151,6 +151,7 @@ public final class RouletteTableViewModel: ObservableObject {
     // MARK: - Presenting
 
     private func present(_ payload: RouletteEventPayload) async {
+        diag("ui.present", ["event": String(describing: payload).prefix(200).description])
         switch payload {
         case .sessionBegan:
             state = RouletteTableReducer.reduce(state, payload)
@@ -215,6 +216,7 @@ public final class RouletteTableViewModel: ObservableObject {
 
     private func runBetting() async {
         if hasLeft { return }
+        diag("ui.suspend", ["kind": "betSlip"])
         // A fresh composition each round.
         slip.clear()
         state.phase = .betting
@@ -289,10 +291,12 @@ public final class RouletteTableViewModel: ObservableObject {
         guard canConfirm, let continuation = betContinuation else { return }
         // Confirming commits the whole slip — money on the felt (D-106).
         guard undeliveredCount == 0, readiness.isSettled else {
+            diag("ui.action", ["name": "confirm", "accepted": false])
             playUI(SoundCatalog.uiCancel)
             SpokenLog.log("spin REFUSED (undelivered=\(undeliveredCount) settled=\(readiness.isSettled))")
             return
         }
+        diag("ui.action", ["name": "confirm", "accepted": true])
         readiness.accept()
         betContinuation = nil
         let bets = slip.bets
@@ -331,4 +335,24 @@ public final class RouletteTableViewModel: ObservableObject {
     }
 
     private func playUI(_ id: SoundID) { audio.play(id, category: .ui) }
+
+    // MARK: - Diagnostics (D-107) — gated, no-op when recording is off
+
+    private var diagChannel: [String: Any] {
+        ["game": "roulette",
+         "undelivered": undeliveredCount,
+         "queuePending": announcements.pendingSnapshot().count,
+         "queueQuiet": announcements.isQuiet,
+         "conductorIdle": conductor.isIdle,
+         "channelOwes": conductor.channelRemaining + announcements.estimatedRemaining,
+         "voRunning": announcements.isVoiceOverRunning,
+         "modeOn": mode.isEnabled]
+    }
+
+    private func diag(_ kind: String, _ extra: [String: Any] = [:]) {
+        guard Diagnostics.shared.isEnabled else { return }
+        var fields = diagChannel
+        for (key, value) in extra { fields[key] = value }
+        Diagnostics.shared.record(kind, fields)
+    }
 }

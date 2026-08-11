@@ -8,6 +8,7 @@
 
 import SwiftUI
 import GameWorld
+import Audio
 
 /// A labelled action for the chrome's leading slot (back, leave table, …).
 public struct ChromeAction {
@@ -70,6 +71,8 @@ public struct GameChrome<Content: View>: View {
             Spacer()
             // ⚠️ TEMPORANEO (D-050): visible badge whenever free-play test mode is on.
             if DebugFlags.freePlay { freePlayBadge }
+            // ⚠️ TEMPORANEO (D-107): recording indicator while the diagnostic trace is on.
+            if DebugFlags.diagnostics && Diagnostics.shared.isEnabled { diagnosticsBadge }
             Button { showingSettings = true } label: {
                 Image(systemName: "gearshape.fill")
                     .font(.title2)
@@ -99,6 +102,19 @@ public struct GameChrome<Content: View>: View {
             .accessibilityLabel(Text(uiLocalized("debug.freeplay.a11y")))
     }
 
+    /// ⚠️ TEMPORANEO (D-107): the diagnostic-recording indicator. Passive — it never
+    /// speaks or plays; it only signals that a trace is being written.
+    private var diagnosticsBadge: some View {
+        Text(verbatim: uiLocalized("debug.diagnostics.badge"))
+            .font(.caption2.weight(.heavy))
+            .padding(.horizontal, 8).padding(.vertical, 3)
+            .background(Capsule().fill(Color.red))
+            .foregroundStyle(.white)
+            .accessibilityElement()
+            .accessibilityIdentifier("debug.diagnostics.badge")
+            .accessibilityLabel(Text(uiLocalized("debug.diagnostics.a11y")))
+    }
+
     private func chipsBar(_ chips: Int) -> some View {
         HStack {
             Text(verbatim: uiLocalized("chrome.chips", chips))
@@ -118,6 +134,8 @@ public struct GameChrome<Content: View>: View {
 struct SettingsView: View {
     @ObservedObject var voMode: AppVoiceOverMode
     @Environment(\.dismiss) private var dismiss
+    /// ⚠️ TEMPORANEO (D-107): mirrors the recorder so the toggle can stop it.
+    @State private var recording = Diagnostics.shared.isEnabled
 
     var body: some View {
         NavigationStack {
@@ -130,6 +148,30 @@ struct SettingsView: View {
                         .voiceOverFocusLanding()   // land VoiceOver on the first setting (D-057)
                 } footer: {
                     Text(uiLocalized("settings.vomode.desc") + "\n\n" + uiLocalized("settings.vomode.footer"))
+                }
+
+                // ⚠️ TEMPORANEO (D-107): the diagnostic-recording controls. Shown only
+                // in the recording build; lets the player stop the trace and export it
+                // (Finder file sharing is the primary path, this is an accessible backup).
+                if DebugFlags.diagnostics {
+                    Section {
+                        Toggle(uiLocalized("settings.diagnostics.label"), isOn: $recording)
+                            .accessibilityIdentifier("settings.diagnostics.switch")
+                            .accessibilityLabel(Text(uiLocalized("settings.diagnostics.a11y")))
+                            .onChange(of: recording) { on in
+                                if on { Diagnostics.shared.enable(label: "recording") }
+                                else { Diagnostics.shared.disable() }
+                            }
+                        if let url = Diagnostics.shared.currentFileURL {
+                            ShareLink(item: url) {
+                                Text(uiLocalized("settings.diagnostics.export"))
+                            }
+                            .accessibilityIdentifier("settings.diagnostics.export")
+                            .accessibilityLabel(Text(uiLocalized("settings.diagnostics.export.a11y")))
+                        }
+                    } footer: {
+                        Text(uiLocalized("settings.diagnostics.footer"))
+                    }
                 }
             }
             .navigationTitle(Text(uiLocalized("settings.title")))

@@ -260,6 +260,7 @@ public final class DrawTableViewModel: ObservableObject {
     // MARK: - Presenting events (human paced)
 
     private func present(_ payload: DrawEventPayload) async {
+        diag("ui.present", ["event": String(describing: payload).prefix(200).description])
         switch payload {
         case let .handBegan(_, _, _, _, _, _, carriedPot, seats):
             fastForward = false      // a new hand: narrate it fully again (D-087)
@@ -440,6 +441,7 @@ public final class DrawTableViewModel: ObservableObject {
         let info = DrawBettingTurn(from: context)
         bettingTurn = info
         state.activeSeatID = heroSeatID
+        diag("ui.suspend", ["kind": "turn"])
         // Just the "it's your turn" mp3 — no "to call X, pot Y" synthesis (D-055): the
         // Call button shows and speaks the amount itself, so the context was redundant.
         conductor.flushPending()
@@ -464,8 +466,10 @@ public final class DrawTableViewModel: ObservableObject {
         guard decisionIsShown, readiness.isSettled else {
             playUI(SoundCatalog.uiCancel)
             SpokenLog.log("input REFUSED (shown=\(decisionIsShown) settled=\(readiness.isSettled))")
+            diag("ui.action", ["name": "input", "accepted": false])
             return false
         }
+        diag("ui.action", ["name": "input", "accepted": true])
         return true
     }
 
@@ -507,6 +511,7 @@ public final class DrawTableViewModel: ObservableObject {
     private func runDrawTurn(_ context: DrawDrawContext) async {
         // The player has left: never offer a turn again (D-086).
         if hasLeft { return }
+        diag("ui.suspend", ["kind": "drawBox"])
         drawBox = DrawBoxState(cards: context.cards)
         state.activeSeatID = heroSeatID
         conductor.flushPending()
@@ -542,8 +547,10 @@ public final class DrawTableViewModel: ObservableObject {
         guard undeliveredCount == 0, readiness.isSettled else {
             playUI(SoundCatalog.uiCancel)
             SpokenLog.log("discards REFUSED (undelivered=\(undeliveredCount) settled=\(readiness.isSettled))")
+            diag("ui.action", ["name": "confirmDraw", "accepted": false])
             return
         }
+        diag("ui.action", ["name": "confirmDraw", "accepted": true])
         readiness.accept()
         drawContinuation = nil
         let discards = box.orderedDiscards
@@ -569,6 +576,26 @@ public final class DrawTableViewModel: ObservableObject {
     public func returnToCasino() { onLeave(state.seat(heroSeatID)?.chips ?? 0) }
 
     // MARK: - Helpers
+
+    // MARK: - Diagnostics (D-107) — gated, no-op when recording is off
+
+    private var diagChannel: [String: Any] {
+        ["game": "draw",
+         "undelivered": undeliveredCount,
+         "queuePending": announcements.pendingSnapshot().count,
+         "queueQuiet": announcements.isQuiet,
+         "conductorIdle": conductor.isIdle,
+         "channelOwes": conductor.channelRemaining + announcements.estimatedRemaining,
+         "voRunning": announcements.isVoiceOverRunning,
+         "modeOn": mode.isEnabled]
+    }
+
+    private func diag(_ kind: String, _ extra: [String: Any] = [:]) {
+        guard Diagnostics.shared.isEnabled else { return }
+        var fields = diagChannel
+        for (key, value) in extra { fields[key] = value }
+        Diagnostics.shared.record(kind, fields)
+    }
 
     private func playUI(_ id: SoundID) { audio.play(id, category: .ui) }
 

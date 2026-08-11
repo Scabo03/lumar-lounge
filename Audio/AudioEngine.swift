@@ -38,6 +38,9 @@ public final class AudioEngine: NSObject, AudioServicing, AVAudioPlayerDelegate 
     /// until it finishes so the callback is never lost to eviction.
     private var completions: [ObjectIdentifier: () -> Void] = [:]
     private var completionPlayers: [ObjectIdentifier: AVAudioPlayer] = [:]
+    /// Play id + monotonic start for the trace, so completion latency (the D-056
+    /// failure mode) is captured per clip (D-107).
+    private var diagPlays: [ObjectIdentifier: (id: String, start: UInt64)] = [:]
 
     private var masterVolume: Float = 1.0
     private var muted: Bool = false
@@ -120,6 +123,9 @@ public final class AudioEngine: NSObject, AudioServicing, AVAudioPlayerDelegate 
         // Spoken cues are never gated by VoiceOver (D-028): they always play.
         guard !muted, let player = makePlayer(id) else {
             // Missing file or muted: nothing to play, but advance any sequence.
+            Diagnostics.shared.record("a.play",
+                ["id": id.rawValue, "cat": category.rawValue, "started": false,
+                 "missing": makePlayer(id) == nil, "muted": muted])
             if let completion { DispatchQueue.main.async(execute: completion) }
             return
         }
@@ -129,10 +135,14 @@ public final class AudioEngine: NSObject, AudioServicing, AVAudioPlayerDelegate 
             player.delegate = self
             completions[key] = completion
             completionPlayers[key] = player
+            diagPlays[key] = (id.rawValue, DispatchTime.now().uptimeNanoseconds)
         }
         player.prepareToPlay()
         SpokenLog.log("PLAY \(id.rawValue) [\(category.rawValue)]")
         let started = player.play()
+        Diagnostics.shared.record("a.play",
+            ["id": id.rawValue, "cat": category.rawValue, "started": started,
+             "nominal": player.duration, "hasCompletion": completion != nil])
         // The completion MUST always fire, or a caller awaiting the sequence (the
         // SpeechConductor, which holds the whole spoken channel while an mp3 plays)
         // hangs forever — and with app VoiceOver mode ON the UI then blocks (D-056).
@@ -184,6 +194,7 @@ public final class AudioEngine: NSObject, AudioServicing, AVAudioPlayerDelegate 
         let pending = completions
         completions.removeAll()
         completionPlayers.removeAll()
+        diagPlays.removeAll()
         for (_, done) in pending { DispatchQueue.main.async(execute: done) }
     }
 
@@ -210,6 +221,10 @@ public final class AudioEngine: NSObject, AudioServicing, AVAudioPlayerDelegate 
     private func fireCompletionFallback(_ key: ObjectIdentifier) {
         guard let done = completions.removeValue(forKey: key) else { return }
         completionPlayers.removeValue(forKey: key)
+        if let info = diagPlays.removeValue(forKey: key) {
+            let elapsed = Double(DispatchTime.now().uptimeNanoseconds &- info.start) / 1_000_000_000
+            Diagnostics.shared.record("a.play.end", ["id": info.id, "elapsed": elapsed])
+        }
         done()
     }
 

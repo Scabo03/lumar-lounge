@@ -802,6 +802,17 @@ i pulsanti si accendono su uno stato che il giocatore non ha ancora visto. Regol
   una schermata) è un bug **silenzioso**: i test — che *devono* usare seed fissi —
   restano verdi e lo mascherano. Verificare sempre che ogni `seed:` non-di-test sia
   genuinamente casuale.
+- **I difetti di RITMO si diagnosticano dai DATI, non dalle ipotesi (D-107).** Il
+  ritmo dei tre canali (parlato in coda, lettura dell'elemento a fuoco, suono) è
+  sensibile a tempi reali che il simulatore falsa (D-056); una correzione dichiarata
+  su un'ipotesi torna sotto un altro volto. Quando un difetto di troncamento, ritardo,
+  disallineamento o ripetizione ritorna, si **registra** una sessione reale col recorder
+  `Diagnostics` (in `Audio`) e si stabilisce la causa **dai record** (timeline di
+  `focus.*` vs `q.speak.*`, `channelOwes`/`queueQuiet` ai momenti critici, priorità in
+  `c.say`). La strumentazione è **additiva e gated** (costo zero da spenta), **non parla,
+  non suona, non posta mai a VoiceOver** (scrive solo un file), e va **collaudata da soli
+  su un runtime iOS reale prima della consegna** — l'utente non deve scoprire a gioco
+  iniziato che non registrava. Cattura il **testo reso davvero**, mai le chiavi (D-093).
 
 ## 6. Domini di gioco (ordine previsto)
 

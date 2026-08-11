@@ -30,11 +30,31 @@ public struct AppRootView: View {
     public var body: some View {
         content
             .animation(.easeInOut(duration: 0.25), value: app.screen)
-            .onAppear { applyAmbient() }
-            .onChange(of: app.screen) { _ in
+            .onAppear {
+                // ⚠️ TEMPORANEO (D-107): start the diagnostic trace once, at launch.
+                // The recorder is inert for gameplay (it only writes to a file).
+                if DebugFlags.diagnostics && !Diagnostics.shared.isEnabled {
+                    Diagnostics.shared.enable(label: "session")
+                }
+                Diagnostics.shared.record("nav.screen", ["screen": Self.screenLabel(app.screen)])
+                applyAmbient()
+            }
+            .onChange(of: app.screen) { screen in
+                // Segments the trace per game: the player stands up (→ casino) then
+                // enters the next game (→ table:<id>), which is exactly this transition.
+                Diagnostics.shared.record("nav.screen", ["screen": Self.screenLabel(screen)])
                 audio.play(SoundCatalog.uiNavigation, category: .ui)   // silent until produced
                 applyAmbient()
             }
+    }
+
+    /// A stable label for the current screen, so the trace can be split per game.
+    private static func screenLabel(_ screen: AppState.Screen) -> String {
+        switch screen {
+        case .home:                 return "home"
+        case let .casino(casino):   return "casino:\(casino.id)"
+        case let .table(table):     return "table:\(table.id)"
+        }
     }
 
     @ViewBuilder private var content: some View {

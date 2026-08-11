@@ -298,6 +298,8 @@ public final class TableViewModel: ObservableObject {
     // MARK: - Presenting events (human paced)
 
     private func present(_ payload: EventPayload) async {
+        diag("ui.present", ["event": String(describing: payload).prefix(200).description,
+                            "fastForward": fastForward])
         switch payload {
         case let .handBegan(_, _, _, _, _, _, bigBlind, seats):
             conductor.handBegan()          // reset once-per-hand voices (D-029)
@@ -533,6 +535,7 @@ public final class TableViewModel: ObservableObject {
         let info = HumanTurnInfo(from: context)
         humanTurn = info
         state.activeSeatID = heroSeatID
+        diag("ui.suspend", ["kind": "turn", "toCall": info.toCall])
         // The croupier says "it's your turn" (vo_it_your_turn) — and that is ALL (D-055).
         // No "to call X, pot Y" synthesis: the Call button already shows "Call X" and
         // speaks the amount itself when VoiceOver reaches it, so the context line was
@@ -566,8 +569,11 @@ public final class TableViewModel: ObservableObject {
         guard decisionIsShown, readiness.isSettled else {
             playUI(SoundCatalog.uiCancel)
             SpokenLog.log("input REFUSED (shown=\(decisionIsShown) settled=\(readiness.isSettled))")
+            diag("ui.action", ["name": "input", "accepted": false,
+                               "shown": decisionIsShown, "settled": readiness.isSettled])
             return false
         }
+        diag("ui.action", ["name": "input", "accepted": true])
         return true
     }
 
@@ -606,6 +612,7 @@ public final class TableViewModel: ObservableObject {
     public func openRaiseBox() {
         guard let turn = humanTurn, turn.canBetOrRaise else { return }
         playUI(SoundCatalog.uiBoxOpen)
+        diag("ui.suspend", ["kind": "raiseBox"])
         let box = RaiseBoxState(minTo: turn.minTo, maxTo: turn.maxTo, isBet: turn.isBet)
         raiseBox = box
         // No announcement here: opening moves VoiceOver focus onto the box title,
@@ -675,6 +682,26 @@ public final class TableViewModel: ObservableObject {
     /// Plays a UI-feedback sound for a direct user input (D-023: UI feedback is
     /// played directly, not via the event flow).
     private func playUI(_ id: SoundID) { audio.play(id, category: .ui) }
+
+    // MARK: - Diagnostics (D-107) — gated, no-op when recording is off
+
+    private var diagChannel: [String: Any] {
+        ["game": "texas",
+         "undelivered": undeliveredCount,
+         "queuePending": announcements.pendingSnapshot().count,
+         "queueQuiet": announcements.isQuiet,
+         "conductorIdle": conductor.isIdle,
+         "channelOwes": conductor.channelRemaining + announcements.estimatedRemaining,
+         "voRunning": announcements.isVoiceOverRunning,
+         "modeOn": mode.isEnabled]
+    }
+
+    private func diag(_ kind: String, _ extra: [String: Any] = [:]) {
+        guard Diagnostics.shared.isEnabled else { return }
+        var fields = diagChannel
+        for (key, value) in extra { fields[key] = value }
+        Diagnostics.shared.record(kind, fields)
+    }
 
     // MARK: - Human rhythm
 
