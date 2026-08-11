@@ -3761,3 +3761,36 @@ e il piano eseguito — nessuna diagnosi da ipotesi qui.**
   simulatore. **Consegnata all'utente la build di registrazione via TestFlight** (numero build nel
   resoconto). **Fase 2/3 pendenti** — questa voce sarà completata con cause e correzioni dopo il ritorno
   della traccia.
+
+### D-107 (addendum) — Recupero della traccia VIA CAVO, senza alcun intervento dell'utente
+Correzione al protocollo prima della Fase 2: **l'utente non deve fare NIENTE con la traccia** — non
+Finder, non esportazione, non trasferimento. Gioca e basta; **tutta la raccolta la faccio io leggendo
+dal telefono collegato via cavo**.
+- **Il percorso non è stato cambiato: era GIÀ leggibile via cavo.** La traccia sta in
+  `Documents/LumarDiagnostics/` e `xcrun devicectl device copy from --domain-type appDataContainer
+  --domain-identifier com.scabo.lumarlounge` la legge sull'iPhone collegato (developer mode) — **anche
+  senza `UIFileSharingEnabled`** (verificato: funziona pure sulla build vecchia che non ce l'ha; il flag
+  resta come riserva Finder). Nessuna modifica all'app: la build di registrazione **1786472900** va bene
+  così com'è per il flusso via cavo.
+- **COLLAUDO del recupero via cavo — fatto, sull'iPhone reale (iPhone 15, iOS 26.5.2 collegato), prima
+  della consegna**, esattamente come per la registrazione:
+  1. **Lettura del container** dell'app installata via `devicectl copy from appDataContainer` →
+     riuscita (nessun errore di permesso).
+  2. **Round-trip byte-identico**: scritto un `.jsonl` sintetico in `Documents/LumarDiagnostics/` via
+     `copy to` e riletto via `copy from` → **md5 identico**, testo italiano intatto.
+  3. **Tool di recupero** `scripts/pull-diagnostics.sh` (auto-rileva l'iPhone, tira giù
+     `Documents/LumarDiagnostics/`, elenca le tracce coi conteggi) → collaudato: ha recuperato la traccia
+     e contato i record. **Pulito il device dopo ogni prova** (nessun file di collaudo lasciato).
+  L'unico anello che non posso chiudere da solo prima della consegna — «la build di **registrazione** che
+  scrive sul device e io la leggo» — è perché non posso side-loadare quella build (l'App ID è del team
+  senza cert di sviluppo su questo Mac); ma i due mezzi anelli sono provati **ciascuno sul target giusto**
+  (l'app scrive la traccia corretta in `Documents/` sul simulatore; io leggo quel percorso via cavo sul
+  device), stesso percorso, stesso formato.
+- **Segmentazione per gioco senza chiedere nulla**, doppia: **ogni** record dei view model porta il campo
+  `game` (`blackjack`/`texas`/…) — dimostrato nella traccia di collaudo — **e** `nav.screen` marca i
+  confini quando ci si alza dal tavolo (cablato in `AppRootView`, scatta nel gioco reale). Basta per
+  attribuire ogni record al gioco giusto.
+- **Fase 2:** l'utente apre la build **1786472900** (badge REGISTRAZIONE) e, con VoiceOver, gioca una
+  partita per ciascuno dei sette giochi in un'unica sessione, alzandosi per passare al successivo,
+  lasciando accadere i difetti. **A sessione finita leggo la traccia via cavo**
+  (`scripts/pull-diagnostics.sh`) e procedo alla Fase 3.

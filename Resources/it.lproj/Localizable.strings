@@ -339,7 +339,7 @@
 "settings.diagnostics.a11y" = "Registrazione diagnostica";
 "settings.diagnostics.export" = "Esporta registrazione";
 "settings.diagnostics.export.a11y" = "Esporta la traccia diagnostica";
-"settings.diagnostics.footer" = "Registra i tempi dei canali parlato, audio e interfaccia per diagnosticare i difetti di ritmo. Non incide sul gioco: scrive solo un file. Lascia attiva la registrazione mentre giochi; poi collega il telefono al Mac ed esporta la traccia (o recuperala via condivisione file del Finder).";
+"settings.diagnostics.footer" = "Registra i tempi dei canali parlato, audio e interfaccia per diagnosticare i difetti di ritmo. Non incide sul gioco: scrive solo un file. Tu devi solo giocare: la traccia viene letta automaticamente via cavo, non serve esportare né trasferire nulla. Questi comandi (ferma / esporta) sono solo una riserva.";
 
 /* ------------------------------------------------------------------ */
 /* M1.9 rifinitura — ante progressivo + mani decisive al Whiskey (D-052/D-053) */

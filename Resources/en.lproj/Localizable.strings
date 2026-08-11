@@ -330,7 +330,7 @@
 "settings.diagnostics.a11y" = "Diagnostic recording";
 "settings.diagnostics.export" = "Export recording";
 "settings.diagnostics.export.a11y" = "Export the diagnostic trace";
-"settings.diagnostics.footer" = "Records the timing of the spoken, audio and interface channels to diagnose rhythm defects. It does not affect play: it only writes a file. Leave recording on while you play; then connect the phone to the Mac and export the trace (or retrieve it via Finder file sharing).";
+"settings.diagnostics.footer" = "Records the timing of the spoken, audio and interface channels to diagnose rhythm defects. It does not affect play: it only writes a file. You only have to play: the trace is read automatically over the cable — no exporting or transferring needed. These controls (stop / export) are only a backup.";
 
 /* ------------------------------------------------------------------ */
 /* M1.9 refinement — progressive ante + decisive hands at the Whiskey (D-052/D-053) */
