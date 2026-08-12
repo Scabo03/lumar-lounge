@@ -3886,3 +3886,17 @@ Texas **0 tagli**, i pochi drop occasionali recuperati). Ma due casi resistevano
   cede). **683 test verdi** (+2 budget cross-stadio; retry e priorità già pinnati). iOS compila. La
   registrazione **resta accesa**: un ultimo rigioco breve (uno split al Blackjack, una mano Texas fino allo
   showdown) conferma dai dati che split e tabellone ora si sentono; poi si spegne `DebugFlags.diagnostics`.
+
+### D-108 (addendum 2) — Terzo rigioco: split e tabellone OK; l'ultima coda (raffica di fine mano) col BACKOFF
+Rigiocato con la build coalesce+cross-stadio; traccia via cavo (928 record). **Confermato dai dati:**
+la mano da **split ora si sente in un'unica riga** (es. «Il banco: 18. Mano 1: Perdi 400. Mano 2: Vinci
+200. In tutto: meno 200» **detta 6,48 s**); Texas **0 tagli**; i drop isolati recuperati dal retry. Restava
+**un solo** caso: una mano che finisce su un **bust** — la riga del bust («…Sballi con 27.») e la riga
+combinata di fine mano, poste **una attaccata all'altra**, si **inondavano a vicenda** (retry a 0,4 s che
+**alimentano** l'inondazione: 8 post rifiutati). **Causa al fondo del retry:** VoiceOver inondato **rifiuta
+per un po'**, e ripostare a **cadenza fissa** non gli dà mai il **vuoto** per drenare. **Fix: backoff
+esponenziale** — il ritardo di retry **cresce** coi drop consecutivi del canale (`retryDelay·2^n`, cap 2 s,
+`maxRetries` 4→6), azzerato da ogni riga **davvero detta**. Così un drop **isolato** recupera subito (0,4 s),
+una **raffica** viene incontrata con **gap crescenti** finché VoiceOver drena e la riga esce. **CONVENTIONS
+§4** già copre il principio (una fine è un segnale da verificare); il backoff ne è il corollario per la
+raffica. Solo `UI`, budget non alzato, motori/driver intatti. **683 test verdi.** iOS compila.

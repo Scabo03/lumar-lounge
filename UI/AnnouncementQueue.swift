@@ -50,12 +50,20 @@ public final class AnnouncementQueue {
     /// How many times a dropped announcement is re-posted before giving up (D-108).
     /// VoiceOver drops a post when it is busy — speaking the button the player just
     /// activated, or not yet settled after the previous line in a rapid burst — and
-    /// reports it "finished" instantly. A handful of retries with a short settle
-    /// recovers the line once VoiceOver is free; the cap stops a runaway loop.
-    static let maxRetries = 4
-    /// Delay before re-posting a dropped announcement, to let VoiceOver settle (D-108).
-    /// Internal so tests can shrink it and exercise the retry deterministically.
+    /// reports it "finished" instantly. Retries with a GROWING settle recover the line
+    /// once VoiceOver is free; the cap stops a runaway loop.
+    static let maxRetries = 6
+    /// BASE delay before re-posting a dropped announcement (D-108). The effective delay
+    /// grows exponentially with consecutive channel drops (`retryDelay · 2^n`, capped),
+    /// because when VoiceOver is FLOODED it rejects everything for a while and re-posting
+    /// at a fixed short rate just feeds the flood — measured on device: a round-end bust
+    /// line plus the settlement retried each other into oblivion. Growing gaps give
+    /// VoiceOver a real quiet window to drain. Internal so tests can shrink it.
     var retryDelay: TimeInterval = 0.4
+    private let maxRetryDelay: TimeInterval = 2.0
+    /// Consecutive dropped announcements on the channel, reset by any spoken line. Drives
+    /// the exponential backoff so a flood is met with widening gaps, not a fixed hammer.
+    private var consecutiveDrops = 0
 
     private var pending: [Item] = []
     private var current: Item?
@@ -347,11 +355,14 @@ public final class AnnouncementQueue {
         let dropped = (wasSuccessful == false) || (airtime < failThreshold)
 
         if dropped, item.retriesLeft > 0 {
+            consecutiveDrops += 1
+            // Exponential backoff: widen the gap as the flood persists so VoiceOver drains.
+            let delay = min(maxRetryDelay, retryDelay * pow(2, Double(consecutiveDrops - 1)))
             Diagnostics.shared.record("q.retry",
                 ["text": item.text, "prio": "\(item.priority)", "airtime": airtime,
-                 "retriesLeft": item.retriesLeft - 1,
+                 "retriesLeft": item.retriesLeft - 1, "delay": delay, "streak": consecutiveDrops,
                  "reason": wasSuccessful == false ? "unsuccessful" : "instant"])
-            SpokenLog.log("RETRY [\(item.priority)] \(item.text) (airtime=\(airtime))")
+            SpokenLog.log("RETRY [\(item.priority)] \(item.text) (airtime=\(airtime) delay=\(delay))")
             var retry = item; retry.retriesLeft -= 1
             current = nil
             pending.insert(retry, at: 0)     // next up, ahead of everything
@@ -359,24 +370,27 @@ public final class AnnouncementQueue {
             // let it proceed; the retried line is at the head for after (endExternalSpeech).
             let waiters = idleWaiters; idleWaiters.removeAll()
             for w in waiters { w.resume() }
-            // Re-post after a settle so VoiceOver is free; do NOT fire completion — the
-            // line has not been delivered yet.
-            scheduleRetry()
+            // Re-post after the (growing) settle so VoiceOver is free; do NOT fire
+            // completion — the line has not been delivered yet.
+            scheduleRetry(after: delay)
             return
         }
         finishCurrent(spokenOK: !dropped)
     }
 
-    /// Re-posts the head (a retried item) after `retryDelay`, once VoiceOver has settled.
-    private func scheduleRetry() {
+    /// Re-posts the head (a retried item) after `delay`, once VoiceOver has settled.
+    private func scheduleRetry(after delay: TimeInterval) {
         Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64((self?.retryDelay ?? 0.4) * 1_000_000_000))
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             guard let self else { return }
             if !self.externalSpeechActive { self.process() }
         }
     }
 
     private func finishCurrent(spokenOK: Bool = true) {
+        // A line that actually spoke means VoiceOver has drained: reset the flood streak
+        // so the next isolated drop retries promptly again (D-108).
+        if spokenOK { consecutiveDrops = 0 }
         let finished = current
         if let finished {
             let dur = Double(DispatchTime.now().uptimeNanoseconds &- currentSpeakStart) / 1_000_000_000

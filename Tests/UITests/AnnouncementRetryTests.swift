@@ -61,17 +61,25 @@ final class AnnouncementRetryTests: XCTestCase {
     }
 
     /// Retries are bounded: after the cap the line is given up (completion fires) so it
-    /// can never loop forever.
+    /// can never loop forever — even with the exponential backoff between re-posts.
     func testRetriesAreBounded() async throws {
         let q = makeQueue()
+        q.retryDelay = 0.005                       // tiny base; backoff stays sub-second
         var completed = 0
+        var posts = 0; q.synthesisObserver = { _ in posts += 1 }
         q.enqueue("A te la parola.", priority: .high) { completed += 1 }
-        // maxRetries drops each re-post; the (maxRetries+1)-th gives up.
+        // Drop it repeatedly; each drop must re-post (until the cap) or give up.
         for _ in 0...AnnouncementQueue.maxRetries {
+            let before = posts
             q.announcementFinished(wasSuccessful: false)
-            try await Task.sleep(nanoseconds: 40_000_000)   // let the retry re-post
+            if completed > 0 { break }              // gave up
+            // Wait for the (backoff-delayed) re-post before dropping again.
+            var waited = 0
+            while posts == before, waited < 100 { try await Task.sleep(nanoseconds: 10_000_000); waited += 1 }
         }
         XCTAssertEqual(completed, 1, "after the retry cap the line is given up exactly once")
+        XCTAssertEqual(posts, AnnouncementQueue.maxRetries + 1,
+                       "posted once, then re-posted exactly maxRetries times")
     }
 
     /// A normal, real finish completes once and is not retried.
