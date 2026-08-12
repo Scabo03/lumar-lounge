@@ -3937,3 +3937,43 @@ toccavano.
   reale resta da fare. Il pacing su `isListening` è la correzione che l'utente chiedeva da tempo
   («posticipa il pop-up finché non ha finito di annunciare»): ora il gioco **aspetta l'orecchio** per
   costruzione. Solo `UI`, budget non alzato, motori/driver intatti. **684 test verdi.**
+
+### D-109 — Focus VoiceOver spiaggiato dopo la conferma del box di puntata (Blackjack): atterraggio legato al DEAL
+Intervento **chirurgico solo sul focus**, ultimo dell'arco: **non tocca** coda annunci, ripubblicazione,
+attesa della voce, budget, né alcuna delle correzioni di ritmo D-108. Stessa **famiglia** del focus appeso
+[[d-092]]/[[d-057]] (un elemento che scompare lascia il focus attaccato al nulla), nel punto di transizione
+specifico **box di puntata confermato → schermata di gioco**.
+- **Il difetto.** Al Blackjack, premuto Conferma nel box, il box sparisce ma il focus resta **spiaggiato
+  sul pulsante Conferma** che non esiste più → non atterra sull'**importo della mano** (l'elemento che
+  legge il totale prima delle carte) e il giocatore viene portato dritto al banco, saltando l'informazione
+  che gli serve per prima.
+- **La radice (verificata).** I tavoli di poker ri-atterrano **in modo affidabile**: `focusReturnToken`
+  bumpato nel `didSet` del box alla chiusura → la **hero zone (sempre presente)** riclama il focus
+  (`voiceOverFocusClaim(onChangeOf:)`). Il Blackjack invece usava `voiceOverFocusClaim(index == 0)` con
+  `true` **costante** → il modificatore atterra **solo su `onAppear`** (la primissima volta) e **mai più**:
+  dalla seconda mano il focus non ri-atterra. E la hero zone del Blackjack **non basta** come àncora
+  perché la **mano non esiste ancora** quando il box si chiude (le carte arrivano col deal).
+- **La correzione.** Atterraggio **legato al DEAL** — il momento in cui il totale esiste: nuovo
+  `dealFocusToken` (view model) **incrementato a ogni `.dealt`**, e l'elemento del totale claima con
+  `voiceOverFocusClaim(onChangeOf: index == 0 ? dealFocusToken : -1)`. Ri-atterra **ogni mano**; **solo la
+  prima mano** (le mani di split passano un costante `-1` che non cambia mai, così una divisione non
+  strappa il cursore da una mano in gioco).
+- **Nessun troncamento (il vincolo che protegge D-108).** Il bump del token è in `present(.dealt)`, che
+  gira **dopo** l'evento di inizio mano (silenzioso, D-091) e dopo che il ritmo D-108 ha **drenato** la
+  mano precedente; la lettura del totale avviene nella **finestra quieta PRIMA** dell'annuncio della carta
+  del banco (la sequenza D-096/D-098). Quindi il `layoutChanged` dell'atterraggio non zittisce nulla —
+  **per costruzione, senza aggiungere alcuna attesa** (l'attesa della voce non è toccata). Il post passa
+  dal solito `voiceOverFocusClaim → postLayoutChanged` nella coda (nessun `UIAccessibility.post` diretto).
+- **Altri tavoli.** Verificato: poker (Texas/Omaha/Stud/Draw) ri-atterrano già via `focusReturnToken` →
+  hero zone (D-092), **nessun bug**. Il Blackjack era l'**unico** col claim costante. Sanato col criterio
+  giusto per la sua forma (destinazione inserita dopo, non sempre presente).
+- **Sottoalbero stabile** (l'elemento del totale è una foglia fissa, la label cambia, il claim non
+  ristruttura nulla). Motori/driver intatti. **685 test verdi** (nuovo test: il token avanza a ogni mano →
+  ri-atterra ogni round, non una volta; aggiornato il pin D-092 alla nuova forma). iOS compila.
+- **Registrazione: LASCIATA ACCESA** (scelta dichiarata). Motivo: i fix di ritmo D-108 — il grosso —
+  **non sono ancora confermati sul device** con VoiceOver reale (l'utente aveva staccato il telefono), e
+  anche questo atterraggio vuole una controprova all'orecchio. Tenendo la registrazione attiva, la
+  prossima prova conferma **insieme** l'atterraggio del focus **e** il ritmo (dai dati: niente ripetizioni
+  ossessive, niente intreccio, tagli spariti). La **build di rilascio** con `DebugFlags.diagnostics = false`
+  è il passo di chiusura, una volta confermato all'orecchio. **Build di correzione su TestFlight** (numero
+  nel resoconto).

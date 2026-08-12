@@ -51,7 +51,7 @@ struct BlackjackTableScreen: View {
                     BlackjackDealerZoneView(state: model.state)
                         .frame(height: geometry.size.height * 0.26)
                     Spacer(minLength: 0)
-                    BlackjackHeroZoneView(state: model.state)
+                    BlackjackHeroZoneView(state: model.state, dealFocusToken: model.dealFocusToken)
                     BlackjackActionBarView(model: model)
                 }
                 .padding(.horizontal, 12)
@@ -147,6 +147,9 @@ private struct BlackjackDealerZoneView: View {
 
 private struct BlackjackHeroZoneView: View {
     let state: BlackjackTableState
+    /// Changes each deal so the hand total re-claims VoiceOver focus after the wager box
+    /// is confirmed (D-109) — passed as a value, like the poker hero zones' focus token.
+    var dealFocusToken: Int = 0
 
     var body: some View {
         VStack(spacing: 6) {
@@ -193,10 +196,14 @@ private struct BlackjackHeroZoneView: View {
                                                                           index: index,
                                                                           handCount: state.hands.count)))
                 .accessibilitySortPriority(90 - Double(index) * 2)
-                // Where focus goes when the wager box vanishes (D-092): straight to the
-                // total. Only the FIRST hand claims — a split must not yank the cursor
-                // off a hand still being played.
-                .voiceOverFocusClaim(index == 0)
+                // Where focus goes when the wager box vanishes (D-092/D-109): straight to
+                // the total. Tied to the DEAL token so it re-lands EVERY round, not only
+                // on first appearance — the constant claim used to fire once (onAppear)
+                // and never again, so from the second round the cursor was stranded on the
+                // confirmed-and-gone button. Only the FIRST hand claims (a split must not
+                // yank the cursor off a hand still being played), so split hands pass a
+                // constant that never changes.
+                .voiceOverFocusClaim(onChangeOf: index == 0 ? dealFocusToken : -1)
 
             if let outcome = hand.outcome {
                 Text(verbatim: BlackjackTableView.outcomeCaption(outcome))

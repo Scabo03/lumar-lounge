@@ -439,7 +439,15 @@ i pulsanti si accendono su uno stato che il giocatore non ha ancora visto. Regol
     `@AccessibilityFocusState` per portare il focus (deferito un runloop). Il
     `.screenChanged` è **instradato dalla `AnnouncementQueue`** (unico punto che posta a
     VoiceOver, D-032). Va **prima** degli eventuali annunci contestuali della coda (canale
-    separato: non competono).
+    separato: non competono). **Se la destinazione è SEMPRE presente** (la hero zone di un
+    tavolo di poker), il ri-atterraggio alla chiusura di un box è un **token edge-triggered**
+    bumpato nel `didSet` del box (`focusReturnToken` + `voiceOverFocusClaim(onChangeOf:)`, D-092).
+    **Se la destinazione è INSERITA dopo** la chiusura del box (al Blackjack la mano nasce col
+    deal, non c'è quando il box si chiude), l'atterraggio va legato all'**evento che la crea**
+    (un `dealFocusToken` bumpato al `.dealt`), **non** a un claim costante su `onAppear` — che
+    scatta **una volta sola** e lascia il focus spiaggiato dai turni successivi (D-109). E
+    l'atterraggio non deve **troncare** il parlato: si colloca in una finestra già quieta del
+    ritmo (D-108/D-096), senza aggiungere attese.
   - **Le voci caratteriali dei bot si scelgono dallo stato ATTUALE del tavolo, mai da uno
     snapshot congelato (D-058).** Le `vob_` (e ogni voce/reazione di un partecipante) sono
     selezionate **a ogni scelta** consultando i posti realmente in gioco nella mano

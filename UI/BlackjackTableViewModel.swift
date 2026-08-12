@@ -22,6 +22,12 @@ public final class BlackjackTableViewModel: ObservableObject {
     @Published public private(set) var turn: BlackjackTurnContext?
     @Published public private(set) var betBox: BlackjackBetBox?
     @Published public private(set) var outcome: GameOutcome?
+    /// Bumped as each round's hand is dealt, so VoiceOver focus lands on the hand's
+    /// TOTAL element after the wager box is confirmed and vanishes (D-109). The hero
+    /// zone of a poker table is always present, so a `focusReturnToken` on box-close
+    /// suffices there; at blackjack the hand does not exist yet when the box closes, so
+    /// the landing is tied to the DEAL — the moment the total exists — instead.
+    @Published public private(set) var dealFocusToken = 0
 
     public let returnLabel: String
     public let minimumBet: Int
@@ -190,6 +196,12 @@ public final class BlackjackTableViewModel: ObservableObject {
             // channel nobody else is using.
             state = BlackjackTableReducer.reduce(state, payload)
             state.dealerCards = []
+            // D-109: the hand's total now exists — re-land VoiceOver focus on it, so the
+            // player is never left stranded on the confirm button that just vanished. This
+            // does not truncate: the channel is already quiet here (the round-begin event
+            // is silent and the previous round drained under the D-108 pacing), and the
+            // hand read happens in the quiet window BEFORE the dealer card is announced.
+            dealFocusToken += 1
             if isListening, let hand = state.hands.first {
                 // The focus-landing read is the TOTAL only (D-098) — short — so the
                 // wait is short and the dealer follows promptly, without ever

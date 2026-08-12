@@ -766,6 +766,15 @@ Riverwood (10/500, buy-in 1000) e Skypool (50/2500, buy-in 5000). Annuncio compa
   **mantiene la registrazione attiva**: un rigioco misura dal nuovo trace (`q.speak.end` sani, `q.retry` che
   recupera). Una build di rilascio successiva spegnerà `DebugFlags.diagnostics`.
 
+**Rifinitura focus — atterraggio dopo la conferma del box di puntata (D-109):** al Blackjack il focus
+VoiceOver restava spiaggiato sul pulsante Conferma scomparso invece di atterrare sull'importo della mano.
+Radice: claim **costante** (`voiceOverFocusClaim(index == 0)`) che scatta una volta sola su `onAppear`; i
+tavoli di poker invece ri-atterrano già via `focusReturnToken` sulla hero zone (sempre presente). Fix:
+atterraggio legato al **deal** (`dealFocusToken`, ri-atterra ogni mano, solo la prima mano), nella finestra
+quieta prima della carta del banco → **nessun troncamento**, ritmo D-108 non toccato. Blackjack era l'unico
+col difetto. 685 test verdi. **Registrazione lasciata accesa** per la controprova all'orecchio di focus +
+ritmo insieme; poi build di rilascio.
+
 ### 🔭 Prossimo
 Ascolto/approvazione dei campioni fonetici del blackjack;
 **ascolto fonetico manque/passe** (unico residuo Roulette);

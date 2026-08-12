@@ -48,22 +48,30 @@ final class FocusHandoffTests: XCTestCase {
         }
     }
 
-    /// Blackjack is the other shape, and the one the player feels most: the wager
-    /// box opens EVERY round, so the stranding happens every round. There the
-    /// destination is newly inserted (the hand is dealt after the box closes), so
-    /// the claim is the appearance form, on the FIRST hand only — a split must not
-    /// snatch the cursor off a hand still being played.
-    func testBlackjackLandsOnTheDealtHandAfterTheWagerBoxCloses() throws {
-        let src = try source("BlackjackTableView.swift")
-        XCTAssertTrue(src.contains(".voiceOverFocusClaim(index == 0)"),
-                      "The dealt hand must claim focus, and only the first hand.")
+    /// Blackjack is the other shape, and the one the player feels most: the wager box
+    /// opens EVERY round, so the stranding happens every round. The destination is newly
+    /// inserted (the hand is dealt after the box closes), and — D-109 — the claim is tied
+    /// to a DEAL TOKEN that bumps each round, so focus re-lands EVERY round. The old
+    /// constant `index == 0` claim fired once (onAppear) and never again, stranding the
+    /// cursor on the vanished confirm button from the second round on. Only the first hand
+    /// claims (split hands pass a constant), so a split never snatches the cursor.
+    func testBlackjackLandsOnTheDealtHandEveryRoundViaTheDealToken() throws {
+        let view = try source("BlackjackTableView.swift")
+        XCTAssertTrue(view.contains("voiceOverFocusClaim(onChangeOf: index == 0 ? dealFocusToken"),
+                      "The hand total claims focus via the deal token — first hand only, and every round.")
 
-        // And the destination is the HAND, not the dealer or the stakes: it leads
-        // with the total, which is the information the wager was just chosen for.
-        let handRange = try XCTUnwrap(src.range(of: "private func handView"))
-        let claimRange = try XCTUnwrap(src.range(of: ".voiceOverFocusClaim(index == 0)"))
+        // The destination is the HAND element (it leads with the total, the information the
+        // wager was just chosen for), not the dealer or the stakes.
+        let handRange = try XCTUnwrap(view.range(of: "private func handView"))
+        let claimRange = try XCTUnwrap(view.range(of: "voiceOverFocusClaim(onChangeOf: index == 0 ? dealFocusToken"))
         XCTAssertLessThan(handRange.lowerBound, claimRange.lowerBound,
                           "The claim belongs to the player's hand element.")
+
+        // And the view model advances that token as each hand is dealt, so the claim
+        // re-fires every round rather than once per session (the stranding defect).
+        let model = try source("BlackjackTableViewModel.swift")
+        XCTAssertTrue(model.contains("dealFocusToken += 1"),
+                      "The deal token advances each deal, so focus re-lands every round.")
     }
 
     /// A modal dismissal is not a screen change, so it must not be announced as
