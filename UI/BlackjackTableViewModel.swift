@@ -66,6 +66,13 @@ public final class BlackjackTableViewModel: ObservableObject {
     /// Whether the dealer's total has been said this round, so the combined
     /// end-of-hand line names it once even across a split (D-098).
     private var dealerClauseSaid = false
+    /// A split settles hand-by-hand at code speed. Speaking each result as its own
+    /// announcement floods VoiceOver, which then drops every line after the first —
+    /// on device, the whole "Mano 2 … Mano 3 … In tutto …" was lost (D-108). So for a
+    /// multi-hand round the per-hand results are BUFFERED here and spoken as ONE
+    /// combined line at round end — the D-098 atomic-line principle, extended to splits.
+    private var settlementLines: [String] = []
+    private var settlementDealerClause: String?
 
     public init(seed: UInt64? = nil,
                 fastMode: Bool = false,
@@ -165,6 +172,7 @@ public final class BlackjackTableViewModel: ObservableObject {
         case .roundBegan:
             conductor.handBegan()
             dealerClauseSaid = false
+            settlementLines.removeAll(); settlementDealerClause = nil
             // A new round is a new decision sequence: there is no previous action
             // for the next press to be a bounce of (D-106).
             readiness.reset()
@@ -210,17 +218,37 @@ public final class BlackjackTableViewModel: ObservableObject {
             let result = BlackjackSpeechMap.text(for: .settled(
                 index: index, handCount: handCount, outcome: settledOutcome,
                 amount: BlackjackSpeechMap.settlementAmount(settledOutcome, bet: bet, net: net)))
-            let line = [cause, result].compactMap { $0 }.joined(separator: " ")
-            // The sting that reveals the result is SEQUENCED behind the line that
-            // explains it, never in parallel, so it cannot spoil the outcome (D-085).
-            conductor.say(lead: nil, synthesis: line,
-                          trailing: sting(for: settledOutcome),
-                          priority: .high, reason: "bj-settle")
+            if handCount > 1 {
+                // Split: BUFFER, do not speak (D-108) — the combined line comes at round end.
+                if let cause { settlementDealerClause = cause }
+                settlementLines.append(result)
+            } else {
+                let line = [cause, result].compactMap { $0 }.joined(separator: " ")
+                // The sting that reveals the result is SEQUENCED behind the line that
+                // explains it, never in parallel, so it cannot spoil the outcome (D-085).
+                conductor.say(lead: nil, synthesis: line,
+                              trailing: sting(for: settledOutcome),
+                              priority: .high, reason: "bj-settle")
+            }
             await pace(payload)
 
-        case .roundEnded:
+        case let .roundEnded(_, net, _, handCount):
             state = BlackjackTableReducer.reduce(state, payload)
-            speak(payload)
+            if handCount > 1 {
+                // The whole multi-hand result as ONE announcement: dealer clause, each
+                // hand, then the net — no burst for VoiceOver to drop (D-108). One net
+                // sting trails the line that explains it (D-085).
+                let total = BlackjackSpeechMap.text(for: .roundNet(net: net))
+                let line = ([settlementDealerClause] + settlementLines + [total])
+                    .compactMap { $0 }.joined(separator: " ")
+                let netSting = net > 0 ? SoundCatalog.fxWinHand
+                             : (net < 0 ? SoundCatalog.fxLoseHand : SoundCatalog.fxHandNeutral)
+                conductor.say(lead: nil, synthesis: line, trailing: netSting,
+                              priority: .high, reason: "bj-round")
+                settlementLines.removeAll(); settlementDealerClause = nil
+            } else {
+                speak(payload)   // single hand: silent (D-091)
+            }
             await gate.release()
             await pace(payload)
 

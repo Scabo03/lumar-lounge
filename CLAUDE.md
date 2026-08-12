@@ -3860,3 +3860,29 @@ come per D-106, una sola radice, e **non era dove la sorvegliavamo**.
   normale intatto). *(Nota: `swift build` su macOS non vedeva l'errore del simbolo UIKit
   `announcementWasSuccessfulUserInfoKey` — dentro `#if canImport(UIKit)`, escluso sull'host; preso col
   build per iPhone prima dell'archive.)* **Build di correzione su TestFlight** (numero nel resoconto).
+
+### D-108 (addendum) — Il rigioco di conferma ha DATO RAGIONE al fix e scoperto due code, corrette
+Rigiocati Blackjack e Texas con la build di correzione; traccia riletta via cavo (1187 record). Il retry
+**funziona**: gli esiti singoli delle proprie mosse ora **si recuperano** («Raddoppi. cinque. Totale 20.»
+→ **detto 3,20 s** dopo 3 retry, «Dividi. Ora hai 2 mani.» → 2,34 s, «giocatore 1 rilancia a 752» → 3,29 s;
+Texas **0 tagli**, i pochi drop occasionali recuperati). Ma due casi resistevano — misurati, non ipotizzati.
+- **Coda 1 — la raffica di fine mano dello split.** «Mano 2/Mano 3/In tutto» dopo uno split **morivano
+  ancora** (retry esauriti, `airtime=0,00` a ogni ri-post). Dai dati: quando VoiceOver è **inondato** non
+  è solo «occupato», **rifiuta TUTTO per ~5 s**; ripostare ogni 0,4 s **alimenta l'inondazione** (12 post
+  rifiutati di fila). Il retry va bene per un drop **isolato**, non per una **raffica**. **Fix: non creare
+  la raffica** — la mano da split (più `handSettled` a velocità di codice) è ora **coalizzata in UN SOLO
+  annuncio** al fine-mano (banco + ogni mano + totale, con un'unica coda-suono sul netto). È il principio
+  della **riga atomica** di [[d-098]] (finora solo per la mano singola) esteso allo split. Una riga lunga
+  ma **detta** batte quattro righe **perse**.
+- **Coda 2 — il tabellone droppato a favore del chiacchiericcio (Texas).** Dai dati (t=46,29): il **flop**
+  (medium) droppato mentre due «giocatore… passa» (low) restavano tranquilli **nella coda**. Il difetto NON
+  era la taratura (già corretta): il budget del canale è **misurato** su entrambi gli stadi
+  (conductor + coda, [[d-085]]) ma era **applicato per-stadio** — il conductor poteva droppare solo dalla
+  **propria** pending, quindi buttava il flop appena arrivato invece del chiacchiericcio già passato alla
+  coda. **Fix: il budget droppa il GLOBALMENTE più basso** fra i due stadi (`queue.lowestPendingPriority`/
+  `dropLowestPending`), così il chiacchiericcio (low) cede **sempre** il posto al tabellone (medium). Il
+  tabellone resta comunque interrogabile a richiesta (D-028) come rete.
+- **Vincoli:** solo `UI`, motori/driver/budget intatti (il budget non è **alzato**, cambia solo **cosa**
+  cede). **683 test verdi** (+2 budget cross-stadio; retry e priorità già pinnati). iOS compila. La
+  registrazione **resta accesa**: un ultimo rigioco breve (uno split al Blackjack, una mano Texas fino allo
+  showdown) conferma dai dati che split e tabellone ora si sentono; poi si spegne `DebugFlags.diagnostics`.

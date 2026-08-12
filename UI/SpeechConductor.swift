@@ -167,21 +167,38 @@ public final class SpeechConductor {
     }
 
     /// Holds the whole spoken channel under `channelBudget` seconds of estimated speech,
-    /// dropping the lowest-priority WAITING item first (never a high one, never the head
-    /// that is about to play). This is the same Strategy C the queue applies — it simply
-    /// had to be applied HERE too, because this is where the backlog actually formed.
+    /// dropping the GLOBALLY lowest-priority waiting item first — across BOTH this
+    /// conductor's pending AND the downstream announcement queue (D-108). The budget was
+    /// always measured across both stages (D-085) but enforced only HERE, so a valuable
+    /// item arriving at the conductor (the just-landed flop, MEDIUM) was dropped while
+    /// lower-priority chatter (LOW) sat safely in the queue. Now the lower of the two
+    /// stages' lowest droppable is dropped, so chatter always yields to the board.
     private func enforceChannelBudget() {
-        while channelRemaining > Self.channelBudget, let index = lowestDroppableIndex() {
-            let dropped = pending.remove(at: index)
-            SpokenLog.log("CHANNEL DROP [\(dropped.priority)] \(dropped.reason) \(dropped.synthesis ?? "")")
-            Diagnostics.shared.record("c.drop",
-                ["reason": dropped.reason, "prio": "\(dropped.priority)",
-                 "text": dropped.synthesis ?? dropped.fallback ?? "",
-                 "channelOwes": channelRemaining, "budget": Self.channelBudget])
-            dropObserver?(dropped.synthesis ?? dropped.fallback ?? dropped.reason, dropped.priority)
-            // A trailing cue is INFORMATION-ORDERED, never dropped silently: if its
-            // line goes, the cue still fires so the player is not left without it.
-            if let trailing = dropped.trailing { audio.play(trailing, category: dropped.trailingCategory) }
+        while channelRemaining > Self.channelBudget {
+            let condIndex = lowestDroppableIndex()
+            let condPrio = condIndex.map { pending[$0].priority }
+            let queuePrio = queue.lowestPendingPriority()
+            guard condPrio != nil || queuePrio != nil else { break }   // all high: nothing to drop
+
+            // Drop wherever the globally lowest sits; on a tie prefer the downstream queue
+            // (its items are older and closer to being spoken already).
+            let dropFromQueue: Bool
+            if let q = queuePrio, let c = condPrio { dropFromQueue = q <= c }
+            else { dropFromQueue = queuePrio != nil }
+
+            if dropFromQueue {
+                queue.dropLowestPending()
+            } else if let index = condIndex {
+                let dropped = pending.remove(at: index)
+                SpokenLog.log("CHANNEL DROP [\(dropped.priority)] \(dropped.reason) \(dropped.synthesis ?? "")")
+                Diagnostics.shared.record("c.drop",
+                    ["reason": dropped.reason, "prio": "\(dropped.priority)",
+                     "text": dropped.synthesis ?? dropped.fallback ?? "",
+                     "channelOwes": channelRemaining, "budget": Self.channelBudget])
+                dropObserver?(dropped.synthesis ?? dropped.fallback ?? dropped.reason, dropped.priority)
+                // A trailing cue is INFORMATION-ORDERED, never dropped silently.
+                if let trailing = dropped.trailing { audio.play(trailing, category: dropped.trailingCategory) }
+            } else { break }
         }
     }
 

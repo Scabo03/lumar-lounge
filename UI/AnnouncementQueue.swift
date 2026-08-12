@@ -103,6 +103,31 @@ public final class AnnouncementQueue {
     /// Test seam: the currently queued (not-yet-started) items.
     public func pendingSnapshot() -> [(String, AnnouncementPriority)] { pending.map { ($0.text, $0.priority) } }
 
+    /// The lowest priority among this queue's DROPPABLE (non-high) pending items, or
+    /// nil if none. Lets the conductor compare it against its own pending and drop the
+    /// GLOBALLY lowest item across the whole spoken channel (D-108) — because the budget
+    /// is measured across both stages but was being ENFORCED per-stage, so a valuable
+    /// item arriving at the conductor was dropped while lower-priority chatter sat here.
+    public func lowestPendingPriority() -> AnnouncementPriority? {
+        pending.filter { $0.priority != .high }.map { $0.priority }.min()
+    }
+
+    /// Drops this queue's single lowest-priority (oldest among ties) non-high pending
+    /// item, firing its completion so nothing sequenced behind it is stranded (D-108).
+    /// Returns true if one was dropped. Called by the conductor's channel-budget pass.
+    @discardableResult
+    public func dropLowestPending() -> Bool {
+        guard let minPrio = pending.filter({ $0.priority != .high }).map({ $0.priority }).min(),
+              let idx = pending.firstIndex(where: { $0.priority == minPrio }) else { return false }
+        let dropped = pending.remove(at: idx)
+        SpokenLog.log("CHANNEL DROP (queue) [\(dropped.priority)] \(dropped.text)")
+        Diagnostics.shared.record("q.drop",
+            ["text": dropped.text, "prio": "\(dropped.priority)", "reason": "channelBudget"])
+        dropObserver?(dropped.text, dropped.priority)
+        dropped.completion?()
+        return true
+    }
+
     public init() {
         #if canImport(UIKit)
         observer = NotificationCenter.default.addObserver(
