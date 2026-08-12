@@ -61,6 +61,10 @@ public final class AnnouncementQueue {
     /// VoiceOver a real quiet window to drain. Internal so tests can shrink it.
     var retryDelay: TimeInterval = 0.4
     private let maxRetryDelay: TimeInterval = 2.0
+    /// The settle gap between one announcement finishing and the next being posted, so the
+    /// next is never posted inside the previous one's finish callback (which iOS drops).
+    /// Internal so tests can shrink it.
+    var interAnnouncementGap: TimeInterval = 0.15
     /// Consecutive dropped announcements on the channel, reset by any spoken line. Drives
     /// the exponential backoff so a flood is met with widening gaps, not a fixed hammer.
     private var consecutiveDrops = 0
@@ -354,7 +358,11 @@ public final class AnnouncementQueue {
         let failThreshold = min(0.4, 0.5 * Self.speakTime(item.text))
         let dropped = (wasSuccessful == false) || (airtime < failThreshold)
 
-        if dropped, item.retriesLeft > 0 {
+        // Retry ONLY high-priority lines (D-108, revised from the device trace). Retrying
+        // low/medium chatter re-posted "giocatore 1 passa" eleven times — the obsessive
+        // repetition the player heard — and fed the flood. Chatter is expendable (that is
+        // why it is low); only the player's own cards/turn/result are worth re-posting.
+        if dropped, item.priority == .high, item.retriesLeft > 0 {
             consecutiveDrops += 1
             // Exponential backoff: widen the gap as the flood persists so VoiceOver drains.
             let delay = min(maxRetryDelay, retryDelay * pow(2, Double(consecutiveDrops - 1)))
@@ -402,7 +410,22 @@ public final class AnnouncementQueue {
         finished?.completion?()
         let waiters = idleWaiters; idleWaiters.removeAll()
         for w in waiters { w.resume() }
-        if !externalSpeechActive { process() }
+        // A SETTLE GAP before the next post (D-108): iOS drops an announcement posted
+        // synchronously inside the previous one's finish notification — the settlement
+        // posted the instant the prior line finished was rejected every time, then its
+        // identical retries were suppressed as duplicates. Deferring the next post off
+        // the callback, onto a fresh runloop after a short beat, lets VoiceOver accept it
+        // first try — so it need not be retried at all.
+        if !externalSpeechActive { scheduleNextAfterSettle() }
+    }
+
+    /// Posts the next queued item after a short settle gap, off the finish callback (D-108).
+    private func scheduleNextAfterSettle() {
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64((self?.interAnnouncementGap ?? 0.15) * 1_000_000_000))
+            guard let self else { return }
+            if self.current == nil, !self.externalSpeechActive { self.process() }
+        }
     }
 
     // MARK: - Posting (the ONLY UIAccessibility.post in the app)

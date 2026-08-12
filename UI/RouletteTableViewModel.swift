@@ -228,9 +228,12 @@ public final class RouletteTableViewModel: ObservableObject {
 
     // MARK: - Pacing
 
+    /// Pace to the ear whenever anyone is listening (iOS VoiceOver or app mode), D-108.
+    private var isListening: Bool { mode.isEnabled || announcements.isVoiceOverRunning }
+
     private func pace(_ payload: RouletteEventPayload) async {
         announcements.pacedWhenSilent = mode.isEnabled
-        if mode.isEnabled { await awaitSpokenChannelQuiet() }
+        if isListening { await awaitSpokenChannelQuiet() }
         else { await pause(RoulettePacing.seconds(for: payload)) }
     }
 

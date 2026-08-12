@@ -312,11 +312,14 @@ public final class OmahaTableViewModel: ObservableObject {
         }
     }
 
+    /// Pace to the ear whenever anyone is listening (iOS VoiceOver or app mode), D-108.
+    private var isListening: Bool { mode.isEnabled || announcements.isVoiceOverRunning }
+
     private func pace(_ payload: OmahaEventPayload, human: Double) async {
         // Fast-forwarding after the human folded: no pause until the payoff (D-087).
         if fastForward, !Self.isPayoff(payload) { return }
         announcements.pacedWhenSilent = mode.isEnabled
-        if mode.isEnabled { await awaitSpokenChannelQuiet() } else { await pause(human) }
+        if isListening { await awaitSpokenChannelQuiet() } else { await pause(human) }
     }
 
     private func awaitSpokenChannelQuiet() async {

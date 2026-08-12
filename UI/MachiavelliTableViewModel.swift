@@ -347,9 +347,12 @@ public final class MachiavelliTableViewModel: ObservableObject {
     /// (mode OFF) or the adaptive wait (mode ON). The wait is bounded by
     /// `SpokenChannelPacing`'s anti-freeze safeguard (a backstop above the longest voice,
     /// NOT a speech budget — D-056/D-068), so a stuck voice can never freeze the UI.
+    /// Pace to the ear whenever anyone is listening (iOS VoiceOver or app mode), D-108.
+    private var isListening: Bool { mode.isEnabled || announcements.isVoiceOverRunning }
+
     private func pace(_ human: Double, spoke: Bool) async {
         announcements.pacedWhenSilent = mode.isEnabled
-        if mode.isEnabled || spoke {
+        if isListening || spoke {
             await awaitSpokenChannelQuiet()
         } else {
             await pause(human)

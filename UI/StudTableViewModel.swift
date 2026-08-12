@@ -327,11 +327,14 @@ public final class StudTableViewModel: ObservableObject {
         }
     }
 
+    /// Pace to the ear whenever anyone is listening (iOS VoiceOver or app mode), D-108.
+    private var isListening: Bool { mode.isEnabled || announcements.isVoiceOverRunning }
+
     private func pace(_ payload: StudEventPayload, override: Double? = nil) async {
         // Fast-forwarding after the human folded: no pause until the payoff (D-087).
         if fastForward, !Self.isPayoff(payload) { return }
         announcements.pacedWhenSilent = mode.isEnabled
-        if mode.isEnabled { await awaitSpokenChannelQuiet() }
+        if isListening { await awaitSpokenChannelQuiet() }
         else { await pause(override ?? StudPacing.seconds(for: payload)) }
     }
 

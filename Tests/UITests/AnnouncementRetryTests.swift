@@ -24,7 +24,22 @@ final class AnnouncementRetryTests: XCTestCase {
         let q = AnnouncementQueue()
         q.voiceOverOverride = true   // take the posting path (current + awaited token)
         q.retryDelay = 0.02
+        q.interAnnouncementGap = 0.01
         return q
+    }
+
+    /// Low/medium chatter is NEVER retried (D-108, revised): retrying it re-posted
+    /// "giocatore 1 passa" obsessively and fed the flood. Only HIGH is worth re-posting.
+    func testChatterIsNotRetried() async throws {
+        let q = makeQueue()
+        var spoken: [String] = []; q.synthesisObserver = { spoken.append($0) }
+        var completed = 0
+        q.enqueue("giocatore 1 passa", priority: .low) { completed += 1 }
+        XCTAssertEqual(spoken.count, 1)
+        q.announcementFinished(wasSuccessful: false)     // VoiceOver dropped it
+        XCTAssertEqual(completed, 1, "a dropped chatter line is given up at once, not retried")
+        try await Task.sleep(nanoseconds: 60_000_000)
+        XCTAssertEqual(spoken.count, 1, "it is never re-posted")
     }
 
     /// A line iOS reports as NOT spoken is re-posted and eventually delivered — never lost.

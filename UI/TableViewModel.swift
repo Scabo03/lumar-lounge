@@ -388,13 +388,25 @@ public final class TableViewModel: ObservableObject {
         // Fast-forwarding after the human folded: no pause at all until the payoff.
         if fastForward, !Self.isPayoff(payload) { return }
         announcements.pacedWhenSilent = mode.isEnabled
-        SpokenLog.log("visual \(eventLabel(payload)) mode=\(mode.isEnabled ? "ON" : "OFF")")
-        if mode.isEnabled {
+        SpokenLog.log("visual \(eventLabel(payload)) listening=\(isListening)")
+        // D-108: wait for the spoken channel whenever ANYONE is listening — iOS VoiceOver
+        // running, not only the app's own pacing toggle. With iOS VoiceOver on and the app
+        // toggle off (the player's real configuration), the game used to advance at the
+        // fast internal rhythm, dealing the next hand while the previous hand's showdown
+        // and result were still being spoken — so the two hands interleaved and the pot
+        // result arrived nine seconds late. Now the producer is naturally held: the
+        // consumer blocks on the narration before presenting the next event.
+        if isListening {
             await awaitSpokenChannelQuiet()
         } else {
             await pause(human)
         }
     }
+
+    /// Whether anyone is hearing the spoken channel: iOS VoiceOver is running, or the
+    /// app's own VoiceOver mode is on. The visual/production timeline paces to the ear
+    /// whenever this is true (D-108) — not only when the app toggle is on (D-034).
+    private var isListening: Bool { mode.isEnabled || announcements.isVoiceOverRunning }
 
     /// Blocks until the spoken channel is idle: the conductor has nothing left to
     /// play/hand off, and the announcement queue is not speaking or holding (D-034).

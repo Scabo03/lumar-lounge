@@ -3900,3 +3900,40 @@ esponenziale** — il ritardo di retry **cresce** coi drop consecutivi del canal
 una **raffica** viene incontrata con **gap crescenti** finché VoiceOver drena e la riga esce. **CONVENTIONS
 §4** già copre il principio (una fine è un segnale da verificare); il backoff ne è il corollario per la
 raffica. Solo `UI`, budget non alzato, motori/driver intatti. **683 test verdi.** iOS compila.
+
+### D-108 (addendum 3) — LA RADICE VERA, trovata dopo la frustrazione dell'utente: il gioco non aspettava il canale
+L'utente, giustamente stufo, ha segnalato tre difetti ancora **pessimi**: (1) al poker la mano successiva
+distribuita **sopra** l'esito della precedente, con annunci **intrecciati** e la musica+esito di fine mano
+**nove secondi in ritardo**; (2) al blackjack una riga **ripetuta ossessivamente ~5 volte**, mezza
+interrotta; (3) l'esito split **tagliato in coda** dal pop-up di puntata della mano dopo. Traccia via cavo
+(953 record) — e i dati hanno mostrato **una radice a monte di tutto**, che i patch precedenti non
+toccavano.
+- **`modeOn=False, voRunning=True`.** Il giocatore ha **VoiceOver di iOS acceso** ma la **modalità di
+  ritmo dell'app spenta** (default). E **tutti e sette** i view model attivavano l'attesa del canale
+  parlato **solo** su `mode.isEnabled` (la levetta dell'app), **non** su «VoiceOver sta girando». Quindi
+  con iOS-VO acceso e levetta spenta — la **configurazione reale** — il gioco **non aspettava mai**: il
+  produttore distribuiva la mano dopo mentre la precedente parlava ancora (intreccio #1), e ogni evento
+  inondava il canale (alimentando #2/#3). **Difetto architetturale di D-034**, non una taratura: l'attesa
+  era agganciata alla condizione sbagliata.
+- **FIX 1 (la radice, tutti i 7 tavoli): pacing su `isListening`.** `pace()` ora aspetta il canale parlato
+  quando **chiunque** ascolta — `mode.isEnabled || announcements.isVoiceOverRunning` — non solo sulla
+  levetta. Il **consumatore si blocca sulla narrazione** prima di presentare l'evento successivo, quindi il
+  produttore è **naturalmente trattenuto**: la mano dopo non arriva finché l'esito della precedente non è
+  **detto**. Chiude l'intreccio #1 e toglie l'inondazione che nutriva #2/#3. (VoiceOver spento → invariato,
+  ritmo veloce per il vedente.)
+- **FIX 2 (la ripetizione ossessiva #2): retry SOLO delle righe HIGH.** Dai dati, «giocatore 1 passa»
+  (chiacchiericcio, low) veniva **ripostato 11 volte** dal retry: era il retry stesso, applicato a righe
+  **espendibili**, a creare l'ossessione e a nutrire l'inondazione. Ora il chiacchiericcio droppato è
+  **perso** (giusto: è low apposta); solo le proprie carte/turno/esito (high) si ripostano.
+- **FIX 3 (il taglio in coda #3 e la settlement che moriva 6 volte): SETTLE GAP fra annunci.** Dai dati, la
+  riga di esito posta **nell'istante** in cui la precedente finiva (dentro la callback di fine di iOS)
+  veniva **rifiutata ogni volta** (d=0,00, anche con 2 s di backoff → i re-post identici erano soppressi
+  come **duplicati**). Ora il post successivo è **differito di un beat** (0,15 s) **fuori** dalla callback,
+  su un runloop nuovo, così VoiceOver lo accetta **al primo colpo** — e non serve nemmeno ripostarlo.
+  Combinato col Fix 1 (il canale drena prima che il pop-up di puntata apra), chiude #3.
+- **Onestà:** i tre fix sono **coerenti coi dati** e **testati** (684 unit test verdi: chatter-non-
+  ritentato, retry-high, budget cross-stadio; self-test sul runtime reale **senza hang**, `q.retry=0`) e
+  iOS compila — ma l'utente ha **staccato il telefono**, quindi la conferma **all'orecchio** su iOS-VoiceOver
+  reale resta da fare. Il pacing su `isListening` è la correzione che l'utente chiedeva da tempo
+  («posticipa il pop-up finché non ha finito di annunciare»): ora il gioco **aspetta l'orecchio** per
+  costruzione. Solo `UI`, budget non alzato, motori/driver intatti. **684 test verdi.**

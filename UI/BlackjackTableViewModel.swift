@@ -295,7 +295,9 @@ public final class BlackjackTableViewModel: ObservableObject {
 
     private func pace(_ payload: BlackjackEventPayload) async {
         announcements.pacedWhenSilent = mode.isEnabled
-        if mode.isEnabled {
+        // Wait for the channel whenever anyone is listening (iOS VoiceOver too), not only
+        // the app toggle (D-108) — so the round is never rushed past its own narration.
+        if isListening {
             await awaitSpokenChannelQuiet()
         } else {
             await pause(BlackjackPacing.seconds(for: payload))

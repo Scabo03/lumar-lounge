@@ -354,11 +354,15 @@ public final class DrawTableViewModel: ObservableObject {
         }
     }
 
+    /// Whether anyone is hearing the channel (iOS VoiceOver or app mode) — pace to the
+    /// ear whenever true, not only on the app toggle (D-108).
+    private var isListening: Bool { mode.isEnabled || announcements.isVoiceOverRunning }
+
     private func pace(_ payload: DrawEventPayload, human: Double) async {
         // Fast-forwarding after the human folded: no pause until the payoff (D-087).
         if fastForward, !Self.isPayoff(payload) { return }
         announcements.pacedWhenSilent = mode.isEnabled
-        if mode.isEnabled { await awaitSpokenChannelQuiet() } else { await pause(human) }
+        if isListening { await awaitSpokenChannelQuiet() } else { await pause(human) }
     }
 
     /// Bounded by a safeguard so a stuck voice can never freeze the UI (D-056).
