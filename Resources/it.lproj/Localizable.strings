@@ -637,6 +637,7 @@
    target and the automatic read — short, so it is never cut off — and the CARDS
    sit next to it, read on demand by a player studying the hand. */
 "blackjack.hero.total.a11y" = "La tua mano: %@.";
+"blackjack.hero.total.waiting.a11y" = "In attesa della mano.";
 "blackjack.hero.total.multi.a11y" = "Mano %1$d di %2$d: %3$@.";
 "blackjack.hero.handcards.a11y" = "Carte: %@.";
 "blackjack.dealer.a11y" = "Il banco mostra %@.";

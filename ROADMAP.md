@@ -775,6 +775,14 @@ quieta prima della carta del banco → **nessun troncamento**, ritmo D-108 non t
 col difetto. 685 test verdi. **Registrazione lasciata accesa** per la controprova all'orecchio di focus +
 ritmo insieme; poi build di rilascio.
 
+**D-109 era un REGRESSO, corretto (D-110):** il claim `onChange(of: dealFocusToken)` **non scattava mai**
+perché `state.hands` si azzera ogni round e l'elemento del totale, dentro il `ForEach`, era **re-inserito** a
+ogni deal (`onChange` non scatta su una view appena inserita). Prima «ogni tanto» (onAppear), ora «mai». Fix:
+importo della mano 0 reso **ancora STABILE, sempre presente** (fuori dal `ForEach`, placeholder tra i round) —
+il pattern provato della hero zone di poker — così `onChange` scatta affidabile ogni mano. Meccanismo garantito
+dai test; **atterraggio effettivo da confermare sul device** (ear + trace: `focus.layoutChanged` a ogni deal).
+Registrazione ancora accesa. 685 test verdi.
+
 ### 🔭 Prossimo
 Ascolto/approvazione dei campioni fonetici del blackjack;
 **ascolto fonetico manque/passe** (unico residuo Roulette);

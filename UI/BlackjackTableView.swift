@@ -153,7 +153,16 @@ private struct BlackjackHeroZoneView: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            ForEach(Array(state.hands.enumerated()), id: \.offset) { index, hand in
+            // Hand 0 is ALWAYS rendered — a placeholder between rounds — so its TOTAL is a
+            // STABLE focus anchor. The prior version (D-109) put hand 0 inside the ForEach,
+            // and `state.hands` is cleared to [] every round (roundBegan), so the element was
+            // REMOVED and RE-INSERTED each deal. `onChange(of:)` never fires on a freshly
+            // inserted view, so the deal-token claim never fired and focus never landed —
+            // the regression. Rendered stably (the mirror of the poker hero zone), the token
+            // claim now fires reliably every round.
+            handView(state.hands.first, index: 0)
+            // Split hands (1+) come and go and must never grab focus.
+            ForEach(Array(state.hands.enumerated()).dropFirst(), id: \.offset) { index, hand in
                 handView(hand, index: index)
             }
 
@@ -178,13 +187,15 @@ private struct BlackjackHeroZoneView: View {
     /// and the short automatic read — and the CARDS behind it, one swipe away for a
     /// player studying the hand. Splitting them keeps the auto-read to the number,
     /// which is what the player needs to decide and what never gets cut off.
-    private func handView(_ hand: BlackjackHandPresentation, index: Int) -> some View {
+    private func handView(_ hand: BlackjackHandPresentation?, index: Int) -> some View {
         VStack(spacing: 1) {
             // THE TOTAL, LARGE — the focus target and the number the player decides on
             // (D-100). It reads first (sort 90) and a swipe from it goes STRAIGHT to the
             // action buttons; the cards it is made of sit BELOW the moves (sort 50), for
-            // a player who wants to study the hand rather than just its number.
-            Text(verbatim: totalText(hand))
+            // a player who wants to study the hand rather than just its number. Between
+            // rounds (hand == nil) it shows a placeholder so the ELEMENT stays present —
+            // the stability that makes the focus claim reliable (D-109).
+            Text(verbatim: hand.map(totalText) ?? "—")
                 .font(.system(size: 50, weight: .heavy, design: .rounded).monospacedDigit())
                 .minimumScaleFactor(0.5)
                 .lineLimit(1)
@@ -192,32 +203,37 @@ private struct BlackjackHeroZoneView: View {
                                  ? TablePalette.accent : TablePalette.primaryText)
                 .accessibilityElement(children: .ignore)
                 .accessibilityIdentifier(state.hasSplit ? "blackjack.hand.\(index)" : "blackjack.hand")
-                .accessibilityLabel(Text(verbatim: BlackjackReadout.total(hand,
-                                                                          index: index,
-                                                                          handCount: state.hands.count)))
+                .accessibilityLabel(Text(verbatim: hand.map {
+                    BlackjackReadout.total($0, index: index, handCount: max(state.hands.count, 1))
+                } ?? uiLocalized("blackjack.hero.total.waiting.a11y")))
                 .accessibilitySortPriority(90 - Double(index) * 2)
                 // Where focus goes when the wager box vanishes (D-092/D-109): straight to
-                // the total. Tied to the DEAL token so it re-lands EVERY round, not only
-                // on first appearance — the constant claim used to fire once (onAppear)
-                // and never again, so from the second round the cursor was stranded on the
-                // confirmed-and-gone button. Only the FIRST hand claims (a split must not
-                // yank the cursor off a hand still being played), so split hands pass a
-                // constant that never changes.
+                // the total. Tied to the DEAL token so it re-lands EVERY round. This fires
+                // reliably ONLY because the element is a STABLE anchor (always present) —
+                // `onChange` never fires on a freshly-inserted view, which is exactly why
+                // the previous, ForEach-embedded version never landed. Only the FIRST hand
+                // claims (a split must not yank the cursor off a hand still in play), so
+                // split hands pass a constant that never changes.
                 .voiceOverFocusClaim(onChangeOf: index == 0 ? dealFocusToken : -1)
 
-            if let outcome = hand.outcome {
+            if let hand, let outcome = hand.outcome {
                 Text(verbatim: BlackjackTableView.outcomeCaption(outcome))
                     .font(.subheadline.weight(.semibold))
                     .foregroundColor(TablePalette.secondaryText)
                     .accessibilityHidden(true)
             }
 
-            FittedCardRow(faces: hand.cards.map { .up($0) })
-                .frame(minHeight: 40)
-                .accessibilityElement(children: .ignore)
-                .accessibilityIdentifier(state.hasSplit ? "blackjack.hand.\(index).cards" : "blackjack.hand.cards")
-                .accessibilityLabel(Text(verbatim: BlackjackReadout.handCards(hand)))
-                .accessibilitySortPriority(50 - Double(index) * 2)
+            if let hand {
+                FittedCardRow(faces: hand.cards.map { .up($0) })
+                    .frame(minHeight: 40)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityIdentifier(state.hasSplit ? "blackjack.hand.\(index).cards" : "blackjack.hand.cards")
+                    .accessibilityLabel(Text(verbatim: BlackjackReadout.handCards(hand)))
+                    .accessibilitySortPriority(50 - Double(index) * 2)
+            } else {
+                // Hold the row's height between rounds so the anchor doesn't jump.
+                Color.clear.frame(minHeight: 40).accessibilityHidden(true)
+            }
         }
         .padding(.vertical, 2)
     }

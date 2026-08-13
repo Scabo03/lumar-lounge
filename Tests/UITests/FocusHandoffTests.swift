@@ -72,6 +72,16 @@ final class FocusHandoffTests: XCTestCase {
         let model = try source("BlackjackTableViewModel.swift")
         XCTAssertTrue(model.contains("dealFocusToken += 1"),
                       "The deal token advances each deal, so focus re-lands every round.")
+
+        // THE ACTUAL FIX (D-109 regression): the token claim only fires if the element is
+        // a STABLE target. `onChange` never fires on a freshly-inserted view, and
+        // `state.hands` is cleared to [] each round — so hand 0's total must be rendered
+        // OUTSIDE the ForEach (always present, a placeholder between rounds), with the
+        // ForEach handling ONLY the split hands. Otherwise the claim never lands.
+        XCTAssertTrue(view.contains("handView(state.hands.first, index: 0)"),
+                      "Hand 0's total must be an always-present, stable focus anchor.")
+        XCTAssertTrue(view.contains(".dropFirst()"),
+                      "The ForEach must render only the split hands (1+), not hand 0.")
     }
 
     /// A modal dismissal is not a screen change, so it must not be announced as

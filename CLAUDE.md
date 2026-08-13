@@ -3977,3 +3977,42 @@ specifico **box di puntata confermato → schermata di gioco**.
   ossessive, niente intreccio, tagli spariti). La **build di rilascio** con `DebugFlags.diagnostics = false`
   è il passo di chiusura, una volta confermato all'orecchio. **Build di correzione su TestFlight** (numero
   nel resoconto).
+
+### D-110 — [[d-109]] era un REGRESSO: il focus del Blackjack ora atterra su un ANCORA STABILE, non su un elemento re-inserito
+Correzione di un **regresso** che avevo introdotto io. [[d-109]] voleva far atterrare il focus VoiceOver
+sull'importo della mano dopo la conferma della puntata; invece ha **peggiorato**: l'utente riferisce che
+col meccanismo **precedente** (`voiceOverFocusClaim(index == 0)`, claim su `onAppear`) il focus **ogni
+tanto** agganciava; con quello nuovo (`voiceOverFocusClaim(onChangeOf: dealFocusToken)`, claim su
+`onChange`) **non aggancia mai**. Regresso netto, trattato come tale.
+- **La causa reale (certa dal codice, da corroborare col trace).** `state.hands` è **azzerato a `[]` a
+  ogni `roundBegan`** (reducer) e ricreato al `.dealt`: l'elemento del totale, dentro il `ForEach(state.
+  hands)`, è **rimosso e RE-INSERITO ogni mano**. `onChange(of:)` **non scatta mai su una view appena
+  inserita** — osserva solo i *cambiamenti* di una view già montata — quindi il claim legato al token non
+  è mai partito → **mai atterrato**. Il meccanismo vecchio (`onAppear`) scattava a ogni inserimento (ogni
+  deal) ma atterrava **in modo inaffidabile** (la `focused=true` differita corre con la ri-scansione di
+  VoiceOver). Perché i **tavoli di poker funzionano** con lo *stesso* `onChange`: la loro hero zone è
+  **sempre presente**, quindi l'elemento **pre-esiste** al bump del token e `onChange` scatta. La
+  differenza non era il momento del claim ma la **natura dell'elemento**: re-inserito vs stabile.
+- **La correzione (approccio nuovo, non una rifinitura del vecchio).** Reso l'importo della **mano 0** un
+  **ancora STABILE, sempre presente** (con un placeholder «In attesa della mano» tra i round): renderizzato
+  **fuori** dal `ForEach`, che ora gestisce **solo** le mani di split (`dropFirst()`). Così l'elemento non
+  è più rimosso/re-inserito, **pre-esiste** al bump del token, e `voiceOverFocusClaim(onChangeOf:
+  dealFocusToken)` scatta **in modo affidabile ogni mano** — esattamente il pattern provato della hero zone
+  di poker. Solo la **mano 0** riclama (le mani di split passano un costante `-1`).
+- **Nessun troncamento (vincolo D-108).** Il claim resta emesso in `present(.dealt)`, nella **finestra
+  quieta** (evento di inizio mano silenzioso + ritmo D-108 che ha drenato la mano precedente), **prima**
+  della carta del banco. La stabilità dell'ancora **non** sposta il momento del claim: lo rende solo
+  efficace. Attesa della voce/coda/budget **non toccati**; il post passa dal solito
+  `voiceOverFocusClaim → postLayoutChanged` (nessun `UIAccessibility.post` diretto).
+- **Onestà su cosa è verificato e cosa no.** Il **simulatore/test** garantiscono il *meccanismo*: l'ancora
+  è dichiarata **stabile** (test sorgente: mano 0 fuori dal `ForEach`, `dropFirst()` per le altre), il
+  token avanza **ogni mano**, il claim c'è. Questo garantisce che il claim è ora **emesso su un bersaglio
+  valido e stabile ogni deal** (non più su una view appena inserita che lo ignora). **Resta da confermare
+  sul DEVICE**, all'orecchio e dai dati: che il focus **atterri** davvero ogni mano. La traccia lo mostrerà
+  — `focus.layoutChanged` a ogni `.dealt` (assente nel regresso, dove `onChange` non partiva mai). **Non
+  dichiaro risolto ciò che non ho potuto verificare**: dopo un regresso, un'affermazione di vittoria non
+  verificata vale poco. *(La traccia del regresso non l'ho potuta tirare giù: iPhone **bloccato**, il
+  container non è leggibile via cavo finché non si sblocca.)*
+- **Registrazione LASCIATA ACCESA**: questa correzione va confermata dai dati **insieme** al ritmo D-108
+  ancora in sospeso. **685 test verdi** (test di stabilità dell'ancora + token; pin D-109 aggiornato). iOS
+  compila. **Build su TestFlight** (numero nel resoconto).

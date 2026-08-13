@@ -600,6 +600,7 @@
 "blackjack.hero.hand.a11y" = "Your hand: %1$@. Cards: %2$@.";
 "blackjack.hero.hand.multi.a11y" = "Hand %1$d of %2$d: %3$@. Cards: %4$@.";
 "blackjack.hero.total.a11y" = "Your hand: %@.";
+"blackjack.hero.total.waiting.a11y" = "Waiting for the hand.";
 "blackjack.hero.total.multi.a11y" = "Hand %1$d of %2$d: %3$@.";
 "blackjack.hero.handcards.a11y" = "Cards: %@.";
 "blackjack.dealer.a11y" = "Dealer shows %@.";
